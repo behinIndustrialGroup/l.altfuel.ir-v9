@@ -2,152 +2,174 @@
 
 @php
     use Illuminate\Support\Str;
+    $statusLabels = [
+        'open' => ['label' => 'باز', 'class' => 'badge-success'],
+        'answered' => ['label' => 'پاسخ داده شده', 'class' => 'badge-info'],
+        'closed' => ['label' => 'بسته شده', 'class' => 'badge-danger'],
+    ];
+
+    $senderLabels = [
+        'agent' => 'پشتیبان',
+        'bot' => 'ربات',
+        'user' => 'کاربر',
+    ];
 @endphp
 
+@section('title', 'جزئیات تیکت تلگرام #' . $ticket->id)
+
 @section('content')
-    <div class="container-md ticket-wrapper py-4">
-        <div class="ticket-surface">
-            <div class="ticket-header mb-4">
-                <div>
-                    <h5 class="ticket-title">تیکت شماره {{ $ticket->id }}</h5>
-                    <p class="ticket-subtitle mb-1">کاربر: {{ $ticket->user_id }}</p>
-                    <span class="chip chip-status chip-status-{{ $ticket->status }}">
-                        @switch($ticket->status)
-                            @case('open')
-                                باز
-                            @break
-
-                            @case('answered')
-                                پاسخ داده‌شده
-                            @break
-
-                            @case('closed')
-                                بسته شده
-                            @break
-
-                            @default
-                                -
-                        @endswitch
-                    </span>
-                </div>
-                <div class="ticket-actions text-end">
-                    <a href="{{ route('telegram-tickets.index') }}" class="btn btn-outline-secondary btn-sm">
-                        بازگشت به لیست
-                    </a>
-                </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">تیکت شماره {{ $ticket->id }}</h4>
+                <a href="{{ route('telegram-tickets.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa fa-arrow-right ml-1"></i>
+                    بازگشت به لیست
+                </a>
             </div>
+        </div>
 
+        <div class="col-12">
             @if (session('success'))
-                <div class="alert alert-success material-alert">{{ session('success') }}</div>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ session('success') }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
             @endif
 
             @if ($errors->any())
-                <div class="alert alert-danger material-alert">
-                    <ul class="mb-0">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <ul class="mb-0 pr-3">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
             @endif
+        </div>
 
-            <div class="conversation" style="max-height: 420px; overflow-y: auto;">
-                @forelse ($ticket->messages as $message)
-                    <div class="message-row {{ $message->sender_type === 'agent' ? 'message-row-agent' : 'message-row-user' }}">
-                        <div class="message-avatar">
-                            @switch($message->sender_type)
-                                @case('agent')
-                                    <span class="material-avatar material-avatar-agent" title="پشتیبان">👨‍💼</span>
-                                @break
+        <div class="col-lg-4 mb-3">
+            <div class="card card-outline card-primary h-100">
+                <div class="card-header">
+                    <h3 class="card-title">اطلاعات تیکت</h3>
+                </div>
+                <div class="card-body">
+                    <dl class="ticket-meta mb-0">
+                        <dt>شناسه تیکت</dt>
+                        <dd class="mb-3">{{ $ticket->id }}</dd>
 
-                                @case('bot')
-                                    <span class="material-avatar material-avatar-bot" title="ربات">🤖</span>
-                                @break
+                        <dt>کد کاربر</dt>
+                        <dd class="mb-3">{{ $ticket->user_id ?? '—' }}</dd>
 
-                                @default
-                                    <span class="material-avatar material-avatar-user" title="کاربر">👤</span>
-                            @endswitch
-                        </div>
-                        <div class="message-bubble {{ $message->sender_type === 'agent' ? 'message-bubble-agent' : 'message-bubble-user' }}"
-                            data-message-id="{{ $message->id }}"
-                            data-message-preview="{{ e(Str::limit($message->message, 140)) }}">
-                            <div class="message-meta">
-                                <span class="message-author">
-                                    @switch($message->sender_type)
-                                        @case('agent')
-                                            پشتیبان
-                                        @break
+                        <dt>وضعیت</dt>
+                        <dd class="mb-3">
+                            @php
+                                $status = $statusLabels[$ticket->status] ?? ['label' => 'نامشخص', 'class' => 'badge-secondary'];
+                            @endphp
+                            <span class="badge badge-pill {{ $status['class'] }} px-3 py-2">
+                                {{ $status['label'] }}
+                            </span>
+                        </dd>
 
-                                        @case('bot')
-                                            ربات
-                                        @break
+                        <dt>ثبت شده در</dt>
+                        <dd class="mb-0">{{ optional($ticket->created_at)->format('Y-m-d H:i') ?? '—' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
 
-                                        @default
-                                            کاربر
-                                    @endswitch
-                                </span>
-                                <span class="message-time">{{ optional($message->created_at)->format('Y-m-d H:i') }}</span>
-                            </div>
-
-                            @if ($message->replyTo)
-                                <div class="message-reply-chip">
-                                    <span class="material-icon">↩</span>
-                                    <span class="text-truncate">{{ Str::limit($message->replyTo->message, 120) }}</span>
-
+        <div class="col-lg-8 mb-3">
+            <div class="card card-outline card-primary direct-chat direct-chat-primary">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">گفتگوی تیکت</h3>
+                    <span class="badge badge-light">{{ $ticket->messages->count() }} پیام</span>
+                </div>
+                <div class="card-body">
+                    <div class="direct-chat-messages" style="height: 420px;">
+                        @forelse ($ticket->messages as $message)
+                            @php
+                                $senderLabel = $senderLabels[$message->sender_type] ?? 'کاربر';
+                                $replyPreview = $message->replyTo ? Str::limit($message->replyTo->message, 120) : null;
+                            @endphp
+                            <div class="direct-chat-msg {{ $message->sender_type === 'agent' ? 'right' : '' }}">
+                                <div class="direct-chat-infos clearfix">
+                                    <span class="direct-chat-name float-right">{{ $senderLabel }}</span>
+                                    <span class="direct-chat-timestamp float-left">{{ optional($message->created_at)->format('Y-m-d H:i') }}</span>
                                 </div>
-                            @endif
-
-                            <div class="message-content">{!! nl2br(e($message->message)) !!}</div>
-
-                            <div class="message-actions">
-                                <button type="button" class="md-text-button reply-button"
+                                <div class="direct-chat-text message-bubble"
                                     data-message-id="{{ $message->id }}"
                                     data-message-preview="{{ e(Str::limit($message->message, 140)) }}">
-                                    <span class="material-icon">↩</span>
-                                    <span>پاسخ</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <p class="text-muted">پیامی برای این تیکت ثبت نشده است.</p>
-                @endforelse
-            </div>
-
-                @if ($ticket->status !== 'closed')
-                    <form action="{{ route('telegram-tickets.reply', $ticket->id) }}" method="POST" class="mt-4 material-form">
-                        @csrf
-                        <input type="hidden" name="reply_to_message_id" id="reply_to_message_id"
-                            value="{{ old('reply_to_message_id') }}">
-
-                        <div id="reply-preview" class="material-reply-banner d-none">
-                            <div class="material-reply-body">
-                                <span class="material-icon">↩</span>
-                                <div class="material-reply-text">
-                                    <p class="mb-0 text-muted">در حال پاسخ به:</p>
-                                    <p id="reply-preview-text" class="mb-0 fw-semibold"></p>
+                                    @if ($replyPreview)
+                                        <div class="quoted-message mb-2">
+                                            <i class="fa fa-reply ml-1"></i>
+                                            <span class="text-muted">{{ $replyPreview }}</span>
+                                        </div>
+                                    @endif
+                                    <div class="message-content">{!! nl2br(e($message->message)) !!}</div>
+                                </div>
+                                <div class="message-actions mt-1 {{ $message->sender_type === 'agent' ? 'text-left' : 'text-right' }}">
+                                    <button type="button" class="btn btn-link btn-sm p-0 reply-button"
+                                        data-message-id="{{ $message->id }}"
+                                        data-message-preview="{{ e(Str::limit($message->message, 140)) }}">
+                                        <i class="fa fa-reply ml-1"></i>
+                                        پاسخ
+                                    </button>
                                 </div>
                             </div>
-                            <button type="button" class="md-icon-button" aria-label="حذف" id="reply-preview-clear">
-                                <span class="material-icon">✕</span>
+                        @empty
+                            <div class="text-center text-muted py-5">پیامی برای این تیکت ثبت نشده است.</div>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    @if ($ticket->status !== 'closed')
+                        <form action="{{ route('telegram-tickets.reply', $ticket->id) }}" method="POST" class="mb-3">
+                            @csrf
+                            <input type="hidden" name="reply_to_message_id" id="reply_to_message_id"
+                                value="{{ old('reply_to_message_id') }}">
+
+                            <div id="reply-preview" class="reply-preview-card d-none mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fa fa-reply ml-2 text-primary"></i>
+                                    <div>
+                                        <small class="text-muted d-block">در حال پاسخ به</small>
+                                        <span id="reply-preview-text" class="font-weight-bold"></span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-light btn-sm" id="reply-preview-clear">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reply">پاسخ شما</label>
+                                <textarea name="reply" id="reply" class="form-control" rows="4" required>{{ old('reply') }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-paper-plane ml-1"></i>
+                                ارسال پاسخ
                             </button>
-                        </div>
+                        </form>
 
-                        <div class="form-group mt-3 material-textarea-group">
-                            <textarea name="reply" id="reply" class="material-textarea" rows="4" placeholder=" " required>{{ old('reply') }}</textarea>
-                            <label for="reply" class="material-label">پیام شما</label>
-
-                        </div>
-
-                        <button type="submit" class="md-raised-button md-raised-button-primary mt-3">ارسال پاسخ</button>
-                    </form>
-                    <form action="{{ route('telegram-tickets.close', $ticket->id) }}" method="POST" class="mt-3 d-inline-block">
-                        @csrf
-                        <button type="submit" class="md-raised-button md-raised-button-danger">بستن تیکت</button>
-                    </form>
-                @else
-                    <p class="mt-3">این تیکت بسته شده است.</p>
-                @endif
+                        <form action="{{ route('telegram-tickets.close', $ticket->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('آیا از بستن این تیکت مطمئن هستید؟')">
+                                <i class="fa fa-lock ml-1"></i>
+                                بستن تیکت
+                            </button>
+                        </form>
+                    @else
+                        <div class="alert alert-secondary mb-0">این تیکت بسته شده است.</div>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
@@ -155,335 +177,67 @@
 
 @section('style')
     <style>
-        .ticket-wrapper {
-            max-width: 960px;
-        }
-
-        .ticket-surface {
-            background: #fafbfc;
-            border-radius: 24px;
-            padding: 2.5rem 2rem;
-            box-shadow: 0px 20px 45px -24px rgba(15, 23, 42, 0.35);
-            border: 1px solid rgba(148, 163, 184, 0.15);
-        }
-
-        .ticket-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 1rem;
-        }
-
-        .ticket-title {
-            font-weight: 700;
-        }
-
-        .ticket-subtitle {
-            color: #6b7280;
-        }
-
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 999px;
-            font-size: 0.875rem;
+        .ticket-meta dt {
+            font-size: 0.85rem;
+            color: #6c757d;
             font-weight: 600;
         }
 
-        .chip-status-open {
-            background: rgba(16, 185, 129, 0.1);
-            color: #047857;
+        .ticket-meta dd {
+            font-size: 0.95rem;
         }
 
-        .chip-status-answered {
-            background: rgba(37, 99, 235, 0.1);
-            color: #1d4ed8;
-        }
-
-        .chip-status-closed {
-            background: rgba(239, 68, 68, 0.1);
-            color: #b91c1c;
-        }
-
-        .material-alert {
-            border-radius: 14px;
-            border: none;
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-        }
-
-        .conversation {
-            background: #ffffff;
-            padding: 1.75rem 1.5rem;
-            border-radius: 20px;
-            box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.12);
-        }
-
-        .message-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            align-items: flex-start;
-        }
-
-        .message-row-agent {
-            flex-direction: row-reverse;
-        }
-
-        .message-avatar {
-            flex-shrink: 0;
-        }
-
-        .material-avatar {
-            display: grid;
-            place-items: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            background: #e5e7eb;
-            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
-        }
-
-        .material-avatar-agent {
-            background: rgba(37, 99, 235, 0.12);
-        }
-
-        .material-avatar-bot {
-            background: rgba(168, 85, 247, 0.15);
-        }
-
-        .material-avatar-user {
-            background: rgba(14, 165, 233, 0.14);
-        }
-
-        .message-bubble {
+        .direct-chat-text.message-bubble {
             position: relative;
-            width: 100%;
-            max-width: 640px;
-            background: #f8fafc;
-            border-radius: 20px;
-            padding: 1rem 1.25rem 1.25rem;
-            box-shadow: 0 16px 30px -18px rgba(15, 23, 42, 0.4);
+            border-radius: 0.75rem;
             border: 1px solid transparent;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+            background-color: #f8f9fa;
         }
 
-        .message-bubble-user {
-            background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(14, 165, 233, 0.02));
-        }
-
-        .message-bubble-agent {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02));
+        .direct-chat-msg.right .direct-chat-text.message-bubble {
+            background-color: #e9f5ff;
         }
 
         .message-bubble.selected-reply {
-            border-color: rgba(37, 99, 235, 0.55);
-            box-shadow: 0 20px 45px -20px rgba(37, 99, 235, 0.4);
-            transform: translateY(-2px);
+            border-color: rgba(60, 141, 188, 0.6);
+            box-shadow: 0 0 0 2px rgba(60, 141, 188, 0.1);
         }
 
-        .message-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
+        .quoted-message {
+            border-right: 3px solid #3c8dbc;
+            padding-right: 0.75rem;
+            color: #6c757d;
             font-size: 0.85rem;
-            color: #64748b;
         }
 
-        .message-author {
-            font-weight: 600;
-            color: #0f172a;
+        .direct-chat-msg.right .quoted-message {
+            border-right: 0;
+            border-left: 3px solid #3c8dbc;
+            padding-right: 0;
+            padding-left: 0.75rem;
         }
 
-        .message-content {
-            color: #1f2937;
-            line-height: 1.7;
-        }
-
-        .message-reply-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            background: rgba(99, 102, 241, 0.12);
-            border-radius: 12px;
-            font-size: 0.78rem;
-            color: #4338ca;
-            margin-bottom: 0.75rem;
-            max-width: 100%;
-        }
-
-        .text-truncate {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .message-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 1rem;
-        }
-
-        .material-icon {
-            font-size: 1.05rem;
-            vertical-align: middle;
-        }
-
-        .md-text-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.35rem 0.6rem;
-            border-radius: 999px;
-            border: none;
-            background: transparent;
-            color: #2563eb;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s ease, color 0.2s ease;
-        }
-
-        .md-text-button:hover {
-            background: rgba(37, 99, 235, 0.08);
-            color: #1d4ed8;
-        }
-
-        .material-reply-banner {
+        .reply-preview-card {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
-            background: rgba(37, 99, 235, 0.08);
-            border-radius: 16px;
+            background-color: #f0f7ff;
+            border-radius: 0.75rem;
+            border-right: 3px solid #3c8dbc;
             padding: 0.75rem 1rem;
-            margin-top: 1.5rem;
-            transition: opacity 0.2s ease;
         }
 
-        .material-reply-body {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .md-icon-button {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+        .reply-preview-card button {
             border: none;
-            background: transparent;
-            color: #475569;
-            cursor: pointer;
-            transition: background 0.2s ease;
         }
 
-        .md-icon-button:hover {
-            background: rgba(15, 23, 42, 0.08);
+        .message-actions .btn-link {
+            color: #3c8dbc;
         }
 
-        .material-form {
-            margin-top: 2.5rem;
-        }
-
-        .material-textarea-group {
-            position: relative;
-        }
-
-        .material-textarea {
-            width: 100%;
-            border: none;
-            border-bottom: 2px solid rgba(148, 163, 184, 0.5);
-            border-radius: 0;
-            padding: 1.5rem 0.75rem 0.75rem;
-            resize: vertical;
-            background: transparent;
-            color: #0f172a;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .material-textarea:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 2px 0 0 #2563eb;
-        }
-
-        .material-label {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            color: #64748b;
-            transition: all 0.2s ease;
-            pointer-events: none;
-        }
-
-        .material-textarea:focus + .material-label,
-        .material-textarea:not(:placeholder-shown) + .material-label {
-            transform: translateY(-0.75rem);
-            font-size: 0.8rem;
-            color: #2563eb;
-        }
-
-        .material-textarea-group .material-label {
-            right: auto;
-            left: 0.75rem;
-        }
-
-        .md-raised-button {
-            border: none;
-            border-radius: 999px;
-            padding: 0.65rem 1.75rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            cursor: pointer;
-            box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.6);
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-
-        .md-raised-button-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: #fff;
-        }
-
-        .md-raised-button-danger {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: #fff;
-        }
-
-        .md-raised-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 24px 32px -20px rgba(37, 99, 235, 0.45);
-        }
-
-        .md-raised-button-danger:hover {
-            box-shadow: 0 24px 32px -20px rgba(239, 68, 68, 0.45);
-        }
-
-        @media (max-width: 768px) {
-            .ticket-surface {
-                padding: 1.5rem 1.25rem;
-            }
-
-            .message-row {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .message-row-agent {
-                flex-direction: column;
-                align-items: flex-end;
-            }
-
-            .message-bubble {
-                max-width: 100%;
-            }
-
+        .message-actions .btn-link:hover {
+            text-decoration: none;
+            color: #367fa9;
         }
     </style>
 @endsection
