@@ -93,23 +93,32 @@ class TicketFilterController extends Controller
         return str_replace($persian, $english, $string);
     }
 
-    private function getDescendantCategoryIds($categoryId, $categories = null)
+    private function getDescendantCategoryIds($categoryId)
     {
         if (is_null($categoryId)) {
             return [];
         }
 
-        $categories = $categories ?? TicketCatagory::all(['id', 'parent_id']);
+        $categories = TicketCatagory::all(['id', 'parent_id'])->groupBy('parent_id');
 
-        $ids = collect([(int) $categoryId]);
+        $pending = [(int) $categoryId];
+        $visited = [];
 
-        $categories
-            ->where('parent_id', $categoryId)
-            ->each(function ($category) use (&$ids, $categories) {
-                $ids = $ids->merge($this->getDescendantCategoryIds($category->id, $categories));
-            });
+        while (!empty($pending)) {
+            $currentId = array_pop($pending);
 
-        return $ids->unique()->values()->all();
+            if (isset($visited[$currentId])) {
+                continue;
+            }
+
+            $visited[$currentId] = true;
+
+            foreach ($categories->get($currentId, collect()) as $category) {
+                $pending[] = (int) $category->id;
+            }
+        }
+
+        return array_keys($visited);
     }
 
 }
