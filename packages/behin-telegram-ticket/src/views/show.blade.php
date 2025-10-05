@@ -95,11 +95,13 @@
                             @php
                                 $senderLabel = $senderLabels[$message->sender_type] ?? 'کاربر';
                                 $replyPreview = $message->replyTo ? Str::limit($message->replyTo->message, 120) : null;
+                                $isAgentMessage = $message->sender_type === 'agent';
+                                $messageClasses = $isAgentMessage ? 'direct-chat-msg right agent-message' : 'direct-chat-msg participant-message';
                             @endphp
-                            <div class="direct-chat-msg {{ $message->sender_type === 'agent' ? 'right' : '' }}">
-                                <div class="direct-chat-infos clearfix">
-                                    <span class="direct-chat-name float-right">{{ $senderLabel }}</span>
-                                    <span class="direct-chat-timestamp float-left">{{ optional($message->created_at)->format('Y-m-d H:i') }}</span>
+                            <div class="{{ $messageClasses }}">
+                                <div class="direct-chat-infos message-meta">
+                                    <span class="direct-chat-name">{{ $senderLabel }}</span>
+                                    <span class="direct-chat-timestamp">{{ optional($message->created_at)->format('Y-m-d H:i') }}</span>
                                 </div>
                                 <div class="direct-chat-text message-bubble"
                                     data-message-id="{{ $message->id }}"
@@ -112,7 +114,7 @@
                                     @endif
                                     <div class="message-content">{!! nl2br(e($message->message)) !!}</div>
                                 </div>
-                                <div class="message-actions mt-1 {{ $message->sender_type === 'agent' ? 'text-left' : 'text-right' }}">
+                                <div class="message-actions mt-1">
                                     <button type="button" class="btn btn-link btn-sm p-0 reply-button"
                                         data-message-id="{{ $message->id }}"
                                         data-message-preview="{{ e(Str::limit($message->message, 140)) }}">
@@ -187,15 +189,110 @@
             font-size: 0.95rem;
         }
 
-        .direct-chat-text.message-bubble {
-            position: relative;
-            border-radius: 0.75rem;
-            border: 1px solid transparent;
-            background-color: #f8f9fa;
+        .direct-chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
 
-        .direct-chat-msg.right .direct-chat-text.message-bubble {
-            background-color: #e9f5ff;
+        .direct-chat-msg {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            max-width: 85%;
+        }
+
+        .direct-chat-msg.participant-message {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .direct-chat-msg.agent-message {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .direct-chat-infos.message-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #6c757d;
+            width: 100%;
+        }
+
+        .direct-chat-msg.participant-message .message-meta {
+            justify-content: flex-start;
+            text-align: left;
+        }
+
+        .direct-chat-msg.agent-message .message-meta {
+            justify-content: flex-end;
+            text-align: right;
+        }
+
+        .direct-chat-infos.message-meta .direct-chat-name,
+        .direct-chat-infos.message-meta .direct-chat-timestamp {
+            float: none !important;
+        }
+
+        .direct-chat-text.message-bubble {
+            position: relative;
+            border-radius: 1rem;
+            border: 1px solid #e1e5eb;
+            background-color: #f8f9fa;
+            padding: 0.75rem 1rem;
+            line-height: 1.8;
+        }
+
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble {
+            background-color: #dcf8c6;
+            border-color: rgba(37, 211, 102, 0.35);
+            color: #0f5132;
+        }
+
+        .direct-chat-msg.participant-message .direct-chat-text.message-bubble {
+            color: #1f2d3d;
+        }
+
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble .message-content {
+            color: inherit;
+        }
+
+        .direct-chat-msg.participant-message .direct-chat-text.message-bubble::before,
+        .direct-chat-msg.participant-message .direct-chat-text.message-bubble::after,
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble::before,
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble::after {
+            content: '';
+            position: absolute;
+            top: 14px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+
+        .direct-chat-msg.participant-message .direct-chat-text.message-bubble::before {
+            left: -10px;
+            border-width: 8px 10px 8px 0;
+            border-color: transparent #e1e5eb transparent transparent;
+        }
+
+        .direct-chat-msg.participant-message .direct-chat-text.message-bubble::after {
+            left: -8px;
+            border-width: 8px 10px 8px 0;
+            border-color: transparent #f8f9fa transparent transparent;
+        }
+
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble::before {
+            right: -10px;
+            border-width: 8px 0 8px 10px;
+            border-color: transparent transparent transparent rgba(37, 211, 102, 0.35);
+        }
+
+        .direct-chat-msg.agent-message .direct-chat-text.message-bubble::after {
+            right: -8px;
+            border-width: 8px 0 8px 10px;
+            border-color: transparent transparent transparent #dcf8c6;
         }
 
         .message-bubble.selected-reply {
@@ -210,11 +307,24 @@
             font-size: 0.85rem;
         }
 
-        .direct-chat-msg.right .quoted-message {
+        .direct-chat-msg.agent-message .quoted-message {
             border-right: 0;
-            border-left: 3px solid #3c8dbc;
+            border-left: 3px solid rgba(37, 211, 102, 0.35);
             padding-right: 0;
             padding-left: 0.75rem;
+        }
+
+        .direct-chat-msg .message-actions {
+            margin-top: 0.25rem;
+            width: 100%;
+        }
+
+        .direct-chat-msg.participant-message .message-actions {
+            text-align: left;
+        }
+
+        .direct-chat-msg.agent-message .message-actions {
+            text-align: right;
         }
 
         .reply-preview-card {
