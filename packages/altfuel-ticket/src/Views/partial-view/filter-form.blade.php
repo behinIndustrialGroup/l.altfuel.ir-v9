@@ -61,7 +61,7 @@
         <label for="filter_child_cat">دسته بندی</label>
         <div class="row">
             <div class="col-md-6 mb-2 mb-md-0">
-                <select id="filter_parent_cat" class="form-control"></select>
+                <select id="filter_parent_cat" name="filter_parent_cat" class="form-control"></select>
             </div>
             <div class="col-md-6">
                 <select name="filter_catagory" id="filter_child_cat" class="form-control"></select>
@@ -110,6 +110,7 @@
             if (!parentId) {
                 childCat.html('');
                 childCat.append(new Option('انتخاب زیر دسته', ''));
+                childCat.val('');
                 return;
             }
 
@@ -122,6 +123,7 @@
             url = url.replace('parent_id', parentId);
             childCat.html('');
             childCat.append(new Option('انتخاب زیر دسته', ''));
+            childCat.val('');
 
             send_ajax_get_request(
                 url,
