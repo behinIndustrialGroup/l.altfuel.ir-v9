@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use IntlDateFormatter;
 use Mkhodroo\AltfuelTicket\Models\Ticket;
+use Mkhodroo\AltfuelTicket\Models\TicketCatagory;
 use Mkhodroo\AltfuelTicket\Models\TicketComment;
 use Morilog\Jalali\Jalalian;
 use Carbon\Carbon;
@@ -40,6 +41,9 @@ class TicketFilterController extends Controller
 
         if ($request->filled('filter_catagory')) {
             $query->where('cat_id', $request->filter_catagory);
+        } elseif ($request->filled('filter_parent_cat')) {
+            $categoryIds = $this->getDescendantCategoryIds($request->filter_parent_cat);
+            $query->whereIn('cat_id', $categoryIds);
         }
 
         $result = $query->get()->map(function ($row) {
@@ -87,6 +91,25 @@ class TicketFilterController extends Controller
         $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
         $english = ['0','1','2','3','4','5','6','7','8','9'];
         return str_replace($persian, $english, $string);
+    }
+
+    private function getDescendantCategoryIds($categoryId, $categories = null)
+    {
+        if (is_null($categoryId)) {
+            return [];
+        }
+
+        $categories = $categories ?? TicketCatagory::all(['id', 'parent_id']);
+
+        $ids = collect([(int) $categoryId]);
+
+        $categories
+            ->where('parent_id', $categoryId)
+            ->each(function ($category) use (&$ids, $categories) {
+                $ids = $ids->merge($this->getDescendantCategoryIds($category->id, $categories));
+            });
+
+        return $ids->unique()->values()->all();
     }
 
 }
