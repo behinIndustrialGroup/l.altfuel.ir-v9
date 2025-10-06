@@ -106,7 +106,7 @@
                                 </div>
                                 @php
                                     $messagePreview = $message->message ?: ($message->attachment_name ? '📎 ' . $message->attachment_name : '');
-                                    $attachmentUrl = $message->attachment_path ? Storage::disk('public')->url('storage/app/public/'.$message->attachment_path) : null;
+                                    $attachmentUrl = $message->attachment_path ? Storage::disk('public')->url('app/public/'.$message->attachment_path) : null;
                                     $isImageAttachment = $message->attachment_mime && Str::startsWith($message->attachment_mime, 'image/');
                                 @endphp
                                 <div class="direct-chat-text message-bubble"
