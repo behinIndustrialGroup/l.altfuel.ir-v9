@@ -11,6 +11,10 @@ class TelegramTicketMessage extends Model
         'sender_id',
         'sender_type',
         'message',
+        'attachment_path',
+        'attachment_name',
+        'attachment_mime',
+        'attachment_size',
         'reply_to_message_id',
         'platform_message_id',
         'platform',
@@ -19,6 +23,7 @@ class TelegramTicketMessage extends Model
 
     protected $casts = [
         'feedback' => 'string',
+        'attachment_size' => 'integer',
     ];
 
     public function ticket()

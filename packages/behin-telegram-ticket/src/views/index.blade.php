@@ -37,7 +37,14 @@
                         <tr>
                             <td>{{ $ticket->id }}</td>
                             <td>{{ $ticket->user_id }}</td>
-                            <td>{{ Str::limit(optional($ticket->latestMessage)->message, 50) }}</td>
+                            @php
+                                $latestMessage = $ticket->latestMessage;
+                                $latestPreview = optional($latestMessage)->message;
+                                if (!$latestPreview && $latestMessage && $latestMessage->attachment_name) {
+                                    $latestPreview = '📎 ' . $latestMessage->attachment_name;
+                                }
+                            @endphp
+                            <td>{{ Str::limit($latestPreview, 50) }}</td>
                             <td>
                                 @switch($ticket->status)
                                     @case('open')
