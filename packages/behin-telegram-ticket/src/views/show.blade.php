@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @php
+    use Illuminate\Support\Facades\Storage;
     use Illuminate\Support\Str;
     $statusLabels = [
         'open' => ['label' => 'باز', 'class' => 'badge-success'],
@@ -103,16 +104,50 @@
                                     <span class="direct-chat-name">{{ $senderLabel }}</span>
                                     <span class="direct-chat-timestamp">{{ optional($message->created_at)->format('Y-m-d H:i') }}</span>
                                 </div>
+                                @php
+                                    $messagePreview = $message->message ?: ($message->attachment_name ? '📎 ' . $message->attachment_name : '');
+                                    $attachmentUrl = $message->attachment_path ? Storage::disk('public')->url($message->attachment_path) : null;
+                                    $isImageAttachment = $message->attachment_mime && Str::startsWith($message->attachment_mime, 'image/');
+                                @endphp
                                 <div class="direct-chat-text message-bubble"
                                     data-message-id="{{ $message->id }}"
-                                    data-message-preview="{{ e(Str::limit($message->message, 140)) }}">
+                                    data-message-preview="{{ e(Str::limit($messagePreview, 140)) }}">
                                     @if ($replyPreview)
                                         <div class="quoted-message mb-2">
                                             <i class="fa fa-reply ml-1"></i>
                                             <span class="text-muted">{{ $replyPreview }}</span>
                                         </div>
                                     @endif
-                                    <div class="message-content">{!! nl2br(e($message->message)) !!}</div>
+                                    <div class="message-content">
+                                        @if (filled($message->message))
+                                            {!! nl2br(e($message->message)) !!}
+                                        @elseif ($message->attachment_name)
+                                            <span class="text-muted">پیوست شده: {{ $message->attachment_name }}</span>
+                                        @endif
+                                    </div>
+                                    @if ($message->attachment_path && $attachmentUrl)
+                                        <div class="attachment-wrapper mt-2">
+                                            <a href="{{ $attachmentUrl }}" class="attachment-link" target="_blank" rel="noopener">
+                                                <i class="fa fa-paperclip ml-1"></i>
+                                                {{ $message->attachment_name ?? 'دانلود فایل پیوست' }}
+                                            </a>
+                                            @if ($message->attachment_mime || $message->attachment_size)
+                                                <div class="attachment-meta text-muted small mt-1">
+                                                    @if ($message->attachment_mime)
+                                                        <span>{{ $message->attachment_mime }}</span>
+                                                    @endif
+                                                    @if ($message->attachment_size)
+                                                        <span class="mr-2">{{ number_format($message->attachment_size / 1024, 1) }} کیلوبایت</span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            @if ($isImageAttachment)
+                                                <div class="attachment-preview mt-2">
+                                                    <img src="{{ $attachmentUrl }}" alt="پیوست" class="img-fluid rounded">
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 <div class="message-actions mt-1">
                                     <button type="button" class="btn btn-link btn-sm p-0 reply-button"
@@ -348,6 +383,40 @@
         .message-actions .btn-link:hover {
             text-decoration: none;
             color: #367fa9;
+        }
+
+        .attachment-wrapper {
+            background-color: rgba(60, 141, 188, 0.08);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .direct-chat-msg.agent-message .attachment-wrapper {
+            background-color: rgba(37, 211, 102, 0.12);
+        }
+
+        .attachment-link {
+            font-weight: 600;
+            color: #1f2d3d;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .direct-chat-msg.agent-message .attachment-link {
+            color: #0f5132;
+        }
+
+        .attachment-link:hover {
+            text-decoration: none;
+            color: #0c5460;
+        }
+
+        .attachment-preview img {
+            max-height: 220px;
+            object-fit: cover;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
     </style>
 @endsection

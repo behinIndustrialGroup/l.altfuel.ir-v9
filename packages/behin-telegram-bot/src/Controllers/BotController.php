@@ -4,7 +4,10 @@ namespace TelegramBot\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Mkhodroo\AltfuelTicket\Controllers\LangflowController;
 use TelegramBot\Models\TelegramUser;
 use TelegramTicket\Models\TelegramTicket;
@@ -25,6 +28,7 @@ class BotController extends Controller
         $message = $update['message'] ?? null;
         $chat_id = $message['chat']['id'] ?? null;
         $text = $message['text'] ?? null;
+        $caption = $message['caption'] ?? null;
         $contact = $message['contact'] ?? null;
         $telegramMessageId = $message['message_id'] ?? null; // ✅ اضافه شد
         $replyToPlatformId = $message['reply_to_message']['message_id'] ?? null;
@@ -46,15 +50,24 @@ class BotController extends Controller
                     ->first();
             }
 
-            $messageContent = $text ?? '[بدون متن]';
+            $attachmentMeta = $this->extractAttachmentFromMessage($message);
+            $storedAttachment = $attachmentMeta ? $this->downloadTelegramAttachment($telegram, $attachmentMeta) : null;
 
-            $openTicket->messages()->create([
+            $messageContent = trim((string)($text ?? $caption ?? ''));
+
+            $messageData = [
                 'sender_id' => $chat_id,
                 'sender_type' => 'user',
                 'message' => $messageContent,
                 'reply_to_message_id' => $replyTarget?->id,
                 'platform_message_id' => $telegramMessageId,
-            ]);
+            ];
+
+            if ($storedAttachment) {
+                $messageData = array_merge($messageData, $storedAttachment);
+            }
+
+            $openTicket->messages()->create($messageData);
 
             $openTicket->status = 'open';
             $openTicket->save();
@@ -197,6 +210,136 @@ class BotController extends Controller
             ]);
             return;
         }
+    }
+
+    private function extractAttachmentFromMessage(array $message): ?array
+    {
+        $attachmentKeys = [
+            'document' => 'document',
+            'photo' => 'photo',
+            'audio' => 'audio',
+            'voice' => 'voice',
+            'video' => 'video',
+            'video_note' => 'video_note',
+            'animation' => 'animation',
+        ];
+
+        foreach ($attachmentKeys as $key => $type) {
+            if (empty($message[$key])) {
+                continue;
+            }
+
+            $fileData = $message[$key];
+            if ($key === 'photo') {
+                if (!is_array($fileData)) {
+                    continue;
+                }
+                $fileData = $fileData[array_key_last($fileData)] ?? null;
+            }
+
+            if (!is_array($fileData) || empty($fileData['file_id'])) {
+                continue;
+            }
+
+            return [
+                'type' => $type,
+                'file_id' => $fileData['file_id'],
+                'file_unique_id' => $fileData['file_unique_id'] ?? null,
+                'file_name' => $fileData['file_name'] ?? ($fileData['file_unique_id'] ?? null),
+                'mime_type' => $fileData['mime_type'] ?? ($type === 'photo' ? 'image/jpeg' : null),
+                'file_size' => $fileData['file_size'] ?? null,
+            ];
+        }
+
+        return null;
+    }
+
+    private function downloadTelegramAttachment(TelegramController $telegram, array $attachmentMeta): ?array
+    {
+        try {
+            $fileResponse = $telegram->getFile($attachmentMeta['file_id']);
+        } catch (\Throwable $throwable) {
+            Log::error('Telegram attachment getFile failed', [
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!is_array($fileResponse) || !($fileResponse['ok'] ?? false)) {
+            Log::warning('Telegram attachment getFile returned invalid response', [
+                'response' => $fileResponse,
+            ]);
+            return null;
+        }
+
+        $filePath = $fileResponse['result']['file_path'] ?? null;
+        if (!$filePath) {
+            return null;
+        }
+
+        $downloadUrl = sprintf('https://api.telegram.org/file/bot%s/%s', config('telegram_bot_config.TOKEN'), $filePath);
+
+        try {
+            $response = Http::timeout(30)->get($downloadUrl);
+        } catch (\Throwable $throwable) {
+            Log::error('Telegram attachment download failed', [
+                'url' => $downloadUrl,
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!$response->successful()) {
+            Log::warning('Telegram attachment download returned unsuccessful response', [
+                'url' => $downloadUrl,
+                'status' => $response->status(),
+            ]);
+            return null;
+        }
+
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        if (!$extension && !empty($attachmentMeta['mime_type'])) {
+            $extension = $this->guessExtensionFromMime($attachmentMeta['mime_type']);
+        }
+
+        $filename = Str::uuid()->toString() . ($extension ? '.' . $extension : '');
+        $storageDirectory = 'telegram-ticket/' . ($attachmentMeta['type'] ?? 'attachments') . '/' . now()->format('Y/m/d');
+        $storagePath = $storageDirectory . '/' . $filename;
+
+        Storage::disk('public')->put($storagePath, $response->body());
+
+        return [
+            'attachment_path' => $storagePath,
+            'attachment_name' => $attachmentMeta['file_name'] ?? $filename,
+            'attachment_mime' => $attachmentMeta['mime_type'] ?? null,
+            'attachment_size' => $attachmentMeta['file_size'] ?? strlen($response->body()),
+        ];
+    }
+
+    private function guessExtensionFromMime(?string $mime): ?string
+    {
+        if (!$mime) {
+            return null;
+        }
+
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'application/pdf' => 'pdf',
+            'application/zip' => 'zip',
+            'application/x-zip-compressed' => 'zip',
+            'audio/mpeg' => 'mp3',
+            'audio/ogg' => 'ogg',
+            'audio/webm' => 'webm',
+            'video/mp4' => 'mp4',
+            'video/quicktime' => 'mov',
+            'video/x-msvideo' => 'avi',
+            'text/plain' => 'txt',
+        ];
+
+        return $map[$mime] ?? null;
     }
 
     public function handleCallback()

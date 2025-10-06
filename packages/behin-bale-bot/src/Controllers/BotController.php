@@ -4,7 +4,10 @@ namespace BaleBot\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use BaleBot\Models\BaleUser;
 use Mkhodroo\AltfuelTicket\Controllers\LangflowController;
 use TelegramTicket\Models\TelegramTicket;
@@ -84,6 +87,7 @@ class BotController extends Controller
         $message = $update['message'] ?? null;
         $chat_id = $message['chat']['id'] ?? null;
         $text = $message['text'] ?? null;
+        $caption = $message['caption'] ?? null;
         $contact = $message['contact'] ?? null;
         $incomingMessageId = $message['message_id'] ?? null;
         $replyToPlatformId = $message['reply_to_message']['message_id'] ?? null;
@@ -105,16 +109,25 @@ class BotController extends Controller
                     ->first();
             }
 
-            $messageContent = $text ?? '[بدون متن]';
+            $attachmentMeta = $this->extractAttachmentFromMessage($message);
+            $storedAttachment = $attachmentMeta ? $this->downloadBaleAttachment($telegram, $attachmentMeta) : null;
 
-            $openTicket->messages()->create([
+            $messageContent = trim((string)($text ?? $caption ?? ''));
+
+            $messageData = [
                 'sender_id' => $chat_id,
                 'sender_type' => 'user',
                 'message' => $messageContent,
                 'reply_to_message_id' => $replyTarget?->id,
                 'platform_message_id' => $incomingMessageId,
                 'platform' => 'bale',
-            ]);
+            ];
+
+            if ($storedAttachment) {
+                $messageData = array_merge($messageData, $storedAttachment);
+            }
+
+            $openTicket->messages()->create($messageData);
 
             $openTicket->status = 'open';
             $openTicket->save();
@@ -221,14 +234,25 @@ class BotController extends Controller
             }
 
             if (!$userMessage) {
-                $userMessage = $conversationTicket->messages()->create([
+                $attachmentMeta = $this->extractAttachmentFromMessage($message);
+                $storedAttachment = $attachmentMeta ? $this->downloadBaleAttachment($telegram, $attachmentMeta) : null;
+
+                $messageContent = trim((string)($text ?? $caption ?? ''));
+
+                $messagePayload = [
                     'sender_id' => $chat_id,
                     'sender_type' => 'user',
-                    'message' => $text,
+                    'message' => $messageContent,
                     'reply_to_message_id' => $replyTarget?->id,
                     'platform_message_id' => $incomingMessageId,
                     'platform' => 'bale',
-                ]);
+                ];
+
+                if ($storedAttachment) {
+                    $messagePayload = array_merge($messagePayload, $storedAttachment);
+                }
+
+                $userMessage = $conversationTicket->messages()->create($messagePayload);
             }
 
             $botResponse = LangflowController::run($text, $chat_id);
@@ -275,6 +299,136 @@ class BotController extends Controller
             ]);
             return;
         }
+    }
+
+    private function extractAttachmentFromMessage(array $message): ?array
+    {
+        $attachmentKeys = [
+            'document' => 'document',
+            'photo' => 'photo',
+            'audio' => 'audio',
+            'voice' => 'voice',
+            'video' => 'video',
+            'video_note' => 'video_note',
+            'animation' => 'animation',
+        ];
+
+        foreach ($attachmentKeys as $key => $type) {
+            if (empty($message[$key])) {
+                continue;
+            }
+
+            $fileData = $message[$key];
+            if ($key === 'photo') {
+                if (!is_array($fileData)) {
+                    continue;
+                }
+                $fileData = $fileData[array_key_last($fileData)] ?? null;
+            }
+
+            if (!is_array($fileData) || empty($fileData['file_id'])) {
+                continue;
+            }
+
+            return [
+                'type' => $type,
+                'file_id' => $fileData['file_id'],
+                'file_unique_id' => $fileData['file_unique_id'] ?? null,
+                'file_name' => $fileData['file_name'] ?? ($fileData['file_unique_id'] ?? null),
+                'mime_type' => $fileData['mime_type'] ?? ($type === 'photo' ? 'image/jpeg' : null),
+                'file_size' => $fileData['file_size'] ?? null,
+            ];
+        }
+
+        return null;
+    }
+
+    private function downloadBaleAttachment(TelegramController $telegram, array $attachmentMeta): ?array
+    {
+        try {
+            $fileResponse = $telegram->getFile($attachmentMeta['file_id']);
+        } catch (\Throwable $throwable) {
+            Log::error('Bale attachment getFile failed', [
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!is_array($fileResponse) || !($fileResponse['ok'] ?? false)) {
+            Log::warning('Bale attachment getFile returned invalid response', [
+                'response' => $fileResponse,
+            ]);
+            return null;
+        }
+
+        $filePath = $fileResponse['result']['file_path'] ?? null;
+        if (!$filePath) {
+            return null;
+        }
+
+        $downloadUrl = sprintf('https://tapi.bale.ai/file/bot%s/%s', config('bale_bot_config.TOKEN'), $filePath);
+
+        try {
+            $response = Http::timeout(30)->get($downloadUrl);
+        } catch (\Throwable $throwable) {
+            Log::error('Bale attachment download failed', [
+                'url' => $downloadUrl,
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!$response->successful()) {
+            Log::warning('Bale attachment download returned unsuccessful response', [
+                'url' => $downloadUrl,
+                'status' => $response->status(),
+            ]);
+            return null;
+        }
+
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        if (!$extension && !empty($attachmentMeta['mime_type'])) {
+            $extension = $this->guessExtensionFromMime($attachmentMeta['mime_type']);
+        }
+
+        $filename = Str::uuid()->toString() . ($extension ? '.' . $extension : '');
+        $storageDirectory = 'telegram-ticket/' . ($attachmentMeta['type'] ?? 'attachments') . '/' . now()->format('Y/m/d');
+        $storagePath = $storageDirectory . '/' . $filename;
+
+        Storage::disk('public')->put($storagePath, $response->body());
+
+        return [
+            'attachment_path' => $storagePath,
+            'attachment_name' => $attachmentMeta['file_name'] ?? $filename,
+            'attachment_mime' => $attachmentMeta['mime_type'] ?? null,
+            'attachment_size' => $attachmentMeta['file_size'] ?? strlen($response->body()),
+        ];
+    }
+
+    private function guessExtensionFromMime(?string $mime): ?string
+    {
+        if (!$mime) {
+            return null;
+        }
+
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'application/pdf' => 'pdf',
+            'application/zip' => 'zip',
+            'application/x-zip-compressed' => 'zip',
+            'audio/mpeg' => 'mp3',
+            'audio/ogg' => 'ogg',
+            'audio/webm' => 'webm',
+            'video/mp4' => 'mp4',
+            'video/quicktime' => 'mov',
+            'video/x-msvideo' => 'avi',
+            'text/plain' => 'txt',
+        ];
+
+        return $map[$mime] ?? null;
     }
 
     public function handleCallback($update)
@@ -332,6 +486,10 @@ class BotController extends Controller
                     'sender_id' => $message->sender_id,
                     'sender_type' => $message->sender_type,
                     'message' => $message->message,
+                    'attachment_path' => $message->attachment_path,
+                    'attachment_name' => $message->attachment_name,
+                    'attachment_mime' => $message->attachment_mime,
+                    'attachment_size' => $message->attachment_size,
                     'reply_to_message_id' => $message->reply_to_message_id ? ($idMap[$message->reply_to_message_id] ?? null) : null,
                     'platform_message_id' => $message->platform_message_id,
                     'platform' => $message->platform,
