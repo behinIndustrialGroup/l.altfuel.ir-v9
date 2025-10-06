@@ -127,7 +127,7 @@
                                     </div>
                                     @if ($message->attachment_path && $attachmentUrl)
                                         <div class="attachment-wrapper mt-2">
-                                            <a href="{{ $attachmentUrl }}" class="attachment-link" target="_blank" rel="noopener">
+                                            <a href="{{ asset('storage/app/public/'.$attachmentUrl) }}" class="attachment-link" target="_blank" rel="noopener">
                                                 <i class="fa fa-paperclip ml-1"></i>
                                                 {{ $message->attachment_name ?? 'دانلود فایل پیوست' }}
                                             </a>
@@ -143,7 +143,7 @@
                                             @endif
                                             @if ($isImageAttachment)
                                                 <div class="attachment-preview mt-2">
-                                                    <img src="{{ $attachmentUrl }}" alt="پیوست" class="img-fluid rounded">
+                                                    <img src="{{ asset('storage/app/public/'.$attachmentUrl) }}" alt="پیوست" class="img-fluid rounded">
                                                 </div>
                                             @endif
                                         </div>
