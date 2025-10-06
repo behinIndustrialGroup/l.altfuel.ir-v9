@@ -106,7 +106,7 @@
                                 </div>
                                 @php
                                     $messagePreview = $message->message ?: ($message->attachment_name ? '📎 ' . $message->attachment_name : '');
-                                    $attachmentUrl = $message->attachment_path ? Storage::disk('public')->url($message->attachment_path) : null;
+                                    $attachmentUrl = $message->attachment_path ? Storage::disk('public')->url('storage/app/public/'.$message->attachment_path) : null;
                                     $isImageAttachment = $message->attachment_mime && Str::startsWith($message->attachment_mime, 'image/');
                                 @endphp
                                 <div class="direct-chat-text message-bubble"
@@ -127,7 +127,7 @@
                                     </div>
                                     @if ($message->attachment_path && $attachmentUrl)
                                         <div class="attachment-wrapper mt-2">
-                                            <a href="{{ url('storage/app/public/'.$attachmentUrl) }}" class="attachment-link" target="_blank" rel="noopener">
+                                            <a href="{{ $attachmentUrl }}" class="attachment-link" target="_blank" rel="noopener">
                                                 <i class="fa fa-paperclip ml-1"></i>
                                                 {{ $message->attachment_name ?? 'دانلود فایل پیوست' }}
                                             </a>
@@ -143,7 +143,7 @@
                                             @endif
                                             @if ($isImageAttachment)
                                                 <div class="attachment-preview mt-2">
-                                                    <img src="{{ url('storage/app/public/'.$attachmentUrl) }}" alt="پیوست" class="img-fluid rounded">
+                                                    <img src="{{ $attachmentUrl }}" alt="پیوست" class="img-fluid rounded">
                                                 </div>
                                             @endif
                                         </div>
