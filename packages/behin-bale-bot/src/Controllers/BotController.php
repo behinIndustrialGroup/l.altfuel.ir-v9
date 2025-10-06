@@ -269,7 +269,7 @@ class BotController extends Controller
                 'inline_keyboard' => [
                     [
                         ['text' => '👍', 'callback_data' => "bale_feedback:like:{$botMessage->id}"],
-                        ['text' => '👎', 'callback_data' => "bale_feedback:dislike:{$botMessage->id}"],
+                        ['text' => 'پرسش از کارشناس', 'callback_data' => "bale_feedback:dislike:{$botMessage->id}"],
                     ]
                 ]
             ];
@@ -511,17 +511,10 @@ class BotController extends Controller
         }
 
         if ($chatId) {
-            $hasOpenTicket = TelegramTicket::where('user_id', $chatId)
-                ->where('status', 'open')
-                ->where('is_bot_generated', false)
-                ->exists();
-
-            if (!$hasOpenTicket) {
-                $telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => 'ممنون بابت بازخورد شما 🙏'
-                ]);
-            }
+            $telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'مکالمه شما برای کارشناسان ارسال شد. منتظر دریافت پاسخ از سمت کارشناسان اتحادیه باشید'
+            ]);
         }
     }
 }
