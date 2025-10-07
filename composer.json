@@ -59,7 +59,6 @@
             "Behin\\Hamayesh\\": "packages/behin-hamayesh/src/",
             "Behin\\Complaint\\": "packages/behin-complaint/src/",
             "Registration\\": "packages/behin-registration/src/",
-            "CourseRegistration\\": "packages/behin-course-registration/src/",
             "TelegramTicket\\": "packages/behin-telegram-ticket/src/"
         }
     },
