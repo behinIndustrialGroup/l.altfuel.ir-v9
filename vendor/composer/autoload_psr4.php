@@ -115,6 +115,7 @@ return array(
     'Database\\Factories\\' => array($baseDir . '/database/factories', $vendorDir . '/laravel/pint/database/factories'),
     'Cviebrock\\EloquentSluggable\\' => array($vendorDir . '/cviebrock/eloquent-sluggable/src'),
     'Cron\\' => array($vendorDir . '/dragonmantank/cron-expression/src/Cron'),
+    'CourseRegistration\\' => array($baseDir . '/packages/behin-course-registration/src'),
     'Cocur\\Slugify\\' => array($vendorDir . '/cocur/slugify/src'),
     'ChatGpt\\' => array($baseDir . '/packages/behin-chat-gpt/src'),
     'Carbon\\' => array($vendorDir . '/nesbot/carbon/src/Carbon'),
