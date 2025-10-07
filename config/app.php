@@ -1,5 +1,6 @@
 <?php
 
+use CourseRegistration\CourseRegistrationServiceProvider;
 use Registration\RegistrationServiceProvider;
 
 return [
@@ -252,6 +253,7 @@ return [
         \Behin\Complaint\ComplaintProvider::class,
         Behin\Hamayesh\BehinHamayeshServiceProvider::class,
         RegistrationServiceProvider::class,
+        CourseRegistrationServiceProvider::class,
         \TelegramTicket\TelegramTicketProvider::class,
 
         // \Mkhodroo\CaseInsensitiveTranslate\CaseInsensitiveTranslateProvider::class,
