@@ -4,11 +4,14 @@ namespace BaleBot\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use BaleBot\Models\BaleUser;
 use Mkhodroo\AltfuelTicket\Controllers\LangflowController;
 use TelegramTicket\Models\TelegramTicket;
+use TelegramTicket\Models\TelegramTicketMessage;
 
 class BotController extends Controller
 {
@@ -84,19 +87,71 @@ class BotController extends Controller
         $message = $update['message'] ?? null;
         $chat_id = $message['chat']['id'] ?? null;
         $text = $message['text'] ?? null;
+        $caption = $message['caption'] ?? null;
         $contact = $message['contact'] ?? null;
+        $incomingMessageId = $message['message_id'] ?? null;
+        $replyToPlatformId = $message['reply_to_message']['message_id'] ?? null;
 
         if (!$chat_id) return;
 
+        $latestSupportTicket = TelegramTicket::where('user_id', $chat_id)
+            ->where('is_bot_generated', false)
+            ->latest()
+            ->first();
+
+        $ticketIsClosed = $latestSupportTicket && $latestSupportTicket->status === 'closed';
+
         // اگر تیکت باز برای کاربر وجود دارد، پیام را به تیکت اضافه کن
-        $openTicket = TelegramTicket::where('user_id', $chat_id)->where('status', 'open')->first();
+        $openTicket = $latestSupportTicket && in_array($latestSupportTicket->status, ['open', 'answered'])
+            ? $latestSupportTicket
+            : null;
+
         if ($openTicket) {
-            $openTicket->messages .= "\n\n👤 کاربر:\n" . $text;
+            if ($incomingMessageId && $openTicket->messages()->where('platform_message_id', $incomingMessageId)->exists()) {
+                Log::info("Duplicate ticket message ignored: $incomingMessageId");
+                return;
+            }
+
+            $replyTarget = null;
+            if ($replyToPlatformId) {
+                $replyTarget = $openTicket->messages()
+                    ->where('platform_message_id', $replyToPlatformId)
+                    ->first();
+            }
+
+            $attachmentMeta = $this->extractAttachmentFromMessage($message);
+            $storedAttachment = $attachmentMeta ? $this->downloadBaleAttachment($telegram, $attachmentMeta) : null;
+
+            $messageContent = trim((string)($text ?? $caption ?? ''));
+
+            $messageData = [
+                'sender_id' => $chat_id,
+                'sender_type' => 'user',
+                'message' => $messageContent,
+                'reply_to_message_id' => $replyTarget?->id,
+                'platform_message_id' => $incomingMessageId,
+                'platform' => 'bale',
+            ];
+
+            if ($storedAttachment) {
+                $messageData = array_merge($messageData, $storedAttachment);
+            }
+
+            $openTicket->messages()->create($messageData);
+
+            $openTicket->status = 'open';
             $openTicket->save();
-            $telegram->sendMessage([
+
+            $ackPayload = [
                 'chat_id' => $chat_id,
                 'text' => 'پیام شما به پشتیبانی ارسال شد. منتظر پاسخ کارشناس باشید.'
-            ]);
+            ];
+
+            if ($incomingMessageId) {
+                $ackPayload['reply_to_message_id'] = $incomingMessageId;
+            }
+
+            $telegram->sendMessage($ackPayload);
             return;
         }
 
@@ -162,40 +217,20 @@ class BotController extends Controller
             return;
         }
 
+        $messageContent = trim((string)($text ?? $caption ?? ''));
+
         // اگه نام و شماره کامل بود، بفرست به Langflow
-        if ($text && $text !== '/start') {
-            $botResponse = LangflowController::run($text, $chat_id);
+        if ($messageContent !== '' && $text !== '/start') {
+            $this->respondWithLangflow(
+                $telegram,
+                $message,
+                $chat_id,
+                $incomingMessageId,
+                $replyToPlatformId,
+                $messageContent,
+                $ticketIsClosed
+            );
 
-            $messageId = DB::table('bale_messages')->insertGetId([
-                'user_id' => $chat_id,
-                'user_message' => $text,
-                'bot_response' => $botResponse,
-                'feedback' => 'none',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $keyboard = [
-                'inline_keyboard' => [
-                    [
-                        ['text' => '👍', 'callback_data' => "like:$messageId"],
-                        ['text' => '👎', 'callback_data' => "dislike:$messageId"],
-                    ]
-                ]
-            ];
-
-            $response = $telegram->sendMessage([
-                'chat_id' => $chat_id,
-                'text' => $botResponse,
-                'reply_markup' => json_encode($keyboard)
-            ]);
-
-            $responseData = json_decode($response, true);
-            $msgTelegramId = $responseData['result']['message_id'] ?? null;
-
-            DB::table('bale_messages')->where('id', $messageId)->update([
-                'telegram_message_id' => $msgTelegramId
-            ]);
             return;
         }
 
@@ -209,67 +244,314 @@ class BotController extends Controller
         }
     }
 
+    private function respondWithLangflow(
+        TelegramController $telegram,
+        array $message,
+        int $chatId,
+        ?int $incomingMessageId,
+        ?int $replyToPlatformId,
+        string $messageContent,
+        bool $fromClosedTicket
+    ): void {
+        if ($fromClosedTicket) {
+            Log::info('Langflow response triggered for closed ticket', [
+                'chat_id' => $chatId,
+                'message_id' => $incomingMessageId,
+            ]);
+        }
+
+        $conversationTicket = TelegramTicket::firstOrCreate(
+            [
+                'user_id' => $chatId,
+                'is_bot_generated' => true,
+            ],
+            [
+                'status' => 'closed',
+            ]
+        );
+
+        $replyTarget = null;
+        if ($replyToPlatformId) {
+            $replyTarget = $conversationTicket->messages()
+                ->where('platform_message_id', $replyToPlatformId)
+                ->first();
+        }
+
+        $userMessage = null;
+        if ($incomingMessageId) {
+            $userMessage = $conversationTicket->messages()
+                ->where('platform_message_id', $incomingMessageId)
+                ->first();
+        }
+
+        if (!$userMessage) {
+            $attachmentMeta = $this->extractAttachmentFromMessage($message);
+            $storedAttachment = $attachmentMeta ? $this->downloadBaleAttachment($telegram, $attachmentMeta) : null;
+
+            $messagePayload = [
+                'sender_id' => $chatId,
+                'sender_type' => 'user',
+                'message' => $messageContent,
+                'reply_to_message_id' => $replyTarget?->id,
+                'platform_message_id' => $incomingMessageId,
+                'platform' => 'bale',
+            ];
+
+            if ($storedAttachment) {
+                $messagePayload = array_merge($messagePayload, $storedAttachment);
+            }
+
+            $userMessage = $conversationTicket->messages()->create($messagePayload);
+        }
+
+        $botResponse = LangflowController::run($messageContent, $chatId);
+
+        $botMessage = $conversationTicket->messages()->create([
+            'sender_type' => 'bot',
+            'message' => $botResponse,
+            'reply_to_message_id' => $userMessage->id,
+            'platform' => 'bale',
+            'feedback' => 'none',
+        ]);
+
+        $keyboard = [
+            'inline_keyboard' => [
+                [
+                    ['text' => '👍', 'callback_data' => "bale_feedback:like:{$botMessage->id}"],
+                    ['text' => 'پرسش از کارشناس', 'callback_data' => "bale_feedback:dislike:{$botMessage->id}"],
+                ]
+            ]
+        ];
+
+        $response = $telegram->sendMessage([
+            'chat_id' => $chatId,
+            'text' => $botResponse,
+            'reply_markup' => json_encode($keyboard)
+        ]);
+
+        $responseData = json_decode($response, true);
+        $msgTelegramId = $responseData['result']['message_id'] ?? null;
+
+        if ($msgTelegramId) {
+            $botMessage->platform_message_id = $msgTelegramId;
+            $botMessage->save();
+        }
+    }
+
+    private function extractAttachmentFromMessage(array $message): ?array
+    {
+        $attachmentKeys = [
+            'document' => 'document',
+            'photo' => 'photo',
+            'audio' => 'audio',
+            'voice' => 'voice',
+            'video' => 'video',
+            'video_note' => 'video_note',
+            'animation' => 'animation',
+        ];
+
+        foreach ($attachmentKeys as $key => $type) {
+            if (empty($message[$key])) {
+                continue;
+            }
+
+            $fileData = $message[$key];
+            if ($key === 'photo') {
+                if (!is_array($fileData)) {
+                    continue;
+                }
+                $fileData = $fileData[array_key_last($fileData)] ?? null;
+            }
+
+            if (!is_array($fileData) || empty($fileData['file_id'])) {
+                continue;
+            }
+
+            return [
+                'type' => $type,
+                'file_id' => $fileData['file_id'],
+                'file_unique_id' => $fileData['file_unique_id'] ?? null,
+                'file_name' => $fileData['file_name'] ?? ($fileData['file_unique_id'] ?? null),
+                'mime_type' => $fileData['mime_type'] ?? ($type === 'photo' ? 'image/jpeg' : null),
+                'file_size' => $fileData['file_size'] ?? null,
+            ];
+        }
+
+        return null;
+    }
+
+    private function downloadBaleAttachment(TelegramController $telegram, array $attachmentMeta): ?array
+    {
+        try {
+            $fileResponse = $telegram->getFile($attachmentMeta['file_id']);
+        } catch (\Throwable $throwable) {
+            Log::error('Bale attachment getFile failed', [
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!is_array($fileResponse) || !($fileResponse['ok'] ?? false)) {
+            Log::warning('Bale attachment getFile returned invalid response', [
+                'response' => $fileResponse,
+            ]);
+            return null;
+        }
+
+        $filePath = $fileResponse['result']['file_path'] ?? null;
+        if (!$filePath) {
+            return null;
+        }
+
+        $downloadUrl = sprintf('https://tapi.bale.ai/file/bot%s/%s', config('bale_bot_config.TOKEN'), $filePath);
+
+        try {
+            $response = Http::timeout(30)->get($downloadUrl);
+        } catch (\Throwable $throwable) {
+            Log::error('Bale attachment download failed', [
+                'url' => $downloadUrl,
+                'exception' => $throwable->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!$response->successful()) {
+            Log::warning('Bale attachment download returned unsuccessful response', [
+                'url' => $downloadUrl,
+                'status' => $response->status(),
+            ]);
+            return null;
+        }
+
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        if (!$extension && !empty($attachmentMeta['mime_type'])) {
+            $extension = $this->guessExtensionFromMime($attachmentMeta['mime_type']);
+        }
+
+        $filename = Str::uuid()->toString() . ($extension ? '.' . $extension : '');
+        $storageDirectory = 'telegram-ticket/' . ($attachmentMeta['type'] ?? 'attachments') . '/' . now()->format('Y/m/d');
+        $storagePath = $storageDirectory . '/' . $filename;
+
+        Storage::disk('public')->put($storagePath, $response->body());
+
+        return [
+            'attachment_path' => $storagePath,
+            'attachment_name' => $attachmentMeta['file_name'] ?? $filename,
+            'attachment_mime' => $attachmentMeta['mime_type'] ?? null,
+            'attachment_size' => $attachmentMeta['file_size'] ?? strlen($response->body()),
+        ];
+    }
+
+    private function guessExtensionFromMime(?string $mime): ?string
+    {
+        if (!$mime) {
+            return null;
+        }
+
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            'application/pdf' => 'pdf',
+            'application/zip' => 'zip',
+            'application/x-zip-compressed' => 'zip',
+            'audio/mpeg' => 'mp3',
+            'audio/ogg' => 'ogg',
+            'audio/webm' => 'webm',
+            'video/mp4' => 'mp4',
+            'video/quicktime' => 'mov',
+            'video/x-msvideo' => 'avi',
+            'text/plain' => 'txt',
+        ];
+
+        return $map[$mime] ?? null;
+    }
+
     public function handleCallback($update)
     {
         Log::info("Receive Callback");
         $content = file_get_contents("php://input");
         $update = json_decode($content, true);
 
-        if (isset($update['callback_query'])) {
-            Log::info($update);
-            $callbackData = $update['callback_query']['data'];
-            $chatId = $update['callback_query']['message']['chat']['id'];
-            $msgTelegramId = $update['callback_query']['message']['message_id'];
+        if (!isset($update['callback_query'])) {
+            return;
+        }
 
-            list($action, $msgId) = explode(':', $callbackData);
+        Log::info($update);
 
-            DB::table('bale_messages')->where('id', $msgId)->update([
-                'feedback' => $action,
-                'updated_at' => now()
+        $callbackData = $update['callback_query']['data'] ?? '';
+        if (strpos($callbackData, 'bale_feedback:') !== 0) {
+            return;
+        }
+
+        $chatId = $update['callback_query']['message']['chat']['id'] ?? null;
+        $msgTelegramId = $update['callback_query']['message']['message_id'] ?? null;
+
+        $parts = explode(':', $callbackData);
+        if (count($parts) !== 3) {
+            return;
+        }
+
+        [, $action, $msgId] = $parts;
+
+        $botMessage = TelegramTicketMessage::with('ticket')->find($msgId);
+        if (!$botMessage || $botMessage->sender_type !== 'bot') {
+            return;
+        }
+
+        $botMessage->feedback = $action;
+        $botMessage->save();
+
+        if ($action === 'dislike' && $botMessage->ticket) {
+            $conversationTicket = $botMessage->ticket;
+
+            $messagesToCopy = $conversationTicket->messages()
+                ->orderByDesc('id')
+                ->take(6)
+                ->get()
+                ->reverse();
+
+            $supportTicket = TelegramTicket::create([
+                'user_id' => $conversationTicket->user_id,
+                'status' => 'open',
             ]);
 
-            if ($action === 'dislike') {
-                $lastMessages = DB::table('bale_messages')
-                    ->where('user_id', $chatId)
-                    ->orderByDesc('id')
-                    ->limit(3)
-                    ->get()
-                    ->reverse();
-
-                $compiledMessages = "📩 پیام‌های اخیر کاربر:\n";
-                foreach ($lastMessages as $msg) {
-                    $compiledMessages .= "👤 کاربر: {$msg->user_message}\n🤖 ربات: {$msg->bot_response}\n\n";
-                }
-
-                // ✅ ایجاد تیکت با استفاده از مدل پکیج
-                TelegramTicket::create([
-                    'user_id' => $chatId,
-                    'messages' => $compiledMessages,
-                    'status' => 'open',
+            $idMap = [];
+            foreach ($messagesToCopy as $message) {
+                $newMessage = $supportTicket->messages()->create([
+                    'sender_id' => $message->sender_id,
+                    'sender_type' => $message->sender_type,
+                    'message' => $message->message,
+                    'attachment_path' => $message->attachment_path,
+                    'attachment_name' => $message->attachment_name,
+                    'attachment_mime' => $message->attachment_mime,
+                    'attachment_size' => $message->attachment_size,
+                    'reply_to_message_id' => $message->reply_to_message_id ? ($idMap[$message->reply_to_message_id] ?? null) : null,
+                    'platform_message_id' => $message->platform_message_id,
+                    'platform' => $message->platform,
+                    'feedback' => $message->feedback,
                 ]);
 
-                Log::info("تیکت جدید برای پشتیبانی ثبت شد:\n" . $compiledMessages);
+                $idMap[$message->id] = $newMessage->id;
             }
+        }
 
-            // Only send thank you if no open ticket exists
-            $hasOpenTicket = TelegramTicket::where('user_id', $chatId)->where('status', 'open')->exists();
+        $telegram = new TelegramController(config('bale_bot_config.TOKEN'));
 
-            $telegram = new TelegramController(config('bale_bot_config.TOKEN'));
-
-            // حذف دکمه‌ها
+        if ($chatId && $msgTelegramId) {
             $telegram->editMessageReplyMarkup([
                 'chat_id' => $chatId,
                 'message_id' => $msgTelegramId,
                 'reply_markup' => json_encode(['inline_keyboard' => []])
             ]);
+        }
 
-            // ارسال پیام تشکر
-            if (!$hasOpenTicket) {
-                $telegram->sendMessage([
-                    'chat_id' => $chatId,
-                    'text' => 'ممنون بابت بازخورد شما 🙏'
-                ]);
-            }
+        if ($chatId) {
+            $telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => 'مکالمه شما برای کارشناسان ارسال شد. منتظر دریافت پاسخ از سمت کارشناسان اتحادیه باشید'
+            ]);
         }
     }
 }

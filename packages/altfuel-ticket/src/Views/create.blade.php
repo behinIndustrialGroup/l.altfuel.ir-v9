@@ -20,6 +20,9 @@
                     <label for="">عنوان</label>
                     <input type="text" name="title" id="" class="form-control">
                 </div>
+                <p>
+                    لطفاً در صورتی که تیکت شما مربوط به مشکلات خودرو است، شماره VIN خودرو را در متن پیام خود درج فرمایید.
+                </p>
                 @include('ATView::partial-view.create-comment-form', ['form_id' => 'ticket-form'])
             </form>
         </div>

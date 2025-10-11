@@ -3,11 +3,16 @@
 namespace Mkhodroo\AltfuelTicket\Controllers;
 
 use App\Http\Controllers\Controller;
+use Hekmatinasser\Verta\Verta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use IntlDateFormatter;
 use Mkhodroo\AltfuelTicket\Models\Ticket;
+use Mkhodroo\AltfuelTicket\Models\TicketCatagory;
 use Mkhodroo\AltfuelTicket\Models\TicketComment;
 use Morilog\Jalali\Jalalian;
+use Carbon\Carbon;
+
 
 class TicketFilterController extends Controller
 {
@@ -20,18 +25,25 @@ class TicketFilterController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $from = $this->jalaliToGregorian($request->date_from);
+            $from = Carbon::createFromTimestamp($request->date_from_alt / 1000)->startOfDay();
             $query->where('created_at', '>=', $from);
         }
 
         if ($request->filled('date_to')) {
-            $to = $this->jalaliToGregorian($request->date_to);
+            $to = Carbon::createFromTimestamp($request->date_to_alt / 1000)->endOfDay();
             $query->where('created_at', '<=', $to);
         }
 
         if ($request->filled('agent_id')) {
             $ticketIds = TicketComment::where('user_id', $request->agent_id)->pluck('ticket_id')->unique();
             $query->whereIn('id', $ticketIds);
+        }
+
+        if ($request->filled('filter_catagory')) {
+            $query->where('cat_id', $request->filter_catagory);
+        } elseif ($request->filled('filter_parent_cat')) {
+            $categoryIds = $this->getDescendantCategoryIds($request->filter_parent_cat);
+            $query->whereIn('cat_id', $categoryIds);
         }
 
         $result = $query->get()->map(function ($row) {
@@ -55,15 +67,9 @@ class TicketFilterController extends Controller
         $jm = (int)$jm;
         $jd = (int)$jd;
 
-        $gy = $jy + 621;
-
-        $leapJ = $this->isJalaliLeap($jy);
-        $march = ($leapJ) ? 20 : 21;
-
-        $jalaliDays = $this->jalaliDayOfYear($jm, $jd, $leapJ);
-
-        $gDate = mktime(0, 0, 0, 3, $march, $gy); // 1 Farvardin = March 20 or 21
-        $gDate += ($jalaliDays - 1) * 86400;
+        $gDate = Verta::jalaliToGregorian($jy, $jm, $jd);
+        $gDate = $gDate[0] . '-' . $gDate[1] . '-' . $gDate[2];
+        Log::info($gDate);
 
         return date('Y-m-d', $gDate);
     }
@@ -85,6 +91,34 @@ class TicketFilterController extends Controller
         $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
         $english = ['0','1','2','3','4','5','6','7','8','9'];
         return str_replace($persian, $english, $string);
+    }
+
+    private function getDescendantCategoryIds($categoryId)
+    {
+        if (is_null($categoryId)) {
+            return [];
+        }
+
+        $categories = TicketCatagory::all(['id', 'parent_id'])->groupBy('parent_id');
+
+        $pending = [(int) $categoryId];
+        $visited = [];
+
+        while (!empty($pending)) {
+            $currentId = array_pop($pending);
+
+            if (isset($visited[$currentId])) {
+                continue;
+            }
+
+            $visited[$currentId] = true;
+
+            foreach ($categories->get($currentId, collect()) as $category) {
+                $pending[] = (int) $category->id;
+            }
+        }
+
+        return array_keys($visited);
     }
 
 }
