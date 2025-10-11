@@ -101,6 +101,7 @@ class AgencyController extends Controller
             'city',
             'agency_code',
             'enable',
+            'membership_03'
         ];
 
         // گرفتن اطلاعات شهرها و استان‌ها
