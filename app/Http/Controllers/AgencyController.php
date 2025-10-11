@@ -108,39 +108,20 @@ class AgencyController extends Controller
         $cities = DB::table('cities')->get()->keyBy('id');
         $provinces = DB::table('new_provinces')->get()->keyBy('id');
 
-        // گرفتن تمام parent_id های موجود
-        $allParentIds = DB::table('agency_info')
-            ->select('parent_id')
-            ->distinct()
-            ->pluck('parent_id');
-
-        // گرفتن اطلاعات membership_03
-        $membershipData = DB::table('agency_info')
-            ->where('key', 'membership_03')
-            ->get()
-            ->keyBy('parent_id');
-
-        // گرفتن اطلاعات key-value (بدون membership_03)
+        // گرفتن اطلاعات key-value
         $rawData = DB::table('agency_info')
-            ->whereIn('key', array_diff($desiredKeys, ['membership_03']))
+            ->whereIn('key', $desiredKeys)
             ->get();
 
         // گروه‌بندی بر اساس parent_id
         $grouped = $rawData->groupBy('parent_id');
 
         // ساختن خروجی نهایی
-        $structured = $allParentIds->map(function ($parentId) use ($desiredKeys, $cities, $provinces, $grouped, $membershipData) {
-            $items = $grouped->get($parentId, collect());
+        $structured = $grouped->map(function ($items, $parentId) use ($desiredKeys, $cities, $provinces) {
             $row = ['parent_id' => $parentId];
 
             foreach ($desiredKeys as $key) {
-                if ($key === 'membership_03') {
-                    // بررسی وجود membership_03
-                    $hasMembership = $membershipData->has($parentId);
-                    $value = $hasMembership ? 'true' : 'false';
-                } else {
-                    $value = $items->firstWhere('key', $key)->value ?? null;
-                }
+                $value = $items->firstWhere('key', $key)->value ?? null;
 
                 if ($key === 'city') {
                     $cityId = intval($value);
