@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\Cities\Controllers\ProvinceController;
+use Mkhodroo\Cities\Models\City;
 use Mkhodroo\Cities\Models\NewProvince;
 use Mkhodroo\DateConvertor\Controllers\SDate;
 
@@ -88,13 +89,30 @@ class AgencyListController extends Controller
 
                 $query = AgencyInfo::where('key', $filter['key']);
 
-                if ($condition === 'contains') {
-                    $query->where('value', 'like', "%" . $filter['value'] . "%");
-                } else {
-                    $query->where('value', $filter['value']);
-                }
+                $current_parent_ids = [];
 
-                $current_parent_ids = $query->pluck('parent_id')->toArray();
+                if (in_array($filter['key'], ['province', 'city'])) {
+                    $locationValueIds = self::resolveLocationFilterValues(
+                        $filter['key'],
+                        $filter['value'],
+                        $condition
+                    );
+
+                    if (! empty($locationValueIds)) {
+                        $current_parent_ids = $query
+                            ->whereIn('value', $locationValueIds)
+                            ->pluck('parent_id')
+                            ->toArray();
+                    }
+                } else {
+                    if ($condition === 'contains') {
+                        $query->where('value', 'like', "%" . $filter['value'] . "%");
+                    } else {
+                        $query->where('value', $filter['value']);
+                    }
+
+                    $current_parent_ids = $query->pluck('parent_id')->toArray();
+                }
 
                 if ($index === 0) {
                     $advanced_parent_ids = $current_parent_ids;
@@ -152,6 +170,41 @@ class AgencyListController extends Controller
         }
         $agency->fin_green = __(GetAgencyController::getByKey($agency->parent_id, 'fin_green')?->value);
         return $agency;
+    }
+
+    protected static function resolveLocationFilterValues(string $key, string $value, string $condition): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        if (is_numeric($value)) {
+            return [(int) $value];
+        }
+
+        if ($key === 'province') {
+            $query = NewProvince::query();
+            if ($condition === 'contains') {
+                $query->where('name', 'like', "%" . $value . "%");
+            } else {
+                $query->where('name', $value);
+            }
+
+            return $query->pluck('id')->toArray();
+        }
+
+        if ($key === 'city') {
+            $query = City::query();
+            if ($condition === 'contains') {
+                $query->where('city', 'like', "%" . $value . "%");
+            } else {
+                $query->where('city', $value);
+            }
+
+            return $query->pluck('id')->toArray();
+        }
+
+        return [];
     }
 
 
