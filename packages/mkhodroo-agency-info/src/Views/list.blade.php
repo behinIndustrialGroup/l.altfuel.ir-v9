@@ -82,7 +82,8 @@
         .md-advanced-filter {
             background: rgba(25, 118, 210, 0.05);
             border-radius: 14px;
-            padding: 1rem;
+            padding: 1.5rem;
+            width: 100%;
         }
 
         .md-advanced-filter .btn-outline-primary {
@@ -207,57 +208,13 @@
                     {{ __('Quick Filters') }}
                 </h2>
                 <form action="javascript:void(0)" id="filter-form1" class="row g-4">
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="form-group">
-                            <label class="form-label">{{ __(config('agency_info.main_field_name')) }}</label>
-                            <select name="{{ config('agency_info.main_field_name') }}_search" class="form-control">
-                                <option value="">{{ __('All') }}</option>
-                                @foreach (config('agency_info.customer_type') as $catagory => $catagory_detail)
-                                    <option value="{{ $catagory }}">{{ __($catagory_detail['name']) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('province') }}</label>
-                            <select name="province_search" class="form-control">
-                                <option value="">{{ __('All') }}</option>
-                                @foreach ($provinces as $province)
-                                    <option value="{{ $province->id }}">{{ $province->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('last referal') }}</label>
-                            <select name="last_referral_search" class="form-control">
-                                <option value="">{{ __('All') }}</option>
-                                @foreach ($last_referrals as $last_refferal)
-                                    <option value="{{ $last_refferal->value }}">{{ $last_refferal->value }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                        <div class="form-group">
-                            <label class="form-label">{{ __('new status') }}</label>
-                            <select name="new_status_search" class="form-control">
-                                <option value="">{{ __('All') }}</option>
-                                @foreach ($new_statuses as $new_status)
-                                    <option value="{{ $new_status->value }}">{{ $new_status->value }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-12 col-lg-6 col-xl-4">
+                    <div class="col-12 col-lg-8">
                         <div class="form-group">
                             <label class="form-label">{{ __('Search Everything') }}</label>
                             <input type="text" name="field_value" class="form-control" placeholder="{{ __('Everything') }}">
                         </div>
                     </div>
-                    <div class="col-12 col-lg-6 col-xl-4 d-flex align-items-end">
+                    <div class="col-12 col-lg-4 d-flex align-items-end">
                         <div class="d-flex flex-wrap gap-2 w-100">
                             <button onclick="filter()" class="btn btn-primary flex-grow-1">
                                 <i class="fa fa-search me-2"></i>{{ __('Filter') }}
@@ -267,7 +224,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="col-12 col-xl-4">
+                    <div class="col-12">
                         <div id="advanced-filter-wrapper" class="md-advanced-filter" style="display: none;">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="fw-semibold text-primary">{{ __('Advanced Conditions') }}</span>
