@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\Cities\Controllers\ProvinceController;
+use Mkhodroo\Cities\Models\City;
 use Mkhodroo\Cities\Models\NewProvince;
 use Mkhodroo\DateConvertor\Controllers\SDate;
 
@@ -49,7 +50,6 @@ class AgencyListController extends Controller
 
         $main_field_search = config('agency_info.main_field_name'). "_search";
         $main_field = config('agency_info.main_field_name');
-        $agencies = AgencyInfo::get();
         $parent_ids = [];
         if($r->$main_field_search){
             $parent_ids[] = AgencyInfo::where('key', $main_field)->where('value', $r->$main_field_search)->pluck('parent_id')->toArray();
@@ -67,6 +67,68 @@ class AgencyListController extends Controller
             $parent_ids[] = AgencyInfo::where('value' , 'like', "%". $r->field_value. "%")->pluck('parent_id')->toArray();
 
         }
+
+        $advanced_filters = collect($r->get('advanced_filters', []))
+            ->map(function ($filter) {
+                $filter['key'] = isset($filter['key']) ? trim($filter['key']) : '';
+                $filter['value'] = isset($filter['value']) ? trim($filter['value']) : '';
+                $filter['condition'] = isset($filter['condition']) ? trim($filter['condition']) : 'equals';
+                $filter['boolean'] = isset($filter['boolean']) ? strtolower(trim($filter['boolean'])) : 'and';
+                return $filter;
+            })
+            ->filter(function ($filter) {
+                return $filter['key'] !== '' && $filter['value'] !== '';
+            })
+            ->values();
+
+        if ($advanced_filters->isNotEmpty()) {
+            $advanced_parent_ids = [];
+            $advanced_filters->each(function ($filter, $index) use (&$advanced_parent_ids) {
+                $condition = $filter['condition'] === 'contains' ? 'contains' : 'equals';
+                $boolean = $filter['boolean'] === 'or' ? 'or' : 'and';
+
+                $query = AgencyInfo::where('key', $filter['key']);
+
+                $current_parent_ids = [];
+
+                if (in_array($filter['key'], ['province', 'city'])) {
+                    $locationValueIds = self::resolveLocationFilterValues(
+                        $filter['key'],
+                        $filter['value'],
+                        $condition
+                    );
+
+                    if (! empty($locationValueIds)) {
+                        $current_parent_ids = $query
+                            ->whereIn('value', $locationValueIds)
+                            ->pluck('parent_id')
+                            ->toArray();
+                    }
+                } else {
+                    if ($condition === 'contains') {
+                        $query->where('value', 'like', "%" . $filter['value'] . "%");
+                    } else {
+                        $query->where('value', $filter['value']);
+                    }
+
+                    $current_parent_ids = $query->pluck('parent_id')->toArray();
+                }
+
+                if ($index === 0) {
+                    $advanced_parent_ids = $current_parent_ids;
+                    return;
+                }
+
+                if ($boolean === 'or') {
+                    $advanced_parent_ids = array_values(array_unique(array_merge($advanced_parent_ids, $current_parent_ids)));
+                } else {
+                    $advanced_parent_ids = array_values(array_intersect($advanced_parent_ids, $current_parent_ids));
+                }
+            });
+
+            $parent_ids[] = $advanced_parent_ids;
+        }
+
         $count = count($parent_ids);
         if($count > 1){
             $intersects = $parent_ids[0];
@@ -77,6 +139,13 @@ class AgencyListController extends Controller
         }
         if($count === 1){
             $parent_ids = $parent_ids[0];
+        }
+        if($count === 0){
+            return ['data' => []];
+        }
+        $parent_ids = array_values(array_unique($parent_ids));
+        if(empty($parent_ids)){
+            return ['data' => []];
         }
         $agencies = AgencyInfo::whereIn('id', $parent_ids)->groupBy('parent_id')->get();
 
@@ -101,6 +170,41 @@ class AgencyListController extends Controller
         }
         $agency->fin_green = __(GetAgencyController::getByKey($agency->parent_id, 'fin_green')?->value);
         return $agency;
+    }
+
+    protected static function resolveLocationFilterValues(string $key, string $value, string $condition): array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        if (is_numeric($value)) {
+            return [(int) $value];
+        }
+
+        if ($key === 'province') {
+            $query = NewProvince::query();
+            if ($condition === 'contains') {
+                $query->where('name', 'like', "%" . $value . "%");
+            } else {
+                $query->where('name', $value);
+            }
+
+            return $query->pluck('id')->toArray();
+        }
+
+        if ($key === 'city') {
+            $query = City::query();
+            if ($condition === 'contains') {
+                $query->where('city', 'like', "%" . $value . "%");
+            } else {
+                $query->where('city', $value);
+            }
+
+            return $query->pluck('id')->toArray();
+        }
+
+        return [];
     }
 
 

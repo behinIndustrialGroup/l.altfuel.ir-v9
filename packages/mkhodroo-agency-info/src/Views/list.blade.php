@@ -68,6 +68,55 @@
                             <button class="btn btn-default" onclick="show_columns()">{{ __('Columns') }}</button>
                         </div>
                     </div>
+                    <div class="col-sm-3 row mt-2">
+                        <div class="col-sm-12">
+                            <button type="button" onclick="toggleAdvancedFilter()" class="btn btn-dark col-sm-12">
+                                {{ __('Advanced Filter') }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 mt-3" id="advanced-filter-wrapper" style="display: none;">
+                        <div id="advanced-filter-rows"></div>
+                        <button type="button" class="btn btn-outline-primary mt-3" onclick="addAdvancedFilterRow()">
+                            {{ __('Add Condition') }}
+                        </button>
+                    </div>
+                </div>
+                <div id="advanced-filter-template" style="display: none;">
+                    <div class="row advanced-filter-row align-items-end mb-3" data-index="__index__">
+                        <div class="col-sm-3">
+                            <label class="form-label">{{ __('Field') }}</label>
+                            <select name="advanced_filters[__index__][key]" class="form-control">
+                                <option value="">{{ __('Select Field') }}</option>
+                                @foreach ($cols as $col)
+                                    <option value="{{ $col }}">{{ __($col) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-sm-2">
+                            <label class="form-label">{{ __('Operator') }}</label>
+                            <select name="advanced_filters[__index__][condition]" class="form-control">
+                                <option value="equals" selected>{{ __('Equals') }}</option>
+                                <option value="contains">{{ __('Contains') }}</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label">{{ __('Value') }}</label>
+                            <input type="text" name="advanced_filters[__index__][value]" class="form-control" />
+                        </div>
+                        <div class="col-sm-2 boolean-operator-wrapper">
+                            <label class="form-label">{{ __('Condition') }}</label>
+                            <select name="advanced_filters[__index__][boolean]" class="form-control">
+                                <option value="and" selected>{{ __('AND') }}</option>
+                                <option value="or">{{ __('OR') }}</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-2 d-flex align-items-center mt-4 mt-sm-0">
+                            <button type="button" class="btn btn-danger" onclick="removeAdvancedFilterRow(this)">
+                                {{ __('Remove') }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </form>
 
@@ -199,6 +248,43 @@
             open_admin_modal(
                 "{{ route('agencyInfo.createForm') }}"
             )
+        }
+
+        let advancedFilterIndex = 0;
+
+        function toggleAdvancedFilter() {
+            var container = $('#advanced-filter-wrapper');
+            if (container.is(':visible')) {
+                container.slideUp();
+            } else {
+                container.slideDown();
+                if (container.find('.advanced-filter-row').length === 0) {
+                    addAdvancedFilterRow();
+                }
+            }
+        }
+
+        function addAdvancedFilterRow() {
+            var template = $('#advanced-filter-template').html();
+            template = template.replace(/__index__/g, advancedFilterIndex);
+            $('#advanced-filter-rows').append(template);
+            advancedFilterIndex++;
+            refreshAdvancedFilterBoolean();
+        }
+
+        function removeAdvancedFilterRow(button) {
+            $(button).closest('.advanced-filter-row').remove();
+            refreshAdvancedFilterBoolean();
+        }
+
+        function refreshAdvancedFilterBoolean() {
+            $('#advanced-filter-rows .advanced-filter-row').each(function(index) {
+                if (index === 0) {
+                    $(this).find('.boolean-operator-wrapper').hide();
+                } else {
+                    $(this).find('.boolean-operator-wrapper').show();
+                }
+            });
         }
 
         function filter() {
