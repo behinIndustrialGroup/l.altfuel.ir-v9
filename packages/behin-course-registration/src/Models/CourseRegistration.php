@@ -23,4 +23,8 @@ class CourseRegistration extends Model
         'status',
         'ref_id',
     ];
+
+    protected $casts = [
+        'birth_date' => 'date',
+    ];
 }
