@@ -45,7 +45,7 @@
 
                 <div class="mb-3">
                     <label for="birth_date" class="form-label">تاریخ تولد:</label>
-                    <input type="date" class="form-control" name="birth_date" id="birth_date" value="{{ old('birth_date') }}" required>
+                    <input type="text" data-jdp class="form-control" name="birth_date" id="birth_date" value="{{ old('birth_date') }}" required>
                 </div>
 
                 <div class="mb-3">
@@ -60,7 +60,7 @@
 
                 <div class="mb-4">
                     <label for="course" class="form-label">انتخاب دوره:</label>
-                    <select name="course" id="course" class="form-select" required>
+                    <select name="course" id="course" class="form-select select2" required>
                         <option value="" disabled {{ old('course') ? '' : 'selected' }}>لطفا یک دوره را انتخاب کنید</option>
                         @foreach ($courses as $key => $course)
                             <option value="{{ $key }}" {{ old('course') === $key ? 'selected' : '' }}>
@@ -75,3 +75,10 @@
         </div>
     </div>
 @endsection
+
+@section('script')
+    <script>
+        initial_view()
+    </script>
+@endsection
+
