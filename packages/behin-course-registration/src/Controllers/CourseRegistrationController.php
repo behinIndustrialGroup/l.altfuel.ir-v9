@@ -27,7 +27,10 @@ class CourseRegistrationController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'national_id' => 'required|numeric|digits:10',
+            'birth_certificate_number' => 'required|numeric|digits_between:1,10',
+            'birth_date' => 'required|date',
             'mobile' => 'required|numeric|digits:11',
+            'phone' => 'required|numeric|digits_between:8,11',
             'course' => ['required', 'string', Rule::in($courseKeys)],
         ]);
 
@@ -36,7 +39,10 @@ class CourseRegistrationController extends Controller
         $registration = CourseRegistration::create([
             'name' => $validated['name'],
             'national_id' => $validated['national_id'],
+            'birth_certificate_number' => $validated['birth_certificate_number'],
+            'birth_date' => $validated['birth_date'],
             'mobile' => $validated['mobile'],
+            'phone' => $validated['phone'],
             'course_key' => $validated['course'],
             'course_title' => $course['title'],
             'price' => $course['price'],
