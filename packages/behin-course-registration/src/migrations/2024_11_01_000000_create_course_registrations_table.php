@@ -12,7 +12,10 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('national_id', 10);
+            $table->string('birth_certificate_number', 10);
+            $table->date('birth_date');
             $table->string('mobile', 11);
+            $table->string('phone', 11);
             $table->string('course_key');
             $table->string('course_title');
             $table->unsignedBigInteger('price');

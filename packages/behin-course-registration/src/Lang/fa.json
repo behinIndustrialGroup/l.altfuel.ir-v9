@@ -2,5 +2,8 @@
     "course registration": "ثبت‌نام دوره آموزشی",
     "course": "دوره",
     "mobile": "شماره موبایل",
-    "national_id": "کد ملی"
+    "phone": "تلفن",
+    "national_id": "کد ملی",
+    "birth_certificate_number": "شماره شناسنامه",
+    "birth_date": "تاریخ تولد"
 }

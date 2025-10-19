@@ -12,7 +12,10 @@ class CourseRegistration extends Model
     protected $fillable = [
         'name',
         'national_id',
+        'birth_certificate_number',
+        'birth_date',
         'mobile',
+        'phone',
         'course_key',
         'course_title',
         'price',
