@@ -79,6 +79,7 @@
 @section('script')
     <script>
         initial_view()
+        jalaliDatepicker.startWatch();
     </script>
 @endsection
 
