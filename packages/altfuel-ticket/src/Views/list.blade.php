@@ -23,18 +23,24 @@
                         @if (auth()->user()->access('جستجو پیشرفته'))
                             @include('ATView::partial-view.filter-form')
                         @endif
-                        <div id="conversion-settings" class="border rounded p-3 mt-3" style="display: none">
-                            <h6 class="mb-2">تنظیم نوع تبدیل</h6>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="conversion-enabled-toggle">
-                                <label class="form-check-label" for="conversion-enabled-toggle">فعال برای این دسته بندی</label>
+                        @if (access('تنظیم نوع تبدیل برای دسته بندی در تیکت'))
+                            <div id="conversion-settings" class="border rounded p-3 mt-3" style="display: none">
+                                <h6 class="mb-2">تنظیم نوع تبدیل</h6>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="conversion-enabled-toggle">
+                                    <label class="form-check-label" for="conversion-enabled-toggle">فعال برای این دسته
+                                        بندی</label>
+                                </div>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" id="conversion-required-toggle"
+                                        disabled>
+                                    <label class="form-check-label" for="conversion-required-toggle">الزامی بودن هنگام ثبت
+                                        تیکت</label>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm mt-3"
+                                    onclick="saveConversionSettings()">ذخیره</button>
                             </div>
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" id="conversion-required-toggle" disabled>
-                                <label class="form-check-label" for="conversion-required-toggle">الزامی بودن هنگام ثبت تیکت</label>
-                            </div>
-                            <button type="button" class="btn btn-primary btn-sm mt-3" onclick="saveConversionSettings()">ذخیره</button>
-                        </div>
+                        @endif
                     @else
                         @include('ATView::partial-view.catagory')
                         <button class="btn btn-info" onclick="filter()">فیلتر</button>
@@ -164,7 +170,8 @@
                 $.param(payload),
                 function(res) {
                     show_message(res.message);
-                    const selectedOption = $('#child_cat_for_user option:selected').get(0) || $('#child_cat option:selected').get(0);
+                    const selectedOption = $('#child_cat_for_user option:selected').get(0) || $(
+                        '#child_cat option:selected').get(0);
                     if (selectedOption) {
                         selectedOption.dataset.conversionEnabled = res.conversion_type_enabled ? 1 : 0;
                         selectedOption.dataset.conversionRequired = res.conversion_type_required ? 1 : 0;
