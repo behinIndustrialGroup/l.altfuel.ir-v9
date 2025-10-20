@@ -67,6 +67,32 @@ class TicketCatagoryController extends Controller
         return $r->ticket_id;
     }
 
+    public function updateConversionSettings(Request $r)
+    {
+        if (!auth()->user()->access('Ticket-Actors') && !auth()->user()->access('change-catagory')) {
+            abort(403, trans('auth.failed'));
+        }
+
+        $category = TicketCatagory::findOrFail($r->catagory_id);
+
+        $enabled = filter_var($r->conversion_type_enabled, FILTER_VALIDATE_BOOLEAN);
+        $required = filter_var($r->conversion_type_required, FILTER_VALIDATE_BOOLEAN);
+
+        if (!$enabled) {
+            $required = false;
+        }
+
+        $category->conversion_type_enabled = $enabled;
+        $category->conversion_type_required = $required;
+        $category->save();
+
+        return response()->json([
+            'message' => 'تنظیمات نوع تبدیل با موفقیت ذخیره شد.',
+            'conversion_type_enabled' => $category->conversion_type_enabled,
+            'conversion_type_required' => $category->conversion_type_required,
+        ]);
+    }
+
     function count(Request $r, $id) {
         if($id){
             return Ticket::where('cat_id', $id)->where('status', config('ATConfig.status.new'))->count();

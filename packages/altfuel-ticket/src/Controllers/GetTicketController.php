@@ -35,6 +35,7 @@ class GetTicketController extends Controller
             $row->catagory = $row->catagory()['name'];
             $row->user = $row->user()?->display_name;
             $row->actor = $row->actor()?->display_name;
+            $row->conversion_type_label = $row->conversion_type_label;
             // $row->user_level = $row->user()->level();
         });
         return $data;
@@ -47,6 +48,7 @@ class GetTicketController extends Controller
                 $row->catagory = $row->catagory();
                 $row->user = $row->user()?->display_name;
                 $row->actor = $row->actor()?->display_name;
+                $row->conversion_type_label = $row->conversion_type_label;
                 // $row->user_level = $row->user()->level();
             });
         }
@@ -55,6 +57,7 @@ class GetTicketController extends Controller
             $row->catagory = $category;
             $row->user = $row->user()?->display_name;
             $row->actor = $row->actor()?->display_name;
+            $row->conversion_type_label = $row->conversion_type_label;
             // $row->user_level = $row->user()->level();
         });
     }
@@ -76,6 +79,7 @@ class GetTicketController extends Controller
                         'user' => $row->user()?->display_name,
                         'catagory' => $category,
                         'status' => $row->status,
+                        'conversion_type_label' => $row->conversion_type_label,
                         'updated_at' => verta($row->updated_at)->format('Y-m-d H:i'),
                     ];
                 });
@@ -99,6 +103,7 @@ class GetTicketController extends Controller
                         'user' => $row->user()?->display_name,
                         'catagory' => $category,
                         'status' => $row->status,
+                        'conversion_type_label' => $row->conversion_type_label,
                         'updated_at' => verta($row->updated_at)->format('Y-m-d H:i'),
                     ];
                 });
@@ -121,6 +126,7 @@ class GetTicketController extends Controller
                         'user' => $row->user()?->display_name,
                         'catagory' => $category,
                         'status' => $row->status,
+                        'conversion_type_label' => $row->conversion_type_label,
                         'updated_at' => verta($row->updated_at)->format('Y-m-d H:i'),
                     ];
                 });

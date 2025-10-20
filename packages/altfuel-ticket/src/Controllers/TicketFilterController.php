@@ -53,6 +53,7 @@ class TicketFilterController extends Controller
                 'user' => $row->user()?->display_name,
                 'catagory' => $row->catagory()['name'] ?? '-',
                 'status' => $row->status,
+                'conversion_type_label' => $row->conversion_type_label,
                 'updated_at' => verta($row->updated_at)->format('Y-m-d H:i'),
             ];
         });

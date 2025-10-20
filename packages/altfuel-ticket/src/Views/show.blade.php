@@ -21,6 +21,10 @@
                         <strong>کارشناس:</strong>
                         {{ $ticket->actor_id ? $ticket->actor()?->display_name : 'تخصیص داده نشده' }}
                     </p>
+                    <p class="mb-0 mt-2">
+                        <strong>نوع تبدیل:</strong>
+                        {{ $ticket->conversion_type_label ?? 'ثبت نشده' }}
+                    </p>
                 </div>
             </div>
         </div>
