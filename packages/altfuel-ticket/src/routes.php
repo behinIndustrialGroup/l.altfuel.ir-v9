@@ -44,6 +44,7 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
         Route::get('get-children/{parent_id?}/{count?}', [TicketCatagoryController::class, 'getChildrenByParentId'])->name('getChildrenByParentId');
         Route::get('get-actors/{cat_id?}', [TicketCatagoryController::class, 'getActorsByCatId'])->name('getActorsByCatId');
         Route::get('count/{id?}', [TicketCatagoryController::class, 'count'])->name('count');
+        Route::post('conversion-settings', [TicketCatagoryController::class, 'updateConversionSettings'])->name('updateConversionSettings');
     });
 
     Route::name('report.')->prefix('report')->group(function(){

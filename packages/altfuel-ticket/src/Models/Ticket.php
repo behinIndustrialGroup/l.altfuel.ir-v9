@@ -13,7 +13,18 @@ class Ticket extends Model
 
     public $table = "altfuel_tickets";
     protected $fillable = [
-        'ticket_id', 'user_id', 'cat_id', 'title', 'status', 'junk', 'actor_id'
+        'ticket_id',
+        'user_id',
+        'cat_id',
+        'title',
+        'status',
+        'junk',
+        'actor_id',
+        'conversion_type',
+    ];
+
+    protected $appends = [
+        'conversion_type_label',
     ];
     
 
@@ -48,5 +59,11 @@ class Ticket extends Model
 
     function actor() {
         return User::find($this->actor_id);
+    }
+
+    public function getConversionTypeLabelAttribute(): ?string
+    {
+        $types = config('ATConfig.conversion_types', []);
+        return $this->conversion_type ? ($types[$this->conversion_type] ?? $this->conversion_type) : null;
     }
 }
