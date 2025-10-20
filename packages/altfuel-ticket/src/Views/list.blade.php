@@ -23,7 +23,7 @@
                         @if (auth()->user()->access('جستجو پیشرفته'))
                             @include('ATView::partial-view.filter-form')
                         @endif
-                        @if (access('تنظیم نوع تبدیل برای دسته بندی در تیکت'))
+                        @if (auth()->user()->access('تنظیم نوع تبدیل برای دسته بندی در تیکت'))
                             <div id="conversion-settings" class="border rounded p-3 mt-3" style="display: none">
                                 <h6 class="mb-2">تنظیم نوع تبدیل</h6>
                                 <div class="form-check form-switch">
