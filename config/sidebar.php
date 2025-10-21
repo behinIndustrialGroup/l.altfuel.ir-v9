@@ -82,5 +82,12 @@ return [
             ]
         ],
 
+        'course-registrations' => [
+            'fa_name' => 'ثبت‌نام دوره‌ها',
+            'submenu' => [
+                'list' => [ 'fa_name' => 'لیست ثبت‌نامی‌ها', 'route-name' => 'admin.course-registrations.index', 'route-url' => '' ],
+            ],
+        ],
+
     ]
 ];

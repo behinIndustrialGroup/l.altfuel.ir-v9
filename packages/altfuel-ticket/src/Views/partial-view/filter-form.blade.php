@@ -13,7 +13,7 @@
         ['id' => 41, 'name' => 'شهریاری'],
         ['id' => 40, 'name' => 'شادمان'],
         ['id' => 1365, 'name' => 'آهنگران'],
-        ['id' => 1427, 'name' => 'حاجیوند']
+        ['id' => 1427, 'name' => 'حاجیوند'],
     ];
 @endphp
 
@@ -79,6 +79,12 @@
             initialValue: false,
             autoClose: true,
             altField: "#date_from_alt",
+            calendar: {
+                persian: {
+                    leapYearMode: 'astronomical',
+                    locale: 'fa'
+                }
+            }
         });
     });
 
@@ -89,6 +95,12 @@
             initialValue: false,
             autoClose: true,
             altField: "#date_to_alt",
+            calendar: {
+                persian: {
+                    leapYearMode: 'astronomical',
+                    locale: 'fa'
+                }
+            }
         });
     });
 
@@ -115,9 +127,11 @@
             }
 
             @if (auth()->user()->access('new-tickets-counter'))
-                var url = "{{ route('ATRoutes.catagory.getChildrenByParentId', ['parent_id' => 'parent_id', 'count' => 'count']) }}";
+                var url =
+                    "{{ route('ATRoutes.catagory.getChildrenByParentId', ['parent_id' => 'parent_id', 'count' => 'count']) }}";
             @else
-                var url = "{{ route('ATRoutes.catagory.getChildrenByParentId', ['parent_id' => 'parent_id']) }}";
+                var url =
+                    "{{ route('ATRoutes.catagory.getChildrenByParentId', ['parent_id' => 'parent_id']) }}";
             @endif
 
             url = url.replace('parent_id', parentId);
@@ -130,7 +144,8 @@
                 function(data) {
                     data.forEach(element => {
                         if (element.count) {
-                            childCat.append(new Option(element.name + '(' + element.count + ')', element.id));
+                            childCat.append(new Option(element.name + '(' + element.count + ')',
+                                element.id));
                         } else {
                             childCat.append(new Option(element.name, element.id));
                         }

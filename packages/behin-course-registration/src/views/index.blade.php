@@ -39,13 +39,28 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="birth_certificate_number" class="form-label">شماره شناسنامه:</label>
+                    <input type="text" class="form-control" name="birth_certificate_number" id="birth_certificate_number" value="{{ old('birth_certificate_number') }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="birth_date" class="form-label">تاریخ تولد:</label>
+                    <input type="text" data-jdp class="form-control" name="birth_date" id="birth_date" value="{{ old('birth_date') }}" required>
+                </div>
+
+                <div class="mb-3">
                     <label for="mobile" class="form-label">شماره موبایل:</label>
                     <input type="text" class="form-control" name="mobile" id="mobile" value="{{ old('mobile') }}" required>
                 </div>
 
+                <div class="mb-3">
+                    <label for="phone" class="form-label">تلفن:</label>
+                    <input type="text" class="form-control" name="phone" id="phone" value="{{ old('phone') }}" required>
+                </div>
+
                 <div class="mb-4">
                     <label for="course" class="form-label">انتخاب دوره:</label>
-                    <select name="course" id="course" class="form-select" required>
+                    <select name="course" id="course" class="form-select select2" required>
                         <option value="" disabled {{ old('course') ? '' : 'selected' }}>لطفا یک دوره را انتخاب کنید</option>
                         @foreach ($courses as $key => $course)
                             <option value="{{ $key }}" {{ old('course') === $key ? 'selected' : '' }}>
@@ -60,3 +75,11 @@
         </div>
     </div>
 @endsection
+
+@section('script')
+    <script>
+        initial_view()
+        jalaliDatepicker.startWatch();
+    </script>
+@endsection
+
