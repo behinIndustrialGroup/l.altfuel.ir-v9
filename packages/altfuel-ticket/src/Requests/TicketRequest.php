@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Mkhodroo\AltfuelTicket\Models\TicketCatagory;
 
 class TicketRequest extends FormRequest
 {
@@ -52,10 +54,15 @@ class TicketRequest extends FormRequest
 
         if (!$this->input('ticket_id')) {
             Log::info($this->input('ticket_id'));
-            return [
+            $conversionRules = $this->conversionTypeRules();
+            $rules = [
                 'catagory' => 'required|integer',
                 'title' => 'required|string',
             ];
+            if (!empty($conversionRules)) {
+                $rules['conversion_type'] = $conversionRules;
+            }
+            return $rules;
         }
         return [];
     }
@@ -65,6 +72,8 @@ class TicketRequest extends FormRequest
         return [
             'catagory.required' => "لطفا دسته بندی را انتخاب کنید",
             'title.required' => "لطفا عنوان را وارد کنید",
+            'conversion_type.required' => "لطفا نوع تبدیل را انتخاب کنید",
+            'conversion_type.in' => "نوع تبدیل انتخاب شده معتبر نیست",
         ];
     }
 
@@ -77,5 +86,27 @@ class TicketRequest extends FormRequest
      */
     public function authenticate()
     {
+    }
+
+    private function conversionTypeRules(): array
+    {
+        $types = array_keys(config('ATConfig.conversion_types', []));
+        if (empty($types)) {
+            return [];
+        }
+
+        $categoryId = $this->input('catagory');
+        $category = $categoryId ? TicketCatagory::find($categoryId) : null;
+
+        $rules = [];
+        if ($category && $category->conversion_type_enabled && $category->conversion_type_required) {
+            $rules[] = 'required';
+        } else {
+            $rules[] = 'nullable';
+        }
+
+        $rules[] = Rule::in($types);
+
+        return $rules;
     }
 }

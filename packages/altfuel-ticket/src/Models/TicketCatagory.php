@@ -10,6 +10,11 @@ class TicketCatagory extends Model
     use HasFactory;
     public $table = "altfuel_ticket_catagories";
 
+    protected $casts = [
+        'conversion_type_enabled' => 'boolean',
+        'conversion_type_required' => 'boolean',
+    ];
+
     function countNews() {
         return Ticket::where('cat_id', $this->id)->where('status', config('ATConfig.status.new'))->count();
     }

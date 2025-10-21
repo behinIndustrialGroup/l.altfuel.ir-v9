@@ -24,14 +24,15 @@ class CreateTicketController extends Controller
         return view('ATView::create');
     }
 
-    public function create($cat_id, $title)
+    public function create($cat_id, $title, $conversionType = null)
     {
         $ticket = Ticket::create([
             'user_id' => Auth::id(),
             'ticket_id' => RandomStringController::Generate(20),
             'cat_id' => $cat_id,
             'title' => $title,
-            'status' => config('ATConfig.status.new')
+            'status' => config('ATConfig.status.new'),
+            'conversion_type' => $conversionType,
         ]);
         return $ticket;
     }
@@ -45,7 +46,7 @@ class CreateTicketController extends Controller
             //     return response(trans("access denied"), 402);
             // }
         } else { //Create new Ticket
-            $ticket = $this->create($r->catagory, $r->title);
+            $ticket = $this->create($r->catagory, $r->title, $r->conversion_type);
             // TicketAssignController::assign($ticket->cat_id, $ticket->id);
         }
         $status = $this->changeStatus($ticket->cat_id);

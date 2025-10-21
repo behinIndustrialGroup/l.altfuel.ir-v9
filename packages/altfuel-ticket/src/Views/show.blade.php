@@ -21,6 +21,10 @@
                         <strong>کارشناس:</strong>
                         {{ $ticket->actor_id ? $ticket->actor()?->display_name : 'تخصیص داده نشده' }}
                     </p>
+                    <p class="mb-0 mt-2">
+                        <strong>نوع تبدیل:</strong>
+                        <span id="ticket-conversion-type-label">{{ $ticket->conversion_type_label ?? trans('ATTrans.conversion-type-not-set') }}</span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -93,6 +97,32 @@
                 </div>
             </div>
 
+            @php($conversionTypes = config('ATConfig.conversion_types', []))
+            @if (auth()->user()->access('Ticket-Actors') && ($ticketCategory?->conversion_type_enabled))
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body">
+                        <form action="javascript:void(0)" id="ticket-conversion-type-form">
+                            @csrf
+                            <input type="hidden" name="ticket_id" value="{{ $ticket->ticket_id }}">
+                            <div class="mb-3">
+                                <label for="conversion_type_select" class="form-label">نوع تبدیل</label>
+                                <select name="conversion_type" id="conversion_type_select" class="form-control"
+                                    @if ($ticketCategory?->conversion_type_required) required @endif>
+                                    <option value="">لطفا نوع تبدیل را انتخاب کنید</option>
+                                    @foreach ($conversionTypes as $value => $label)
+                                        <option value="{{ $value }}" @selected($ticket->conversion_type === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @if ($ticketCategory?->conversion_type_required)
+                                    <small class="text-danger d-block mt-1">تکمیل این فیلد الزامی است.</small>
+                                @endif
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="updateConversionType()">ثبت نوع تبدیل</button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
             @if (auth()->user()->access('change-catagory'))
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
@@ -131,5 +161,25 @@
 
     function closeModal() {
         $('#admin-modal').modal('hide');
+    }
+
+    function updateConversionType() {
+        const form = document.getElementById('ticket-conversion-type-form');
+        if (!form) {
+            return;
+        }
+
+        const data = new FormData(form);
+        send_ajax_formdata_request(
+            "{{ route('ATRoutes.conversionType.update') }}",
+            data,
+            function(response) {
+                show_message(response.message);
+                if (response.label) {
+                    $('#ticket-conversion-type-label').text(response.label);
+                }
+                filter();
+            }
+        );
     }
 </script>

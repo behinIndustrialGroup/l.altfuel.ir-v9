@@ -12,6 +12,7 @@ use Mkhodroo\AltfuelTicket\Controllers\ReportController;
 use Mkhodroo\AltfuelTicket\Controllers\ShowTicketController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketAssignController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketCatagoryController;
+use Mkhodroo\AltfuelTicket\Controllers\TicketConversionController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketFilterController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketStatusController;
 
@@ -20,6 +21,7 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
     Route::post('store', [CreateTicketController::class, 'store'])->name('store');
     Route::post('change-status', [TicketStatusController::class, 'changeStatus'])->name('changeStatus');
     Route::post('change-catagory', [TicketCatagoryController::class, 'changeCatagory'])->name('changeCatagory');
+    Route::post('conversion-type', [TicketConversionController::class, 'update'])->name('conversionType.update');
     Route::post('set-score', [CreateTicketController::class, 'setScore'])->name('setScore');
 
     Route::name('show.')->prefix('show')->group(function(){
@@ -44,6 +46,7 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
         Route::get('get-children/{parent_id?}/{count?}', [TicketCatagoryController::class, 'getChildrenByParentId'])->name('getChildrenByParentId');
         Route::get('get-actors/{cat_id?}', [TicketCatagoryController::class, 'getActorsByCatId'])->name('getActorsByCatId');
         Route::get('count/{id?}', [TicketCatagoryController::class, 'count'])->name('count');
+        Route::post('conversion-settings', [TicketCatagoryController::class, 'updateConversionSettings'])->name('updateConversionSettings');
     });
 
     Route::name('report.')->prefix('report')->group(function(){
