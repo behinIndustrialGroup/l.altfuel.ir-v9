@@ -314,6 +314,10 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'access'])->group(functi
     Route::get('send-sms', function () {
         return view('admin.sms.send');
     });
+    Route::get('send-alert-sms', function (SendSmsController $sms) {
+        $response = $sms->send("09376922176", "test");
+        return $response;
+    });
     Route::post('send-sms', function(Request $request, SendSmsController $sms){
         $request->validate([
             'to' => 'required',
