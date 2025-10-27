@@ -255,6 +255,7 @@ return [
         RegistrationServiceProvider::class,
         CourseRegistrationServiceProvider::class,
         \TelegramTicket\TelegramTicketProvider::class,
+        \CourseRegistrationLite\CourseRegistrationLiteServiceProvider::class,
 
         // \Mkhodroo\CaseInsensitiveTranslate\CaseInsensitiveTranslateProvider::class,
         // MKhodroo\UserRoles\UserRolesServiceProvider::class,

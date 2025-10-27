@@ -205,6 +205,7 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
             'Cviebrock\\EloquentSluggable\\' => 28,
             'Cron\\' => 5,
             'CourseRegistration\\' => 19,
+            'CourseRegistrationLite\\' => 23,
             'Cocur\\Slugify\\' => 14,
             'ChatGpt\\' => 8,
             'Carbon\\' => 7,
@@ -673,6 +674,10 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         array (
             0 => __DIR__ . '/../..' . '/packages/behin-course-registration/src',
         ),
+        'CourseRegistrationLite\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src',
+        ),
         'Cocur\\Slugify\\' => 
         array (
             0 => __DIR__ . '/..' . '/cocur/slugify/src',
@@ -1131,6 +1136,12 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         'Cocur\\Slugify\\Slugify' => __DIR__ . '/..' . '/cocur/slugify/src/Slugify.php',
         'Cocur\\Slugify\\SlugifyInterface' => __DIR__ . '/..' . '/cocur/slugify/src/SlugifyInterface.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+        'CourseRegistrationLite\\Controllers\\WorkshopRegistrationAdminController' => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src/Controllers/WorkshopRegistrationAdminController.php',
+        'CourseRegistrationLite\\Controllers\\WorkshopRegistrationController' => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src/Controllers/WorkshopRegistrationController.php',
+        'CourseRegistrationLite\\CourseRegistrationLiteServiceProvider' => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src/CourseRegistrationLiteServiceProvider.php',
+        'CourseRegistrationLite\\Jobs\\SendWorkshopRegistrationSmsJob' => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src/Jobs/SendWorkshopRegistrationSmsJob.php',
+        'CourseRegistrationLite\\Models\\WorkshopRegistration' => __DIR__ . '/../..' . '/packages/behin-course-registration-lite/src/Models/WorkshopRegistration.php',
+        'CourseRegistration\\Controllers\\CourseRegistrationAdminController' => __DIR__ . '/../..' . '/packages/behin-course-registration/src/Controllers/CourseRegistrationAdminController.php',
         'CourseRegistration\\Controllers\\CourseRegistrationController' => __DIR__ . '/../..' . '/packages/behin-course-registration/src/Controllers/CourseRegistrationController.php',
         'CourseRegistration\\CourseRegistrationServiceProvider' => __DIR__ . '/../..' . '/packages/behin-course-registration/src/CourseRegistrationServiceProvider.php',
         'CourseRegistration\\Jobs\\SendCourseRegistrationSmsJob' => __DIR__ . '/../..' . '/packages/behin-course-registration/src/Jobs/SendCourseRegistrationSmsJob.php',
@@ -3868,6 +3879,7 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         'Mkhodroo\\AltfuelTicket\\Controllers\\ShowTicketController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/ShowTicketController.php',
         'Mkhodroo\\AltfuelTicket\\Controllers\\TicketAssignController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketAssignController.php',
         'Mkhodroo\\AltfuelTicket\\Controllers\\TicketCatagoryController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketCatagoryController.php',
+        'Mkhodroo\\AltfuelTicket\\Controllers\\TicketConversionController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketConversionController.php',
         'Mkhodroo\\AltfuelTicket\\Controllers\\TicketCountController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketCountController.php',
         'Mkhodroo\\AltfuelTicket\\Controllers\\TicketFilterController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketFilterController.php',
         'Mkhodroo\\AltfuelTicket\\Controllers\\TicketStatusController' => __DIR__ . '/../..' . '/packages/altfuel-ticket/src/Controllers/TicketStatusController.php',
