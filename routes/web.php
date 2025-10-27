@@ -56,7 +56,7 @@ Route::get('/migrate', function () {
 });
 
 Route::get('send-alert-sms', function (SendSmsController $sms) {
-        $response = $sms->send("09376922176", "test");
+        $response = $sms->send("09376922176", "حرکت در دوربین");
         return $response;
     });
 
