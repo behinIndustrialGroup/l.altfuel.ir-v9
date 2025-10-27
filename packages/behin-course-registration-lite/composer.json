@@ -1,0 +1,16 @@
+{
+    "name": "behin/course-registration-lite",
+    "description": "Simplified course registration package with customizable routes and table names.",
+    "authors": [
+        {
+            "name": "Amirali-Hosseini",
+            "email": "amiralihosseini216@yahoo.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "CourseRegistrationLite\\": "src/"
+        }
+    },
+    "require": {}
+}
