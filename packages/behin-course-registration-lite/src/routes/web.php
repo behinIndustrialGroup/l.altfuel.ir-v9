@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web'])
     ->name('workshop-registration.')
-    ->prefix(Config::get('course-registration-lite.route_prefix', 'workshops'))
+    ->prefix(config('course-registration-lite.route_prefix', 'workshops'))
     ->group(function () {
         Route::get('/register', [WorkshopRegistrationController::class, 'showForm'])->name('form');
         Route::post('/register', [WorkshopRegistrationController::class, 'submitForm'])->name('submit');
@@ -16,7 +16,7 @@ Route::middleware(['web'])
 
 Route::middleware(['web', 'auth', 'verified', 'access'])
     ->name('admin.workshop-registrations.')
-    ->prefix(Config::get('course-registration-lite.admin_route_prefix', 'admin/workshop-registrations'))
+    ->prefix(config('course-registration-lite.admin_route_prefix', 'admin/workshop-registrations'))
     ->group(function () {
         Route::get('/', [WorkshopRegistrationAdminController::class, 'index'])->name('index');
         Route::get('/export', [WorkshopRegistrationAdminController::class, 'export'])->name('export');
