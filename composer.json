@@ -61,8 +61,7 @@
             "Registration\\": "packages/behin-registration/src/",
             "CourseRegistration\\": "packages/behin-course-registration/src/",
             "CourseRegistrationLite\\": "packages/behin-course-registration-lite/src/",
-            "TelegramTicket\\": "packages/behin-telegram-ticket/src/",
-            "CourseRegistrationLite\\": "packages/behin-course-registration-lite/src/"
+            "TelegramTicket\\": "packages/behin-telegram-ticket/src/"
         }
     },
     "autoload-dev": {
