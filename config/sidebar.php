@@ -86,6 +86,7 @@ return [
             'fa_name' => 'ثبت‌نام دوره‌ها',
             'submenu' => [
                 'list' => [ 'fa_name' => 'لیست ثبت‌نامی‌ها', 'route-name' => 'admin.course-registrations.index', 'route-url' => '' ],
+                'fanavaran' => [ 'fa_name' => 'فناوران پارسیان', 'route-name' => 'admin.workshop-registrations.index', 'route-url' => '' ],
             ],
         ],
 
