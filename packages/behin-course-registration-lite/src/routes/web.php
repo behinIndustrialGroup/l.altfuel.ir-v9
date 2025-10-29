@@ -9,7 +9,7 @@ Route::middleware(['web'])
     ->name('workshop-registration.')
     ->prefix(config('course-registration-lite.route_prefix', 'workshops'))
     ->group(function () {
-        Route::get('/register', [WorkshopRegistrationController::class, 'showForm'])->name('form');
+        // Route::get('/register', [WorkshopRegistrationController::class, 'showForm'])->name('form');
         Route::post('/register', [WorkshopRegistrationController::class, 'submitForm'])->name('submit');
         Route::get('/verify', [WorkshopRegistrationController::class, 'verify'])->name('verify');
     });
