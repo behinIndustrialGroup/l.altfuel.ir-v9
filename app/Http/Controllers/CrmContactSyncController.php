@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 
 class CrmContactSyncController extends Controller
 {
-    public function __invoke(Request $request)
+    public function __invoke()
     {
         $baseUrl = rtrim(config('services.crm.base_url'), '/');
         $username = config('services.crm.username');
@@ -20,7 +20,7 @@ class CrmContactSyncController extends Controller
             ], 500);
         }
 
-        $users = User::all();
+        $users = User::paginate(10);
 
         $results = [];
 
@@ -30,8 +30,8 @@ class CrmContactSyncController extends Controller
             $payload = array_filter([
                 'firstname' => $firstName,
                 'lastname' => $lastName,
-                'telephone1' => $user->ext_num,
-                'mobilephone' => $this->resolvePhoneNumber($user),
+                'telephone1' => $user->email,
+                'mobilephone' => $user->email,
                 'emailaddress1' => $user->email,
             ], fn ($value) => filled($value));
 
@@ -62,7 +62,7 @@ class CrmContactSyncController extends Controller
         }
 
         return response()->json([
-            'total' => $users->count(),
+            'total' => $users->total(),
             'results' => $results,
         ]);
     }

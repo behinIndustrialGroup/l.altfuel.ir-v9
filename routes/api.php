@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/hidro/get', [HidroController::class, 'createApi']);
 Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
-Route::post('/crm/contacts/sync', CrmContactSyncController::class)->name('crm.contacts.sync');
+Route::get('/crm/contacts/sync', CrmContactSyncController::class)->name('crm.contacts.sync');
 
 Route::prefix('/hamayesh/')->group(function(){
     Route::post('workshop', [HamayeshController::class, 'register_workshop'])->name('register_workshop');
