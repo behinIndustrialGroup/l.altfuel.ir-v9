@@ -21,7 +21,7 @@ Route::get('/hidro/get', [HidroController::class, 'createApi']);
 Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
 Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
-    $crmClient->save('contacts', [
+    $crmClient->save('rhs_complaintsprocesses', [
         "statecode" => 0,
         "statuscode" => 1,
         "rhs_complainttype" => false,
