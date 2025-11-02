@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use Behin\CrmClient\CrmClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +20,15 @@ use Illuminate\Support\Facades\Route;
 Route::get('/hidro/get', [HidroController::class, 'createApi']);
 Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
-Route::get('/crm/contacts/sync', CrmContactSyncController::class)->name('crm.contacts.sync');
+Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
+    $crmClient->save('contacts', [
+        'firstname' => 'John',
+        'lastname' => 'Doe',
+        'telephone1' => '1234567890',
+        'mobilephone' => '1234567890',
+        'emailaddress1' => 'john.doe@example.com',
+    ]);
+})->name('crm.contacts.sync');
 
 Route::prefix('/hamayesh/')->group(function(){
     Route::post('workshop', [HamayeshController::class, 'register_workshop'])->name('register_workshop');
