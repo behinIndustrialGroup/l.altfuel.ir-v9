@@ -9,6 +9,7 @@ use FileService\Controllers\FileServiceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Mkhodroo\AgencyInfo\Controllers\FileController;
+use Behin\CrmClient\CrmClient;
 
 class ComplaintController extends Controller
 {
@@ -17,7 +18,7 @@ class ComplaintController extends Controller
         return view('ComplaintViews::create');
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CrmClient $crmClient)
     {
         $validated = $request->validate([
             'first_name_last_name' => 'required|string|max:255',
@@ -55,6 +56,38 @@ class ComplaintController extends Controller
 
         Complaint::create([
             'content' => json_encode($data)
+        ]);
+        $rhs_thesubjectcomplaint = match($data['complaint_subject']) {
+            'ارجاع از معاینه فنی' => 130770000,
+            'تبدیل یا تعویض مخزن دولتی' => 130770001,
+            'تبدیل یا درخواست گواهی سلامت آزاد' => 130770002,
+            'تعمیر سیستم گازسوز' => 130770003,
+        };
+
+        $rhs_centertype = match($data['center_type']) {
+            'خدمات فنی (پرفشار)' => 130770000,
+            'آزمایشگاه هیدرواستاتیک' => 130770001,
+            'کم فشار' => 130770002,
+            'نمیدانم' => 130770003,
+        };
+
+        $crmClient->save('rhs_complaintsprocesses', [
+            "statecode" => 0,
+            "statuscode" => 1,
+            "rhs_nationalcode" => $data['national_code'],
+            "createdon" => now(),
+            "rhs_mobile" => $data['mobile'],
+            "modifiedon" => now(),
+            "rhs_dateofreference" => $data['visit_date'],
+            "rhs_thesubjectcomplaint" => $rhs_thesubjectcomplaint,
+            "rhs_name" => $data['first_name_last_name'],
+            "rhs_centertype" => $rhs_centertype,
+            "rhs_address" => $data['address'],
+            "rhs_thenameoftheunionmanager" => $data['manager_name'],
+            "rhs_province" => $data['state'],
+            "rhs_city" => $data['city'],
+            "rhs_tradeunitname" => $data['business_name'],
+            "rhs_description" => $data['vin'] . ' ' . $data['description'],
         ]);
 
         Mail::to('info@altfuel.ir')->send(new ComplaintSubmitted($data, $attachment));
