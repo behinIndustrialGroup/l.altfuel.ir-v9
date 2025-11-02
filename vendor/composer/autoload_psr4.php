@@ -123,6 +123,7 @@ return array(
     'Brick\\Math\\' => array($vendorDir . '/brick/math/src'),
     'BinshopsBlog\\' => array($vendorDir . '/binshops/laravel-blog/src'),
     'Behin\\Hamayesh\\' => array($baseDir . '/packages/behin-hamayesh/src'),
+    'Behin\\CrmClient\\' => array($baseDir . '/packages/behin-crm-client/src'),
     'Behin\\Complaint\\' => array($baseDir . '/packages/behin-complaint/src'),
     'BehinTest\\' => array($baseDir . '/packages/behin-test/src'),
     'BehinProcessMaker\\' => array($baseDir . '/packages/behin-process-maker/src'),

@@ -215,6 +215,7 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
             'Brick\\Math\\' => 11,
             'BinshopsBlog\\' => 13,
             'Behin\\Hamayesh\\' => 15,
+            'Behin\\CrmClient\\' => 16,
             'Behin\\Complaint\\' => 16,
             'BehinTest\\' => 10,
             'BehinProcessMaker\\' => 18,
@@ -702,6 +703,10 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         array (
             0 => __DIR__ . '/../..' . '/packages/behin-hamayesh/src',
         ),
+        'Behin\\CrmClient\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/packages/behin-crm-client/src',
+        ),
         'Behin\\Complaint\\' => 
         array (
             0 => __DIR__ . '/../..' . '/packages/behin-complaint/src',
@@ -782,6 +787,7 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         'App\\Http\\Controllers\\CommentsController' => __DIR__ . '/../..' . '/app/Http/Controllers/CommentsController.php',
         'App\\Http\\Controllers\\ContractorsController' => __DIR__ . '/../..' . '/app/Http/Controllers/ContractorsController.php',
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
+        'App\\Http\\Controllers\\CrmContactSyncController' => __DIR__ . '/../..' . '/app/Http/Controllers/CrmContactSyncController.php',
         'App\\Http\\Controllers\\DisableAppController' => __DIR__ . '/../..' . '/app/Http/Controllers/DisableAppController.php',
         'App\\Http\\Controllers\\DownloadController' => __DIR__ . '/../..' . '/app/Http/Controllers/DownloadController.php',
         'App\\Http\\Controllers\\FinController' => __DIR__ . '/../..' . '/app/Http/Controllers/FinController.php',
@@ -957,6 +963,8 @@ class ComposerStaticInit7ef7fe3f2ddba77c27d92e8a95b8fa50
         'Behin\\Complaint\\Controllers\\ComplaintController' => __DIR__ . '/../..' . '/packages/behin-complaint/src/Controllers/ComplaintController.php',
         'Behin\\Complaint\\Mail\\ComplaintSubmitted' => __DIR__ . '/../..' . '/packages/behin-complaint/src/Mail/ComplaintSubmitted.php',
         'Behin\\Complaint\\Models\\Complaint' => __DIR__ . '/../..' . '/packages/behin-complaint/src/Models/Complaint.php',
+        'Behin\\CrmClient\\CrmClient' => __DIR__ . '/../..' . '/packages/behin-crm-client/src/CrmClient.php',
+        'Behin\\CrmClient\\CrmServiceProvider' => __DIR__ . '/../..' . '/packages/behin-crm-client/src/CrmServiceProvider.php',
         'Behin\\Hamayesh\\BehinHamayeshServiceProvider' => __DIR__ . '/../..' . '/packages/behin-hamayesh/src/BehinHamayeshServiceProvider.php',
         'Behin\\Hamayesh\\Http\\Controllers\\EventVerificationController' => __DIR__ . '/../..' . '/packages/behin-hamayesh/src/Http/Controllers/EventVerificationController.php',
         'Behin\\Hamayesh\\Http\\EventEnum' => __DIR__ . '/../..' . '/packages/behin-hamayesh/src/Http/EventEnum.php',
