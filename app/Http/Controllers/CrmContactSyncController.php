@@ -62,7 +62,6 @@ class CrmContactSyncController extends Controller
         }
 
         return response()->json([
-            'total' => $users->total(),
             'results' => $results,
         ]);
     }
