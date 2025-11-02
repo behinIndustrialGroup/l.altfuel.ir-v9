@@ -250,6 +250,7 @@ return [
         \FileService\FileServiceProvider::class,
         \QrCodeScanner\QrCodeScannerProvider::class,
         \ExcelReader\ExcelReaderServiceProvider::class,
+        \Behin\CrmClient\CrmServiceProvider::class,
         \Behin\Complaint\ComplaintProvider::class,
         Behin\Hamayesh\BehinHamayeshServiceProvider::class,
         RegistrationServiceProvider::class,

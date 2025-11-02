@@ -3,18 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Behin\CrmClient\CrmClient;
 
 class CrmContactSyncController extends Controller
 {
+    public function __construct(private CrmClient $crmClient)
+    {
+    }
+
     public function __invoke()
     {
-        $baseUrl = rtrim(config('services.crm.base_url'), '/');
-        $username = config('services.crm.username');
-        $password = config('services.crm.password');
-
-        if (! $baseUrl || ! $username || ! $password) {
+        if (! $this->crmClient->configured()) {
             return response()->json([
                 'message' => 'CRM credentials are not configured.',
             ], 500);
@@ -36,12 +35,7 @@ class CrmContactSyncController extends Controller
             ], fn ($value) => filled($value));
 
             try {
-                $response = Http::withOptions([
-                    'auth' => [$username, $password, 'ntlm'],
-                ])->acceptJson()->post(
-                    $baseUrl . '/Main/api/data/v9.0/contacts',
-                    $payload
-                );
+                $response = $this->crmClient->save('contacts', $payload);
 
                 $results[] = [
                     'user_id' => $user->id,

@@ -34,6 +34,7 @@ return [
         'base_url' => env('CRM_BASE_URL'),
         'username' => env('CRM_USERNAME'),
         'password' => env('CRM_PASSWORD'),
+        'path' => env('CRM_PATH', 'Main/api/data/v9.0'),
     ],
 
 ];
