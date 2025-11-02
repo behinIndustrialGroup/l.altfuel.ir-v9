@@ -91,7 +91,7 @@ class ComplaintController extends Controller
             "rhs_province" => $data['state'],
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
-            "rhs_description" => $data['vin'] . ' ' . $data['description'],
+            "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
         ]);
 
         if ($response->failed()) {
