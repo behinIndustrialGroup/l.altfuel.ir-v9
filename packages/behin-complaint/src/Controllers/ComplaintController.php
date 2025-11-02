@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Mkhodroo\AgencyInfo\Controllers\FileController;
 use Behin\CrmClient\CrmClient;
+use Carbon\Carbon;
 
 class ComplaintController extends Controller
 {
@@ -71,14 +72,17 @@ class ComplaintController extends Controller
             'نمیدانم' => 130770003,
         };
 
-        $crmClient->save('rhs_complaintsprocesses', [
+        $visit_date = $data['visit_date_alt'];
+        $visit_date = Carbon::parse((int)$visit_date / 1000);
+
+        $response = $crmClient->save('rhs_complaintsprocesses', [
             "statecode" => 0,
             "statuscode" => 1,
             "rhs_nationalcode" => $data['national_code'],
             "createdon" => now(),
             "rhs_mobile" => $data['mobile'],
             "modifiedon" => now(),
-            "rhs_dateofreference" => $data['visit_date'],
+            "rhs_dateofreference" => $visit_date,
             "rhs_thesubjectcomplaint" => $rhs_thesubjectcomplaint,
             "rhs_name" => $data['first_name_last_name'],
             "rhs_centertype" => $rhs_centertype,
@@ -89,6 +93,14 @@ class ComplaintController extends Controller
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => $data['vin'] . ' ' . $data['description'],
         ]);
+
+        if ($response->failed()) {
+            return response()->json([
+                'message' => 'CRM request failed.',
+                'status' => $response->status(),
+                'errors' => $response->json(),
+            ], $response->status() ?: 500);
+        }
 
         Mail::to('info@altfuel.ir')->send(new ComplaintSubmitted($data, $attachment));
 

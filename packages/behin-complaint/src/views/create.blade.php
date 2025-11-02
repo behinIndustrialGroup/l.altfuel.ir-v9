@@ -34,8 +34,8 @@
                     </div>
                     <div class="form-field">
                         <label for="mobile">موبایل</label>
-                        <input id="mobile" type="text" name="mobile" class="input-control" value="{{ old('mobile') }}"
-                            required>
+                        <input id="mobile" type="text" name="mobile" class="input-control"
+                            value="{{ old('mobile') }}" required>
                     </div>
                     <div class="form-field">
                         <div class="form-field__label">
@@ -46,8 +46,11 @@
                                 ?
                             </button>
                         </div>
-                        <span class="field-hint" id="hint-vin">شماره وین در برگ سبز خودرو و در کارت خودرو ثبت است. در کارت خودروهای قدیمی پشت کارت به صورت عمودی و در کارت خودروهای جدید جلوی کارت ثبت و جلوی آن نوشته شده vin</span>
-                        <input id="vin" type="text" name="vin" class="input-control" value="{{ old('vin') }}" required>
+                        <span class="field-hint" id="hint-vin">شماره وین در برگ سبز خودرو و در کارت خودرو ثبت است. در کارت
+                            خودروهای قدیمی پشت کارت به صورت عمودی و در کارت خودروهای جدید جلوی کارت ثبت و جلوی آن نوشته شده
+                            vin</span>
+                        <input id="vin" type="text" name="vin" class="input-control"
+                            value="{{ old('vin') }}" required>
                     </div>
                     <div class="form-field">
                         <label for="business_name">نام واحد صنفی</label>
@@ -61,12 +64,13 @@
                     </div>
                     <div class="form-field">
                         <label for="state">استان</label>
-                        <input id="state" type="text" name="state" class="input-control" value="{{ old('state') }}"
-                            required>
+                        <input id="state" type="text" name="state" class="input-control"
+                            value="{{ old('state') }}" required>
                     </div>
                     <div class="form-field">
                         <label for="city">شهر</label>
-                        <input id="city" type="text" name="city" class="input-control" value="{{ old('city') }}" required>
+                        <input id="city" type="text" name="city" class="input-control"
+                            value="{{ old('city') }}" required>
                     </div>
                     <div class="form-field form-field--full">
                         <label for="address">آدرس</label>
@@ -75,30 +79,39 @@
                     <div class="form-field">
                         <label for="center_type">نوع مرکز</label>
                         <select name="center_type" id="center_type" class="input-control">
-                            <option value="مرکز خدمات فنی" {{ old('center_type') == 'مرکز خدمات فنی' ? 'selected' : '' }}>خدمات فنی (پرفشار)</option>
+                            <option value="مرکز خدمات فنی" {{ old('center_type') == 'مرکز خدمات فنی' ? 'selected' : '' }}>
+                                خدمات فنی (پرفشار)</option>
                             <option value="آزمایشگاه هیدرواستاتیک"
-                                {{ old('center_type') == 'آزمایشگاه هیدرواستاتیک' ? 'selected' : '' }}>آزمایشگاه هیدرواستاتیک</option>
-                            <option value="مرکز کم فشار" {{ old('center_type') == 'مرکز کم فشار' ? 'selected' : '' }}>کم فشار</option>
-                            <option value="نمیدانم" {{ old('center_type') == 'نمیدانم' ? 'selected' : '' }}>نمیدانم</option>
+                                {{ old('center_type') == 'آزمایشگاه هیدرواستاتیک' ? 'selected' : '' }}>آزمایشگاه
+                                هیدرواستاتیک</option>
+                            <option value="مرکز کم فشار" {{ old('center_type') == 'مرکز کم فشار' ? 'selected' : '' }}>کم
+                                فشار</option>
+                            <option value="نمیدانم" {{ old('center_type') == 'نمیدانم' ? 'selected' : '' }}>نمیدانم
+                            </option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label for="complaint_subject">موضوع شکایت</label>
                         <select name="complaint_subject" id="complaint_subject" class="input-control">
                             <option value="ارجاع از معاینه فنی"
-                                {{ old('complaint_subject') == 'ارجاع از معاینه فنی' ? 'selected' : '' }}>ارجاع از معاینه فنی</option>
+                                {{ old('complaint_subject') == 'ارجاع از معاینه فنی' ? 'selected' : '' }}>ارجاع از معاینه
+                                فنی</option>
                             <option value="تبدیل یا تعویض مخزن دولتی"
-                                {{ old('complaint_subject') == 'تبدیل یا تعویض مخزن دولتی' ? 'selected' : '' }}>تبدیل یا تعویض مخزن دولتی</option>
+                                {{ old('complaint_subject') == 'تبدیل یا تعویض مخزن دولتی' ? 'selected' : '' }}>تبدیل یا
+                                تعویض مخزن دولتی</option>
                             <option value="تبدیل یا درخواست گواهی سلامت آزاد"
-                                {{ old('complaint_subject') == 'تبدیل یا درخواست گواهی سلامت آزاد' ? 'selected' : '' }}>تبدیل یا درخواست گواهی سلامت آزاد</option>
+                                {{ old('complaint_subject') == 'تبدیل یا درخواست گواهی سلامت آزاد' ? 'selected' : '' }}>
+                                تبدیل یا درخواست گواهی سلامت آزاد</option>
                             <option value="تعمیر سیستم گازسوز"
-                                {{ old('complaint_subject') == 'تعمیر سیستم گازسوز' ? 'selected' : '' }}>تعمیر سیستم گازسوز</option>
+                                {{ old('complaint_subject') == 'تعمیر سیستم گازسوز' ? 'selected' : '' }}>تعمیر سیستم گازسوز
+                            </option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label for="visit_date">تاریخ مراجعه</label>
-                        <input id="visit_date" type="text" name="visit_date" class="input-control persian-date"
+                        <input id="visit_date" type="text" name="visit_date" id="visit_date" class="input-control"
                             value="{{ old('visit_date') }}" required>
+                        <input type="hidden" name="visit_date_alt" id="visit_date_alt">
                     </div>
                     <div class="form-field form-field--full">
                         <div class="form-field__label">
@@ -109,14 +122,15 @@
                                 ?
                             </button>
                         </div>
-                        <span class="field-hint" id="hint-description">لطفا توضیح کامل درج بفرمایید فرمهای ناقص رسیدگی نخواهند شد</span>
+                        <span class="field-hint" id="hint-description">لطفا توضیح کامل درج بفرمایید فرمهای ناقص رسیدگی
+                            نخواهند شد</span>
                         <textarea id="description" name="description" class="input-control input-control--textarea" rows="4">{{ old('description') }}</textarea>
                     </div>
                     <div class="form-field form-field--full">
                         <div class="form-field__label">
                             <label for="file">پیوست</label>
-                            <button class="hint-toggle" type="button" aria-label="نمایش راهنمای پیوست" aria-expanded="false"
-                                aria-controls="hint-file" data-target="hint-file">
+                            <button class="hint-toggle" type="button" aria-label="نمایش راهنمای پیوست"
+                                aria-expanded="false" aria-controls="hint-file" data-target="hint-file">
                                 <span class="sr-only">نمایش یا پنهان کردن راهنمای پیوست</span>
                                 ?
                             </button>
@@ -136,6 +150,20 @@
 @section('script')
     <script>
         initial_view()
+        $('#visit_date').persianDatepicker({
+            autoClose: true,
+            altField: '#visit_date_alt',
+            initialValue: false,
+            viewMode: 'day',
+            format: 'YYYY-MM-DD',
+            initialValueType: 'persian',
+            calendar: {
+                persian: {
+                    leapYearMode: 'astronomical',
+                    locale: 'fa'
+                }
+            }
+        });
         document.querySelectorAll('.hint-toggle').forEach((button) => {
             const targetId = button.getAttribute('data-target');
             const hint = document.getElementById(targetId);
