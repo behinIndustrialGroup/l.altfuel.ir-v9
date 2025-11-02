@@ -22,11 +22,32 @@ Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
 Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
     $crmClient->save('contacts', [
-        'firstname' => 'John',
-        'lastname' => 'Doe',
-        'telephone1' => '1234567890',
-        'mobilephone' => '1234567890',
-        'emailaddress1' => 'john.doe@example.com',
+        "statecode" => 0,
+        "statuscode" => 1,
+        "rhs_complainttype" => false,
+        "rhs_nationalcode" => "2700181859",
+        "createdon" => "2025-07-15T13:33:01Z",
+        "rhs_requirebachelordegree" => false,
+        "rhs_mobile" => "09224261029",
+        "rhs_tradeunioncode" => "12001",
+        "modifiedon" => "2025-07-15T13:33:01Z",
+        "rhs_centerstatus" => false,
+        "rhs_description" => "توضیحات شکایت",
+        "rhs_dateofreference" => "2025-07-17T07:00:00Z",
+        "rhs_isthecomplaintwithinthejurisdictionoftheu" => true,
+        "rhs_thesubjectcomplaint" => 130770000,
+        "rhs_name" => "خودرو",
+        "rhs_centertype" => 130770000,
+        // "rhs_complaintsprocessid": "425ef06b-8061-f011-ae70-010101010000",
+        "rhs_expertofcomdescription" => null,
+        "rhs_address" => "آدرس شکایت",
+        "rhs_commissiondescription" => null,
+        "rhs_result" => null,
+        "rhs_theexpertdescription" => null,
+        "rhs_thenameoftheunionmanager" => "مدیر مرکز تستی",
+        "rhs_province" => "تهران",
+        "rhs_city" => "تهران",
+        "rhs_tradeunitname" => "مرکز تستی"
     ]);
 })->name('crm.contacts.sync');
 
