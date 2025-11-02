@@ -95,11 +95,11 @@ class ComplaintController extends Controller
         ]);
 
         if ($response->failed()) {
-            return response()->json([
-                'message' => 'CRM request failed.',
-                'status' => $response->status(),
-                'errors' => $response->json(),
-            ], $response->status() ?: 500);
+            // return response()->json([
+            //     'message' => 'CRM request failed.',
+            //     'status' => $response->status(),
+            //     'errors' => $response->json(),
+            // ], $response->status() ?: 500);
         }
 
         Mail::to('info@altfuel.ir')->send(new ComplaintSubmitted($data, $attachment));
