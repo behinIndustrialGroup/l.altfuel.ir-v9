@@ -30,4 +30,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'crm' => [
+        'base_url' => env('CRM_BASE_URL'),
+        'username' => env('CRM_USERNAME'),
+        'password' => env('CRM_PASSWORD'),
+    ],
+
 ];
