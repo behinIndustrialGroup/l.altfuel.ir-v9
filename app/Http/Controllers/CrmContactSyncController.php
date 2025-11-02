@@ -20,7 +20,7 @@ class CrmContactSyncController extends Controller
             ], 500);
         }
 
-        $users = User::skip(610)->take(600)->get();
+        $users = User::skip(1210)->take(600)->get();
 
         $results = [];
 
