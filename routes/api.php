@@ -21,7 +21,7 @@ Route::get('/hidro/get', [HidroController::class, 'createApi']);
 Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
 Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
-    $crmClient->save('rhs_complaintsprocesses', [
+    $response = $crmClient->save('rhs_complaintsprocesses', [
         "statecode" => 0,
         "statuscode" => 1,
         "rhs_complainttype" => false,
@@ -49,6 +49,17 @@ Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
         "rhs_city" => "تهران",
         "rhs_tradeunitname" => "مرکز تستی"
     ]);
+
+    $entityIdHeader = $response->header('OData-EntityId');
+
+    if ($entityIdHeader) {
+        // استخراج GUID از داخل پرانتز
+        preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+        $contactId = $matches[1] ?? null;
+        return $contactId;
+        logger()->info('New Contact ID: ' . $contactId);
+    }
+    return 'nothing';
 })->name('crm.contacts.sync');
 
 Route::prefix('/hamayesh/')->group(function(){
