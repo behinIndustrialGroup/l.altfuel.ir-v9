@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Behin\CrmClient\CrmClient;
@@ -20,58 +21,43 @@ use Illuminate\Support\Facades\Route;
 Route::get('/hidro/get', [HidroController::class, 'createApi']);
 Route::get('/agencies/get', [MarakezController::class, 'createApi']);
 
-Route::get('/crm/contacts/sync', function(CrmClient $crmClient){
-    $response = $crmClient->save('rhs_complaintsprocesses', [
-        "statecode" => 0,
-        "statuscode" => 1,
-        "rhs_complainttype" => false,
-        "rhs_nationalcode" => "2700181859",
-        "createdon" => "2025-07-15T13:33:01Z",
-        "rhs_requirebachelordegree" => false,
-        "rhs_mobile" => "09224261029",
-        "rhs_tradeunioncode" => "12001",
-        "modifiedon" => "2025-07-15T13:33:01Z",
-        "rhs_centerstatus" => false,
-        "rhs_description" => "توضیحات شکایت",
-        "rhs_dateofreference" => "2025-07-17T07:00:00Z",
-        "rhs_isthecomplaintwithinthejurisdictionoftheu" => true,
-        "rhs_thesubjectcomplaint" => 130770000,
-        "rhs_name" => "خودرو",
-        "rhs_centertype" => 130770000,
-        // "rhs_complaintsprocessid": "425ef06b-8061-f011-ae70-010101010000",
-        "rhs_expertofcomdescription" => null,
-        "rhs_address" => "آدرس شکایت",
-        "rhs_commissiondescription" => null,
-        "rhs_result" => null,
-        "rhs_theexpertdescription" => null,
-        "rhs_thenameoftheunionmanager" => "مدیر مرکز تستی",
-        "rhs_province" => "تهران",
-        "rhs_city" => "تهران",
-        "rhs_tradeunitname" => "مرکز تستی"
+Route::get('/crm/contacts/sync', function (CrmClient $crmClient) {
+
+    // مرحله ۱: بررسی وجود مخاطب با شماره موبایل
+    $response = $crmClient->request("contacts", "GET", [
+        '$select' => 'contactid,fullname,mobilephone',
+        '$filter' => "mobilephone eq '09376922176'"
     ]);
 
-    $entityIdHeader = $response->header('OData-EntityId');
+    if ($response->successful()) {
+        $body = $response->json();
+        if (!empty($body['value'])) {
+            // مخاطب موجود است
+            $contactId = $body['value'][0]['contactid'];
+            echo "Contact already exists: $contactId";
+        } else {
+            // مخاطب وجود ندارد → ایجاد جدید
+            
 
-    if ($entityIdHeader) {
-        // استخراج GUID از داخل پرانتز
-        preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
-        $contactId = $matches[1] ?? null;
-        return $contactId;
-        logger()->info('New Contact ID: ' . $contactId);
+            echo "New contact created:";
+        }
+    } else {
+        echo "CRM query failed: " . $response->body();
     }
+
     return 'nothing';
 })->name('crm.contacts.sync');
 
-Route::prefix('/hamayesh/')->group(function(){
+Route::prefix('/hamayesh/')->group(function () {
     Route::post('workshop', [HamayeshController::class, 'register_workshop'])->name('register_workshop');
 });
 
-Route::prefix('irngv')->group(function(){
+Route::prefix('irngv')->group(function () {
     Route::post('get-token', [IrngvApiController::class, 'get_token'])->middleware('api_auth');
     Route::post('poll-link', [IrngvApiController::class, 'send_sms'])->middleware('api_access');
 });
 
-Route::name('blog.')->prefix('blog')->group(function(){
+Route::name('blog.')->prefix('blog')->group(function () {
     Route::get('/get', []);
     Route::get('/get-by-catagory/{catagory}', [BlogController::class, 'getByCatagory']);
     Route::get('get-by-id/{id}', [BlogController::class, 'getById'])->name('getById');
