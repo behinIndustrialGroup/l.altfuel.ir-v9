@@ -106,7 +106,7 @@ class ComplaintController extends Controller
 
         if ($contactId) {
             $response = $crmClient->save('annotations', [
-                "subject" => "شکایت جدید ",
+                "subject" => "شکایت ثبت کردن در تاریخ " . verta()->today(),
                 "notetext" => "شماره وین: ". $data['vin'],
                 "objectid_contact@odata.bind" => "/contacts($contactId)",
             ]);
@@ -130,6 +130,23 @@ class ComplaintController extends Controller
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
         ]);
+
+        $entityIdHeader = $response->header('OData-EntityId');
+        preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+        $complaintId = $matches[1] ?? null;
+
+        if ($attachment && file_exists($attachment)) {
+            $fileContent = base64_encode(file_get_contents($attachment));
+            $response = $crmClient->save('annotations', [
+                "subject" => "پیوست شکایت",
+                "notetext" => "فایل پیوست شکایت ثبت شده است.",
+                "filename" => basename($attachment),
+                "mimetype" => mime_content_type($attachment),
+                "documentbody" => $fileContent,
+                "objectid_rhs_complaintsprocess@odata.bind" => "/rhs_complaintsprocesses($complaintId)",
+            ]);
+        }
+
 
         if ($response->failed()) {
             // return response()->json([
