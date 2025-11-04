@@ -39,16 +39,12 @@ class ComplaintController extends Controller
         $data = $request->except('_token');
         $attachment = null;
 
-        if($request->file('file'))
-        {
+        if ($request->file('file')) {
             $filePath = FileController::store($request->file('file'), 'complaint');
-            if($filePath['status'] == 200)
-            {
+            if ($filePath['status'] == 200) {
                 $data['file'] = $filePath['dir'];
                 $attachment = public_path($filePath['dir']);
-            }
-            else
-            {
+            } else {
                 return redirect()->back()->withErrors(['file' => trans($filePath['message'])]);
             }
         }
@@ -58,14 +54,14 @@ class ComplaintController extends Controller
         Complaint::create([
             'content' => json_encode($data)
         ]);
-        $rhs_thesubjectcomplaint = match($data['complaint_subject']) {
+        $rhs_thesubjectcomplaint = match ($data['complaint_subject']) {
             'ارجاع از معاینه فنی' => 130770000,
             'تبدیل یا تعویض مخزن دولتی' => 130770001,
             'تبدیل یا درخواست گواهی سلامت آزاد' => 130770002,
             'تعمیر سیستم گازسوز' => 130770003,
         };
 
-        $rhs_centertype = match($data['center_type']) {
+        $rhs_centertype = match ($data['center_type']) {
             'مرکز خدمات فنی' => 130770000,
             'آزمایشگاه هیدرواستاتیک' => 130770001,
             'مرکز کم فشار' => 130770002,
@@ -74,6 +70,47 @@ class ComplaintController extends Controller
 
         $visit_date = $data['visit_date_alt'];
         $visit_date = Carbon::parse((int)$visit_date / 1000);
+
+        $response = $crmClient->request("contacts", "GET", [
+            '$select' => 'contactid,fullname,mobilephone',
+            '$filter' => "mobilephone eq '09376922176'"
+        ]);
+
+        if ($response->successful()) {
+            $body = $response->json();
+            if (!empty($body['value'])) {
+                // مخاطب موجود است
+                $contactId = $body['value'][0]['contactid'];
+            } else {
+                // مخاطب وجود ندارد → ایجاد جدید
+                $response = $crmClient->save('contacts', [
+                    "rhs_nationalcode" => $data['national_code'],
+                    "createdon" => now(),
+                    "telephone1" => $data['mobile'],
+                    "mobilephone" => $data['mobile'],
+                    "firstname" => $data['first_name_last_name'],
+                    "rhs_address" => $data['address'],
+                ]);
+
+                $entityIdHeader = $response->header('OData-EntityId');
+
+                if ($entityIdHeader) {
+                    // استخراج GUID از داخل پرانتز
+                    preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+                    $contactId = $matches[1] ?? null;
+                }
+            }
+        } else {
+            // echo "CRM query failed: " . $response->body();
+        }
+
+        if ($contactId) {
+            $response = $crmClient->save('annotations', [
+                "subject" => "شکایت جدید ",
+                "notetext" => "شماره وین: ". $data['vin'],
+                "objectid_contact@odata.bind" => "/contacts($contactId)",
+            ]);
+        }
 
         $response = $crmClient->save('rhs_complaintsprocesses', [
             "statecode" => 0,
