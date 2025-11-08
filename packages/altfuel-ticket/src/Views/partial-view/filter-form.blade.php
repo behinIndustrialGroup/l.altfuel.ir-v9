@@ -1,20 +1,7 @@
 @php
     $title = '';
-
-    $agents = [
-        ['id' => 14, 'name' => 'کابلی'],
-        ['id' => 15, 'name' => 'گل گواهی'],
-        ['id' => 18, 'name' => 'شناسنده'],
-        ['id' => 25, 'name' => 'شهیدی'],
-        ['id' => 28, 'name' => 'بابائی'],
-        ['id' => 37, 'name' => 'احمدی'],
-        ['id' => 39, 'name' => 'سیدی'],
-        ['id' => 42, 'name' => 'شهاب'],
-        ['id' => 41, 'name' => 'شهریاری'],
-        ['id' => 40, 'name' => 'شادمان'],
-        ['id' => 1365, 'name' => 'آهنگران'],
-        ['id' => 1427, 'name' => 'حاجیوند'],
-    ];
+    $agents = config('ATConfig.filter_agents', []);
+    $conversionTypes = config('ATConfig.conversion_types', []);
 @endphp
 
 <!-- دکمه نمایش فیلتر پیشرفته -->
@@ -51,8 +38,19 @@
         <label for="agent_id">کارشناس پاسخ‌دهنده</label>
         <select name="agent_id" class="form-control">
             <option value="">انتخاب کارشناس</option>
+            <option value="none">بدون کارشناس</option>
             @foreach ($agents as $agent)
                 <option value="{{ $agent['id'] }}">{{ $agent['name'] }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="form-group mb-2">
+        <label for="conversion_type">نوع تبدیل</label>
+        <select name="conversion_type" id="conversion_type" class="form-control">
+            <option value="">انتخاب نوع تبدیل</option>
+            @foreach ($conversionTypes as $value => $label)
+                <option value="{{ $value }}">{{ $label }}</option>
             @endforeach
         </select>
     </div>

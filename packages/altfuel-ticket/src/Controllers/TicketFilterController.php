@@ -35,8 +35,30 @@ class TicketFilterController extends Controller
         }
 
         if ($request->filled('agent_id')) {
-            $ticketIds = TicketComment::where('user_id', $request->agent_id)->pluck('ticket_id')->unique();
-            $query->whereIn('id', $ticketIds);
+            $agentId = $request->agent_id;
+
+            if ($agentId === 'none') {
+                $agentIds = collect(config('ATConfig.filter_agents', []))
+                    ->pluck('id')
+                    ->filter()
+                    ->map(fn($id) => (int) $id)
+                    ->unique()
+                    ->values();
+
+                if ($agentIds->isNotEmpty()) {
+                    $ticketIds = TicketComment::whereIn('user_id', $agentIds)->pluck('ticket_id')->unique();
+                    if ($ticketIds->isNotEmpty()) {
+                        $query->whereNotIn('id', $ticketIds);
+                    }
+                }
+            } else {
+                $ticketIds = TicketComment::where('user_id', $agentId)->pluck('ticket_id')->unique();
+                $query->whereIn('id', $ticketIds);
+            }
+        }
+
+        if ($request->filled('conversion_type')) {
+            $query->where('conversion_type', $request->conversion_type);
         }
 
         if ($request->filled('filter_catagory')) {
