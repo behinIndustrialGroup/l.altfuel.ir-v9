@@ -14,6 +14,20 @@ return [
         'yaraneh' => 'یارانه‌ای',
         'azad' => 'آزاد',
     ],
+    'filter_agents' => [
+        ['id' => 14, 'name' => 'کابلی'],
+        ['id' => 15, 'name' => 'گل گواهی'],
+        ['id' => 18, 'name' => 'شناسنده'],
+        ['id' => 25, 'name' => 'شهیدی'],
+        ['id' => 28, 'name' => 'بابائی'],
+        ['id' => 37, 'name' => 'احمدی'],
+        ['id' => 39, 'name' => 'سیدی'],
+        ['id' => 42, 'name' => 'شهاب'],
+        ['id' => 41, 'name' => 'شهریاری'],
+        ['id' => 40, 'name' => 'شادمان'],
+        ['id' => 1365, 'name' => 'آهنگران'],
+        ['id' => 1427, 'name' => 'حاجیوند'],
+    ],
     'attachment-file-types' => [
         'image/png', 'image/jpg', 'image/jpeg', 'application/pdf', 'application/x-zip-compressed',
         'application/octet-stream'
