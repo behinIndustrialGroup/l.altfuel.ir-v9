@@ -11,9 +11,23 @@ use Illuminate\Validation\Rule;
 
 class WorkshopRegistrationController extends Controller
 {
-    public function showForm()
+    public function showForm(Request $request, ?string $courseKeys = null)
     {
         $courses = config('course-registration-lite.courses', []);
+
+        $courseKeys = $courseKeys ?? $request->query('courses');
+
+        if (is_string($courseKeys) && trim($courseKeys) !== '') {
+            $requestedKeys = array_filter(array_map('trim', explode(',', $courseKeys)));
+        } elseif (is_array($courseKeys)) {
+            $requestedKeys = array_filter(array_map('trim', $courseKeys));
+        } else {
+            $requestedKeys = [];
+        }
+
+        if (! empty($requestedKeys)) {
+            $courses = array_intersect_key($courses, array_flip($requestedKeys));
+        }
 
         return view('CourseRegistrationLiteViews::index', [
             'courses' => $courses,
