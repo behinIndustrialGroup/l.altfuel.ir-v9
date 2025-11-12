@@ -61,6 +61,15 @@ class TicketFilterController extends Controller
             $query->where('conversion_type', $request->conversion_type);
         }
 
+        if ($request->filled('status')) {
+            $statusKey = $request->status;
+            $statusValue = config("ATConfig.status.$statusKey");
+
+            if (!empty($statusValue)) {
+                $query->where('status', $statusValue);
+            }
+        }
+
         if ($request->filled('filter_catagory')) {
             $query->where('cat_id', $request->filter_catagory);
         } elseif ($request->filled('filter_parent_cat')) {
