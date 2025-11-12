@@ -2,6 +2,7 @@
     $title = '';
     $agents = config('ATConfig.filter_agents', []);
     $conversionTypes = config('ATConfig.conversion_types', []);
+    $statuses = config('ATConfig.status', []);
 @endphp
 
 <!-- دکمه نمایش فیلتر پیشرفته -->
@@ -51,6 +52,16 @@
             <option value="">انتخاب نوع تبدیل</option>
             @foreach ($conversionTypes as $value => $label)
                 <option value="{{ $value }}">{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="form-group mb-2">
+        <label for="status">وضعیت تیکت</label>
+        <select name="status" id="status" class="form-control">
+            <option value="">انتخاب وضعیت</option>
+            @foreach ($statuses as $key => $label)
+                <option value="{{ $key }}">{{ $label }}</option>
             @endforeach
         </select>
     </div>
