@@ -91,7 +91,7 @@ class ComplaintController extends Controller
                     "rhs_nationalcode" => $data['national_code'],
                     "createdon" => now(),
                     "telephone1" => $data['mobile'],
-                    "mobilephone" => $data['mobile'],
+                    "mobilephone" => $mobile,
                     "firstname" => $data['first_name_last_name'],
                     "rhs_address" => $data['address'],
                 ]);
@@ -121,7 +121,7 @@ class ComplaintController extends Controller
             "statuscode" => 1,
             "rhs_nationalcode" => $data['national_code'],
             "createdon" => now(),
-            "rhs_mobile" => $data['mobile'],
+            "rhs_mobile" => $mobile,
             "modifiedon" => now(),
             "rhs_dateofreference" => $visit_date,
             "rhs_thesubjectcomplaint" => $rhs_thesubjectcomplaint,
