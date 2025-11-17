@@ -12,6 +12,8 @@ use Mkhodroo\AgencyInfo\Controllers\FileController;
 use Behin\CrmClient\CrmClient;
 use Carbon\Carbon;
 
+use function Symfony\Component\String\s;
+
 class ComplaintController extends Controller
 {
     public function create()
@@ -71,9 +73,11 @@ class ComplaintController extends Controller
         $visit_date = $data['visit_date_alt'];
         $visit_date = Carbon::parse((int)$visit_date / 1000);
 
+        $mobile = $this->convertPersianToEnglish($data['mobile']);
+
         $response = $crmClient->request("contacts", "GET", [
             '$select' => 'contactid,fullname,mobilephone',
-            '$filter' => "mobilephone eq '09376922176'"
+            '$filter' => "mobilephone eq $mobile"
         ]);
 
         if ($response->successful()) {
@@ -159,6 +163,22 @@ class ComplaintController extends Controller
         Mail::to('info@altfuel.ir')->send(new ComplaintSubmitted($data, $attachment));
 
         return redirect()->route('complaint.create')->with('success', 'شکایت با موفقیت ثبت شد');
+    }
+    public function convertPersianToEnglish($string) {
+        static $map = [
+            '۰' => '0',
+            '۱' => '1',
+            '۲' => '2',
+            '۳' => '3',
+            '۴' => '4',
+            '۵' => '5',
+            '۶' => '6',
+            '۷' => '7',
+            '۸' => '8',
+            '۹' => '9',
+        ];
+
+        return strtr($string, $map);
     }
 
     public function list()
