@@ -38,8 +38,10 @@ class ComplaintController extends Controller
             'visit_date' => 'required',
             'description' => 'nullable|string',
         ]);
+
         $data = $request->except('_token');
         $attachment = null;
+        $contactId = null; // حتما مقدار اولیه بدهید
 
         if ($request->file('file')) {
             $filePath = FileController::store($request->file('file'), 'complaint');
@@ -51,11 +53,12 @@ class ComplaintController extends Controller
             }
         }
 
-
-
+        // اگر در جدول Complaint ستون contact_id دارید، اینجا ذخیره کنید:
         Complaint::create([
-            'content' => json_encode($data)
+            'content' => json_encode($data),
+            // 'contact_id' => $contactId, // اگر ستون دارید، بعد از مشخص شدن contactId می توانید آپدیت کنید
         ]);
+
         $rhs_thesubjectcomplaint = match ($data['complaint_subject']) {
             'ارجاع از معاینه فنی' => 130770000,
             'تبدیل یا تعویض مخزن دولتی' => 130770001,
@@ -75,6 +78,7 @@ class ComplaintController extends Controller
 
         $mobile = $this->convertPersianToEnglish($data['mobile']);
 
+        // جستجو یا ساخت کانتکت
         $response = $crmClient->request("contacts", "GET", [
             '$select' => 'contactid,fullname,mobilephone',
             '$filter' => "mobilephone eq '$mobile'"
@@ -82,6 +86,7 @@ class ComplaintController extends Controller
 
         if ($response->successful()) {
             $body = $response->json();
+
             if (!empty($body['value'])) {
                 // مخاطب موجود است
                 $contactId = $body['value'][0]['contactid'];
@@ -99,24 +104,25 @@ class ComplaintController extends Controller
                 $entityIdHeader = $response->header('OData-EntityId');
 
                 if ($entityIdHeader) {
-                    // استخراج GUID از داخل پرانتز
                     preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
                     $contactId = $matches[1] ?? null;
                 }
             }
         } else {
-            // echo "CRM query failed: " . $response->body();
+            // هندل ارور CRM در صورت نیاز
         }
 
+        // ثبت نوت روی کانتکت
         if ($contactId) {
             $response = $crmClient->save('annotations', [
                 "subject" => "شکایت ثبت کردن در تاریخ " . verta()->today(),
-                "notetext" => "شماره وین: ". $data['vin'],
+                "notetext" => "شماره وین: " . $data['vin'],
                 "objectid_contact@odata.bind" => "/contacts($contactId)",
             ]);
         }
 
-        $response = $crmClient->save('rhs_complaintsprocesses', [
+        // دیتای ثبت شکایت در CRM
+        $crmComplaintData = [
             "statecode" => 0,
             "statuscode" => 1,
             "rhs_nationalcode" => $data['national_code'],
@@ -133,7 +139,14 @@ class ComplaintController extends Controller
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
-        ]);
+        ];
+
+        // این قسمت مهم است: بایند کردن کانتکت به فرم شکایت
+        if ($contactId) {
+            $crmComplaintData["rhs_contact@odata.bind"] = "/contacts($contactId)";
+        }
+
+        $response = $crmClient->save('rhs_complaintsprocesses', $crmComplaintData);
 
         $entityIdHeader = $response->header('OData-EntityId');
         preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
@@ -151,20 +164,17 @@ class ComplaintController extends Controller
             ]);
         }
 
-
         if ($response->failed()) {
-            // return response()->json([
-            //     'message' => 'CRM request failed.',
-            //     'status' => $response->status(),
-            //     'errors' => $response->json(),
-            // ], $response->status() ?: 500);
+            // هندل خطا در صورت نیاز
         }
 
         Mail::to('info@altfuel.ir')->send(new ComplaintSubmitted($data, $attachment));
 
         return redirect()->route('complaint.create')->with('success', 'شکایت با موفقیت ثبت شد');
     }
-    public function convertPersianToEnglish($string) {
+
+    public function convertPersianToEnglish($string)
+    {
         static $map = [
             '۰' => '0',
             '۱' => '1',
