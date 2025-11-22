@@ -61,6 +61,7 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
     Route::get('download-zip', [CommentAttachmentController::class, 'downloadZip'])->name('download.zip');
     Route::get('ticket-download-zip', [AddTicketCommentAttachmentController::class, 'downloadZip'])->name('ticket.download.zip');
 
-    Route::post('filter', [TicketFilterController::class, 'filterByAgent'])->name('filterByAgent');
+    Route::post('filter', [TicketFilterController::class, 'filterByAgent'])->name('filterByAgent'); 
 });
 
+Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');
