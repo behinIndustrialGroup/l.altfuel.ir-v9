@@ -90,7 +90,7 @@ class ComplaintController extends Controller
                 $response = $crmClient->save('contacts', [
                     "rhs_nationalcode" => $data['national_code'],
                     "createdon" => now(),
-                    "telephone1" => $data['mobile'],
+                    "telephone1" => $mobile,
                     "mobilephone" => $mobile,
                     "firstname" => $data['first_name_last_name'],
                     "rhs_address" => $data['address'],
