@@ -77,7 +77,7 @@ class ComplaintController extends Controller
 
         $response = $crmClient->request("contacts", "GET", [
             '$select' => 'contactid,fullname,mobilephone',
-            '$filter' => "mobilephone eq $mobile"
+            '$filter' => "mobilephone eq '$mobile'"
         ]);
 
         if ($response->successful()) {
