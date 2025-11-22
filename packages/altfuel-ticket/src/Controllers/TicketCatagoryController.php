@@ -13,43 +13,51 @@ use Mkhodroo\UserRoles\Models\User;
 
 class TicketCatagoryController extends Controller
 {
-    function get($id){
+    function get($id)
+    {
         return TicketCatagory::find($id);
     }
 
-    function modalCategory($id){
+    function modalCategory($id)
+    {
         return TicketCatagory::find($id);
     }
 
-    function categoryForActor($id){
+    function categoryForActor($id)
+    {
         return TicketCatagory::find($id);
     }
 
-    function getAll() {
+    function getAll()
+    {
         return TicketCatagory::get();
     }
 
-    function getChildrenByParentId($parent_id = null, $count = false) {
-        if($count){
-            return TicketCatagory::where('parent_id', $parent_id)->get()->each(function($row){
+    function getChildrenByParentId($parent_id = null, $count = false)
+    {
+        if ($count) {
+            return TicketCatagory::where('parent_id', $parent_id)->get()->each(function ($row) {
                 $row->count = Ticket::where('cat_id', $row->id)->where('status', config('ATConfig.status.new'))->count();
             });
         }
         return TicketCatagory::where('parent_id', $parent_id)->get();
     }
 
-    function getActorsByCatId($catId) {
+    function getActorsByCatId($catId)
+    {
         $userIds =  CatagoryActor::where('cat_id', $catId)->pluck('user_id');
         $users = User::wherein('id', $userIds)->get();
         return $users;
     }
 
-    function getAllParent() {
+    function getAllParent()
+    {
         return TicketCatagory::whereRaw('parent_id = id')->get();
     }
 
 
-    function changeCatagory(Request $r) {
+    function changeCatagory(Request $r)
+    {
         $ticket = GetTicketController::findByTicketId($r->ticket_id);
         // if($ticket->actor_id != Auth::id() and $ticket->actor_id != null){
         //     return response(trans("change category access denied"), 402);
@@ -94,14 +102,15 @@ class TicketCatagoryController extends Controller
         ]);
     }
 
-    function count(Request $r, $id) {
-        if($id){
+    function count(Request $r, $id)
+    {
+        if ($id) {
             return Ticket::where('cat_id', $id)->where('status', config('ATConfig.status.new'))->count();
         }
         return Ticket::where('cat_id', $r->id)->where('status', config('ATConfig.status.new'))->count();
     }
 
-     public function sync(CrmClient $crmClient)
+    public function sync(CrmClient $crmClient)
     {
         // ۱. خواندن تمام رکوردها از جدول altfuel_ticket_categories
         $categories = TicketCatagory::all();
@@ -120,10 +129,11 @@ class TicketCatagoryController extends Controller
             ];
 
             // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
-            $response = $crmClient->request("categories", "GET", [
-                '$select' => 'categoryid,name',
-                '$filter' => "name eq '{$category->name}'"
+            $response = $crmClient->request("new_ticketcategory", "GET", [
+                '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_conversion_type,new_cat_id',
+                '$filter' => "new_ticketcategory eq '{$category->name}'"
             ]);
+
 
             if ($response->successful()) {
                 $body = $response->json();
