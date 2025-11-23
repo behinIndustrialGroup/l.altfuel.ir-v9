@@ -116,8 +116,6 @@ class ComplaintController extends Controller
             ]);
         }
 
-        dd($contactId);
-
         $response = $crmClient->save('rhs_complaintsprocesses', [
             "statecode" => 0,
             "statuscode" => 1,
