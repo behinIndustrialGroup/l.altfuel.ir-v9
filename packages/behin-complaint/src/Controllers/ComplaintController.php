@@ -133,6 +133,7 @@ class ComplaintController extends Controller
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
+            "contactid@odata.bind" => "/contacts($contactId)",
         ]);
 
         $entityIdHeader = $response->header('OData-EntityId');
