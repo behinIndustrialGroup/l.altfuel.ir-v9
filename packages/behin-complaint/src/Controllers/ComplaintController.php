@@ -116,7 +116,6 @@ class ComplaintController extends Controller
             ]);
         }
 
-        dd($response->body(), $response->status());
         $response = $crmClient->save('rhs_complaintsprocesses', [
             "statecode" => 0,
             "statuscode" => 1,
@@ -134,7 +133,7 @@ class ComplaintController extends Controller
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
-            "rhs_contact@odata.bind" => "/contacts($contactId)"
+            "rhs_contact_rhs_complaintsprocess_Contact@odata.bind" => "/contacts($contactId)"
         ]);
 
         $entityIdHeader = $response->header('OData-EntityId');
