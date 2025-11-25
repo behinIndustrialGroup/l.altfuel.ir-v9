@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Mkhodroo\AgencyInfo\Controllers\FileController;
 use Behin\CrmClient\CrmClient;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 use function Symfony\Component\String\s;
 
@@ -116,7 +117,7 @@ class ComplaintController extends Controller
             ]);
         }
 
-        $response = $crmClient->save('rhs_complaintsprocesses', [
+        $payload = [
             "statecode" => 0,
             "statuscode" => 1,
             "rhs_nationalcode" => $data['national_code'],
@@ -133,9 +134,10 @@ class ComplaintController extends Controller
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
-            "rhs_contact@odata.bind" => "/contacts($contactId)",
-        ]);
-
+            "rhs_Contact@odata.bind" => "/contacts($contactId)",
+        ];
+        $response = $crmClient->save('rhs_complaintsprocesses', $payload);
+        
         $entityIdHeader = $response->header('OData-EntityId');
         preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
         $complaintId = $matches[1] ?? null;
