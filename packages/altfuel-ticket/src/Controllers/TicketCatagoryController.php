@@ -123,7 +123,7 @@ public function sync(CrmClient $crmClient)
         // ۳. آماده‌سازی داده‌ها برای ارسال به API
         $categoryData = [
             'new_name' => $category->name,
-            'new_parent_id' => $category->parent_id,
+            // 'new_parent_id' => $category->parent_id,
             'new_conversion_type_enabled' => $category->conversion_type_enabled,
             'new_conversion_type_required' => $category->conversion_type_required,
         ];
