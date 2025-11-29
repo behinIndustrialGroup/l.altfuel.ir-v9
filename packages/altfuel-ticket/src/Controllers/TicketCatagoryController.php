@@ -139,7 +139,7 @@ class TicketCatagoryController extends Controller
             // ۳. آماده‌سازی داده‌ها برای ارسال به API
             $categoryData = [
                 'new_name' => $category->name,
-                'new_parent_id@odata.bind' => "/TicketCategory($parentId)",
+                'new_parent_id@odata.bind' => "/new_ticketcategories($parentId)",
                 'new_conversion_type_enabled' => $category->conversion_type_enabled,
                 'new_conversion_type_required' => $category->conversion_type_required,
             ];
