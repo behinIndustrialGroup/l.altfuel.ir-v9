@@ -142,9 +142,7 @@ public function sync(CrmClient $crmClient)
                 echo "Category '{$category->name}' already exists: $categoryId<br>";
             } else {
                 // کتگوری وجود ندارد → ایجاد جدید
-                $createResponse = $crmClient->request("new_ticketcategories", "POST", [
-                    $categoryData
-                ]);
+                $createResponse = $crmClient->request("new_ticketcategories", "POST", $categoryData);
 
                 if ($createResponse->successful()) {
                     echo "New category '{$category->name}' created successfully!<br>";
