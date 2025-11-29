@@ -50,7 +50,7 @@ use function PHPSTORM_META\type;
 */
 
 Route::get('test', function(){
-    $users = User::all();
+    $users = User::take(100)->get();
     foreach($users as $user){
         $agencyInfo = AgencyInfo::where('key', 'mobile')->where('value', $user->email)->first();
         if($agencyInfo){
