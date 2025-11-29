@@ -8,12 +8,19 @@
     <div class="container">
 
         <div class="card">
-            <div class="card-header">
-                <a href="{{ route('register') }}">
-                    <button class="btn btn-sm btn-primary">
-                        ایجاد کاربر
-                    </button>
-                </a>
+            <div
+                class="card-header d-flex flex-column gap-3 gap-md-0 flex-md-row justify-content-between align-items-md-center">
+                <div>
+                    <a href="{{ route('register') }}">
+                        <button class="btn btn-sm btn-primary">
+                            ایجاد کاربر
+                        </button>
+                    </a>
+                </div>
+                <form class="d-flex gap-2" method="GET" action="{{ route('user.all', 'all') }}">
+                    <input type="text" name="search" class="form-control" placeholder="جستجو بر اساس نام، نام کاربری یا نقش" value="{{ $search ?? '' }}">
+                    <button class="btn btn-sm btn-secondary" type="submit">جستجو</button>
+                </form>
             </div>
 
             <div class="card-body">
