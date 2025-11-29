@@ -131,7 +131,7 @@ class TicketCatagoryController extends Controller
                 if (!empty($body['value'])) {
                     // کتگوری موجود است
                     $parentId = $body['value'][0]['new_ticketcategoryid'];
-                    echo "Category '{$category->name}' already exists: $categoryId<br>";
+                    echo "Category '{$category->name}' already exists: $parentId<br>";
                 }
             }
             return $response;
