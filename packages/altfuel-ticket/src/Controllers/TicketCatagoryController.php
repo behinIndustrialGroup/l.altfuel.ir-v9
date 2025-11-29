@@ -130,7 +130,7 @@ public function sync(CrmClient $crmClient)
 
         // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
         $response = $crmClient->request("new_ticketcategories", "GET", [
-            '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_conversion_type,new_cat_id',
+            '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_cat_id',
             '$filter' => "new_ticketcategory eq '{$category->name}'"
         ]);
         return $response;
