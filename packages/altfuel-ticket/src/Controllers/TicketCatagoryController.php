@@ -133,7 +133,6 @@ public function sync(CrmClient $crmClient)
             '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_cat_id',
             '$filter' => "new_ticketcategory eq '{$category->name}'"
         ]);
-        return $response;
 
         if ($response->successful()) {
             $body = $response->json();
