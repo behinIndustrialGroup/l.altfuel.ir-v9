@@ -110,52 +110,70 @@ class TicketCatagoryController extends Controller
         return Ticket::where('cat_id', $r->id)->where('status', config('ATConfig.status.new'))->count();
     }
 
-public function sync(CrmClient $crmClient)
-{
-    // ۱. خواندن تمام رکوردها از جدول altfuel_ticket_categories
-    $categories = TicketCatagory::all();
+    public function sync(CrmClient $crmClient)
+    {
+        // ۱. خواندن تمام رکوردها از جدول altfuel_ticket_categories
+        $categories = TicketCatagory::all();
 
-    // ۲. حلقه برای ارسال داده‌ها به API برای هر کتگوری
-    foreach ($categories as $category) {
-        if($category->id != $category->parent_id){
-            continue;
-        }
-        // ۳. آماده‌سازی داده‌ها برای ارسال به API
-        $categoryData = [
-            'new_name' => $category->name,
-            // 'new_parent_id' => $category->parent_id,
-            'new_conversion_type_enabled' => $category->conversion_type_enabled,
-            'new_conversion_type_required' => $category->conversion_type_required,
-        ];
+        // ۲. حلقه برای ارسال داده‌ها به API برای هر کتگوری
+        foreach ($categories as $category) {
+            if($category->id == $category->parent_id){
+                continue;
+            }
 
-        // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
-        $response = $crmClient->request("new_ticketcategories", "GET", [
-            '$select' => 'new_name,new_parent_id',
-            '$filter' => "new_name eq '{$category->name}'"
-        ]);
-
-        if ($response->successful()) {
-            $body = $response->json();
-            if (!empty($body['value'])) {
-                // کتگوری موجود است
-                $categoryId = $body['value'][0]['new_ticketcategoryid'];
-                echo "Category '{$category->name}' already exists: $categoryId<br>";
-            } else {
-                // کتگوری وجود ندارد → ایجاد جدید
-                $createResponse = $crmClient->request("new_ticketcategories", "POST", $categoryData);
-
-                if ($createResponse->successful()) {
-                    echo "New category '{$category->name}' created successfully!<br>";
-                } else {
-                    echo "Failed to create category '{$category->name}': " . $createResponse->body() . "<br>";
+            $parent = TicketCatagory::find($category->parent_id);
+            $response = $crmClient->request("new_ticketcategories", "GET", [
+                '$select' => 'new_name,new_parent_id',
+                '$filter' => "new_name eq '{$parent->name}'"
+            ]);
+            if ($response->successful()) {
+                $body = $response->json();
+                if (!empty($body['value'])) {
+                    // کتگوری موجود است
+                    $parentId = $body['value'][0]['new_ticketcategoryid'];
+                    echo "Category '{$category->name}' already exists: $categoryId<br>";
                 }
             }
-        } else {
-            echo "Failed to query CRM for category '{$category->name}': " . $response->body() . "<br>";
+            return $response;
+
+
+
+
+            // ۳. آماده‌سازی داده‌ها برای ارسال به API
+            $categoryData = [
+                'new_name' => $category->name,
+                'new_parent_id' => $category->parent_id,
+                'new_conversion_type_enabled' => $category->conversion_type_enabled,
+                'new_conversion_type_required' => $category->conversion_type_required,
+            ];
+
+            // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
+            $response = $crmClient->request("new_ticketcategories", "GET", [
+                '$select' => 'new_name,new_parent_id',
+                '$filter' => "new_name eq '{$category->name}'"
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                if (!empty($body['value'])) {
+                    // کتگوری موجود است
+                    $categoryId = $body['value'][0]['new_ticketcategoryid'];
+                    echo "Category '{$category->name}' already exists: $categoryId<br>";
+                } else {
+                    // کتگوری وجود ندارد → ایجاد جدید
+                    $createResponse = $crmClient->request("new_ticketcategories", "POST", $categoryData);
+
+                    if ($createResponse->successful()) {
+                        echo "New category '{$category->name}' created successfully!<br>";
+                    } else {
+                        echo "Failed to create category '{$category->name}': " . $createResponse->body() . "<br>";
+                    }
+                }
+            } else {
+                echo "Failed to query CRM for category '{$category->name}': " . $response->body() . "<br>";
+            }
         }
+
+        return 'Categories sync process completed.';
     }
-
-    return 'Categories sync process completed.';
-}
-
 }
