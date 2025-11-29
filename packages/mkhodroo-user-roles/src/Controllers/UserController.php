@@ -52,7 +52,7 @@ class UserController extends Controller
     {
         Access::check('user_show_all');
         if($id == 'all'):
-            $users = User::get();
+            $users = User::paginate(15);
             return view('URPackageView::user.all')->with(['users' => $users]);
         else:
 

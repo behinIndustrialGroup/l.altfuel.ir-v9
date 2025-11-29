@@ -8,7 +8,7 @@
     <div class="row">
         <div class="box">
             <div class="box-header">
-                <a href="{{route('register')}}">
+                <a href="{{ route('register') }}">
                     <button>
                         ایجاد کاربر
                     </button>
@@ -26,15 +26,25 @@
 
                         </tr>
                     </thead>
-                    @foreach($users as $user)
+                    @foreach ($users as $user)
                         <tr>
-                            <td>{{$user->id}}</td>
-                            <td>{{$user->display_name}}</td>
-                            <td>{{$user->name}}</td>
-                            <td><a href="{{$user->id}}"><i class="fa fa-edit"></i></a></td>
+                            <td>{{ $user->id }}</td>
+                            <td>{{ $user->display_name }}</td>
+                            <td>{{ $user->name }}</td>
+                            <td><a href="{{ $user->id }}"><i class="fa fa-edit"></i></a></td>
                         </tr>
                     @endforeach
                 </table>
+
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                <div class="text-muted small">
+                    نمایش {{ $rows->firstItem() ?? 0 }} تا {{ $rows->lastItem() ?? 0 }} از
+                    {{ number_format($rows->total()) }} رکورد
+                </div>
+                <div>
+                    {{ $rows->onEachSide(1)->links('pagination::bootstrap-4') }}
+                </div>
             </div>
         </div>
     </div>
