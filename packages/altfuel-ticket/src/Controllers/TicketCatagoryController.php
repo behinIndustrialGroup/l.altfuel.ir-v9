@@ -124,8 +124,6 @@ public function sync(CrmClient $crmClient)
             'parent_id' => $category->parent_id,
             'conversion_type_enabled' => $category->conversion_type_enabled,
             'conversion_type_required' => $category->conversion_type_required,
-            'created_at' => $category->created_at ? $category->created_at->format('Y-m-d H:i:s') : null,
-            'updated_at' => $category->updated_at ? $category->updated_at->format('Y-m-d H:i:s') : null,
         ];
 
         // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
