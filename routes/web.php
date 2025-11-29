@@ -15,6 +15,7 @@ use App\Models\KamFesharModel;
 use App\Models\MarakezModel;
 use App\Models\MessageModel;
 use App\Models\MobileVerfication;
+use App\Models\User;
 use App\Models\Workshop;
 use App\Repository\RGenCode;
 use App\Repository\RReport;
@@ -47,6 +48,16 @@ use function PHPSTORM_META\type;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::get('test', function(){
+    $users = User::take(30)->get();
+    foreach($users as $user){
+        $agencyInfo = AgencyInfo::where('key', 'mobile')->where('value', $user->email)->first();
+        if($agencyInfo){
+            echo $user->email . '<br>';
+        }
+    }
+});
 
 Route::get('/migrate', function () {
     Artisan::call('config:cache');
