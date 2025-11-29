@@ -129,10 +129,11 @@ public function sync(CrmClient $crmClient)
         ];
 
         // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
-        $response = $crmClient->request("new_ticketcategory", "GET", [
+        $response = $crmClient->request("new_ticketcategories", "GET", [
             '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_conversion_type,new_cat_id',
             '$filter' => "new_ticketcategory eq '{$category->name}'"
         ]);
+        return $response;
 
         if ($response->successful()) {
             $body = $response->json();
@@ -142,8 +143,8 @@ public function sync(CrmClient $crmClient)
                 echo "Category '{$category->name}' already exists: $categoryId<br>";
             } else {
                 // کتگوری وجود ندارد → ایجاد جدید
-                $createResponse = $crmClient->request("new_ticketcategory", "POST", [
-                    'json' => $categoryData
+                $createResponse = $crmClient->request("new_ticketcategories", "POST", [
+                    $categoryData
                 ]);
 
                 if ($createResponse->successful()) {
