@@ -74,4 +74,8 @@ class User extends Authenticatable
         return (new AccessController($method_name))->check();
     }
 
+    function role(){
+        return $this->belongsTo(Role::class);
+    }
+
 }
