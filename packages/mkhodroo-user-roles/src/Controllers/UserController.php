@@ -48,12 +48,29 @@ class UserController extends Controller
 
     }
 
-    public function index($id)
+    public function index(Request $request, $id)
     {
         Access::check('user_show_all');
         if($id == 'all'):
-            $users = User::paginate(15);
-            return view('URPackageView::user.all')->with(['users' => $users]);
+            $search = $request->input('search');
+
+            $users = User::with('role')
+                ->when($search, function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query->where('display_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhereHas('role', function ($roleQuery) use ($search) {
+                                $roleQuery->where('name', 'like', "%{$search}%");
+                            });
+                    });
+                })
+                ->paginate(15)
+                ->withQueryString();
+
+            return view('URPackageView::user.all')->with([
+                'users' => $users,
+                'search' => $search
+            ]);
         else:
 
             return view('URPackageView::user.edit')->with([
