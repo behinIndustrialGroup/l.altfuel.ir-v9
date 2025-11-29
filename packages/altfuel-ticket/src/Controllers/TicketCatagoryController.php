@@ -117,7 +117,9 @@ public function sync(CrmClient $crmClient)
 
     // ۲. حلقه برای ارسال داده‌ها به API برای هر کتگوری
     foreach ($categories as $category) {
-
+        if($category->id != $category->parent_id){
+            continue;
+        }
         // ۳. آماده‌سازی داده‌ها برای ارسال به API
         $categoryData = [
             'new_name' => $category->name,
