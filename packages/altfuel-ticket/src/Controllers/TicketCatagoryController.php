@@ -120,16 +120,16 @@ public function sync(CrmClient $crmClient)
 
         // ۳. آماده‌سازی داده‌ها برای ارسال به API
         $categoryData = [
-            'name' => $category->name,
-            'parent_id' => $category->parent_id,
-            'conversion_type_enabled' => $category->conversion_type_enabled,
-            'conversion_type_required' => $category->conversion_type_required,
+            'new_name' => $category->name,
+            'new_parent_id' => $category->parent_id,
+            'new_conversion_type_enabled' => $category->conversion_type_enabled,
+            'new_conversion_type_required' => $category->conversion_type_required,
         ];
 
         // ۴. بررسی وجود کتگوری با نام مشابه در سیستم CRM
         $response = $crmClient->request("new_ticketcategories", "GET", [
-            '$select' => 'new_ticketcategoryid,new_ticketcategory,new_parent_id,new_cat_id',
-            '$filter' => "new_ticketcategory eq '{$category->name}'"
+            '$select' => 'new_name,new_parent_id',
+            '$filter' => "new_name eq '{$category->name}'"
         ]);
 
         if ($response->successful()) {
