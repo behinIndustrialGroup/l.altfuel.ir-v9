@@ -32,7 +32,7 @@
                             <td>{{ $user->id }}</td>
                             <td>{{ $user->display_name }}</td>
                             <td>{{ $user->email }}</td>
-                            <td>{{ $user->role->name }}</td>
+                            <td>{{ $user->role->name ?? '' }}</td>
                             <td><a href="{{ $user->id }}"><i class="fa fa-edit"></i></a></td>
                         </tr>
                     @endforeach
