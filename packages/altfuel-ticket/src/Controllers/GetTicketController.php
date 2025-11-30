@@ -152,14 +152,15 @@ class GetTicketController extends Controller
     public function syncTickets(CrmClient $crmClient)
     {
         // ۱. خواندن 50 تیکت آخر از جدول altfuel_tickets (برای تست)
-        $tickets = Ticket::latest()->take(2)->get();
+
+        $tickets = Ticket::all();
 
         // ۲. حلقه برای ارسال داده‌ها به API برای هر تیکت
         foreach ($tickets as $ticket) {
             // ۳. دریافت اطلاعات مرتبط
             $category = TicketCatagory::find($ticket->cat_id);
             $user = $ticket->user();
-            $actor = $ticket->actor();
+            // $actor = $ticket->actor();
 
             // ۴. پیدا کردن یا ایجاد Contact در CRM بر اساس email کاربر
             $contactId = null;
@@ -212,17 +213,13 @@ class GetTicketController extends Controller
             }
 
             // ۶. آماده‌سازی داده‌ها برای ارسال به API
-            // تبدیل timestamp به DateTime برای CRM
+            // تبدیل تاریخ از فرمت datetime (مثل: 2023-06-26 11:53:09) به Carbon برای CRM
             $createdOn = $ticket->created_at 
-                ? (is_numeric($ticket->created_at) 
-                    ? Carbon::createFromTimestamp($ticket->created_at) 
-                    : Carbon::parse($ticket->created_at))
+                ? Carbon::parse($ticket->created_at)
                 : now();
             
             $modifiedOn = $ticket->updated_at 
-                ? (is_numeric($ticket->updated_at) 
-                    ? Carbon::createFromTimestamp($ticket->updated_at) 
-                    : Carbon::parse($ticket->updated_at))
+                ? Carbon::parse($ticket->updated_at)
                 : now();
 
             // تبدیل status از string به Option Set (عدد)
@@ -306,9 +303,9 @@ class GetTicketController extends Controller
         // مقادیر Option Set در CRM - این مقادیر باید با Option Set در CRM شما مطابقت داشته باشند
         return match ($status) {
             'جدید', 'new' => 100000000,        // جدید
-            'پاسخ داده شده', 'answered' => 100000001, // پاسخ داده شده
-            'بسته شده', 'closed' => 100000002,  // بسته شده
-            'درحال بررسی', 'in_progress' => 100000003,         // در حال انجام (معادل بازشده)
+            'درحال بررسی', 'in_progress' => 100000001,         // در حال انجام (معادل بازشده)
+            'پاسخ داده شده', 'answered' => 100000002, // پاسخ داده شده
+            'بسته شده', 'closed' => 100000003,  // بسته شده
             default => 100000000,                // پیش‌فرض: جدید
         };
     }
