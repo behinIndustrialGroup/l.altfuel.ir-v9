@@ -151,61 +151,64 @@ class GetTicketController extends Controller
 
     public function syncTickets(CrmClient $crmClient)
     {
-        // ۱. شمارش کل تیکت‌ها
-        $totalTickets = Ticket::count();
+        // ۱. شمارش کل تیکت‌ها از آیدی ۲۸۴۰ به بعد
+        $totalTickets = Ticket::where('id', '>', 2840)->count();
         $processedCount = 0;
         $successCount = 0;
         $errorCount = 0;
         $skippedCount = 0;
-        
+
         echo "Total tickets to sync: $totalTickets<br>";
         echo "Starting sync process...<br><br>";
         flush();
         ob_flush();
-        
-        // ۲. پردازش دسته‌ای (هر دسته 10 تیکت) برای جلوگیری از overload
+
+        // ۲. پردازش دسته‌ای (هر دسته 100 تیکت) برای جلوگیری از overload
         $chunkSize = 100;
         $delayBetweenChunks = 0.5; // ثانیه
-        
-        Ticket::orderBy('id', 'asc')->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
-            foreach ($tickets as $ticket) {
-                $processedCount++;
-                $result = $this->syncSingleTicket($crmClient, $ticket);
-                
-                if ($result === 'success') {
-                    $successCount++;
-                } elseif ($result === 'skipped') {
-                    $skippedCount++;
-                } else {
-                    $errorCount++;
+
+        Ticket::where('id', '>', 2840)
+            ->orderBy('id', 'asc')
+            ->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
+                foreach ($tickets as $ticket) {
+                    $processedCount++;
+                    $result = $this->syncSingleTicket($crmClient, $ticket);
+
+                    if ($result === 'success') {
+                        $successCount++;
+                    } elseif ($result === 'skipped') {
+                        $skippedCount++;
+                    } else {
+                        $errorCount++;
+                    }
+
+                    // نمایش پیشرفت
+                    if ($processedCount % 10 == 0 || $processedCount == $totalTickets) {
+                        $progress = round(($processedCount / $totalTickets) * 100, 2);
+                        echo "Progress: $processedCount/$totalTickets ($progress%) - Success: $successCount, Skipped: $skippedCount, Errors: $errorCount<br>";
+                        flush();
+                        ob_flush();
+                    }
+
+                    // تأخیر کوتاه بین هر تیکت برای جلوگیری از rate limiting
+                    usleep(500000); // 0.5 ثانیه
                 }
-                
-                // نمایش پیشرفت
-                if ($processedCount % 10 == 0 || $processedCount == $totalTickets) {
-                    $progress = round(($processedCount / $totalTickets) * 100, 2);
-                    echo "Progress: $processedCount/$totalTickets ($progress%) - Success: $successCount, Skipped: $skippedCount, Errors: $errorCount<br>";
-                    flush();
-                    ob_flush();
+
+                // تأخیر بین دسته‌ها
+                if ($processedCount < $totalTickets) {
+                    sleep($delayBetweenChunks);
                 }
-                
-                // تأخیر کوتاه بین هر تیکت برای جلوگیری از rate limiting
-                usleep(500000); // 0.5 ثانیه
-            }
-            
-            // تأخیر بین دسته‌ها
-            if ($processedCount < $totalTickets) {
-                sleep($delayBetweenChunks);
-            }
-        });
+            });
 
         echo "<br>=== Sync Summary ===<br>";
         echo "Total: $totalTickets<br>";
         echo "Success: $successCount<br>";
         echo "Skipped: $skippedCount<br>";
         echo "Errors: $errorCount<br>";
-        
+
         return "Tickets sync process completed. Processed: $processedCount, Success: $successCount, Skipped: $skippedCount, Errors: $errorCount";
     }
+
 
     private function syncSingleTicket(CrmClient $crmClient, $ticket)
     {
@@ -219,7 +222,7 @@ class GetTicketController extends Controller
             $contactId = null;
             if ($user && $user->email) {
                 $mobile = $this->convertPersianToEnglish($user->email);
-                
+
                 $response = $crmClient->request("contacts", "GET", [
                     '$select' => 'contactid,fullname,mobilephone',
                     '$filter' => "mobilephone eq '$mobile'"
@@ -289,11 +292,11 @@ class GetTicketController extends Controller
 
             // ۶. آماده‌سازی داده‌ها برای ارسال به API
             // تبدیل تاریخ از فرمت datetime (مثل: 2023-06-26 11:53:09) به Carbon برای CRM
-            $createdOn = $ticket->created_at 
+            $createdOn = $ticket->created_at
                 ? Carbon::parse($ticket->created_at)
                 : now();
-            
-            $modifiedOn = $ticket->updated_at 
+
+            $modifiedOn = $ticket->updated_at
                 ? Carbon::parse($ticket->updated_at)
                 : now();
 
@@ -341,13 +344,15 @@ class GetTicketController extends Controller
                     } else {
                         // بررسی خطای duplicate
                         $errorBody = $createResponse->json();
-                        if (isset($errorBody['error']['message']) && 
-                            (strpos($errorBody['error']['message'], 'duplicate') !== false || 
-                             strpos($errorBody['error']['message'], 'already exists') !== false)) {
+                        if (
+                            isset($errorBody['error']['message']) &&
+                            (strpos($errorBody['error']['message'], 'duplicate') !== false ||
+                                strpos($errorBody['error']['message'], 'already exists') !== false)
+                        ) {
                             // تیکت احتمالاً در حالی که در حال ایجاد بودیم، ایجاد شده است
                             return 'skipped';
                         }
-                        
+
                         Log::error("Failed to create ticket in CRM", [
                             'ticket_id' => $ticket->id,
                             'title' => $ticket->title,
@@ -378,16 +383,16 @@ class GetTicketController extends Controller
     private function convertPersianToEnglish($string)
     {
         static $map = [
-            '۰' => '0',
-            '۱' => '1',
-            '۲' => '2',
-            '۳' => '3',
-            '۴' => '4',
-            '۵' => '5',
-            '۶' => '6',
-            '۷' => '7',
-            '۸' => '8',
-            '۹' => '9',
+        '۰' => '0',
+        '۱' => '1',
+        '۲' => '2',
+        '۳' => '3',
+        '۴' => '4',
+        '۵' => '5',
+        '۶' => '6',
+        '۷' => '7',
+        '۸' => '8',
+        '۹' => '9',
         ];
 
         return strtr($string, $map);
