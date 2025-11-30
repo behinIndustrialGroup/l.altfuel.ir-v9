@@ -212,14 +212,31 @@ class GetTicketController extends Controller
             }
 
             // ۶. آماده‌سازی داده‌ها برای ارسال به API
+            // تبدیل timestamp به DateTime برای CRM
+            $createdOn = $ticket->created_at 
+                ? (is_numeric($ticket->created_at) 
+                    ? Carbon::createFromTimestamp($ticket->created_at) 
+                    : Carbon::parse($ticket->created_at))
+                : now();
+            
+            $modifiedOn = $ticket->updated_at 
+                ? (is_numeric($ticket->updated_at) 
+                    ? Carbon::createFromTimestamp($ticket->updated_at) 
+                    : Carbon::parse($ticket->updated_at))
+                : now();
+
+            // تبدیل status از string به Option Set (عدد)
+            $statusOptionSet = $this->mapStatusToOptionSet($ticket->status);
+
             $ticketData = [
                 'new_title' => $ticket->title,
                 'new_status' => $ticket->status,
+                'new_status_option' => $statusOptionSet,
                 'new_conversion_type' => $ticket->conversion_type,
                 'new_score' => $ticket->score,
                 'new_ticket_id' => $ticket->id, // ID اصلی تیکت برای اتصال کامنت‌ها
-                'createdon' => $ticket->created_at ? Carbon::parse($ticket->created_at) : now(),
-                'modifiedon' => $ticket->updated_at ? Carbon::parse($ticket->updated_at) : now(),
+                'createdon' => $createdOn,
+                'modifiedon' => $modifiedOn,
             ];
 
             // ۷. اضافه کردن رابطه با دسته‌بندی
@@ -278,5 +295,21 @@ class GetTicketController extends Controller
         ];
 
         return strtr($string, $map);
+    }
+
+    /**
+     * تبدیل status از string به Option Set (عدد) برای CRM
+     * مقادیر Option Set باید با مقادیر تعریف شده در CRM مطابقت داشته باشند
+     */
+    private function mapStatusToOptionSet($status)
+    {
+        // مقادیر Option Set در CRM - این مقادیر باید با Option Set در CRM شما مطابقت داشته باشند
+        return match ($status) {
+            'جدید', 'new' => 100000000,        // جدید
+            'پاسخ داده شده', 'answered' => 100000001, // پاسخ داده شده
+            'بسته شده', 'closed' => 100000002,  // بسته شده
+            'درحال بررسی', 'in_progress' => 100000003,         // در حال انجام (معادل بازشده)
+            default => 100000000,                // پیش‌فرض: جدید
+        };
     }
 }
