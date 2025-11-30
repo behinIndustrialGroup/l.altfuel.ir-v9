@@ -229,7 +229,7 @@ class GetTicketController extends Controller
 
             // ۸. اضافه کردن رابطه با Contact
             if ($contactId) {
-                $ticketData['new_Contact@odata.bind'] = "/contacts($contactId)";
+                $ticketData['new_contact@odata.bind'] = "/contacts($contactId)";
             }
 
             // ۹. بررسی وجود تیکت در سیستم CRM (بر اساس new_ticket_id)
