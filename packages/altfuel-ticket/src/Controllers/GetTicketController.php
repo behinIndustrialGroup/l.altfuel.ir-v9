@@ -209,6 +209,7 @@ class GetTicketController extends Controller
 
     private function syncSingleTicket(CrmClient $crmClient, $ticket)
     {
+        try {
             // ۳. دریافت اطلاعات مرتبط
             $category = TicketCatagory::find($ticket->cat_id);
             $user = $ticket->user();
@@ -231,7 +232,7 @@ class GetTicketController extends Controller
                         $contactId = $body['value'][0]['contactid'];
                     } else {
                         // مخاطب وجود ندارد → ایجاد جدید
-                        $response = $crmClient->save('contacts', [
+                        $createResponse = $crmClient->save('contacts', [
                             "createdon" => now(),
                             "telephone1" => $mobile,
                             "mobilephone" => $mobile,
@@ -239,11 +240,25 @@ class GetTicketController extends Controller
                             "emailaddress1" => $user->email,
                         ]);
 
-                        $entityIdHeader = $response->header('OData-EntityId');
-                        if ($entityIdHeader) {
-                            // استخراج GUID از داخل پرانتز
-                            preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
-                            $contactId = $matches[1] ?? null;
+                        if ($createResponse->successful()) {
+                            $entityIdHeader = $createResponse->header('OData-EntityId');
+                            if ($entityIdHeader) {
+                                // استخراج GUID از داخل پرانتز
+                                preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+                                $contactId = $matches[1] ?? null;
+                            }
+                        } else {
+                            // اگر ایجاد contact ناموفق بود، دوباره بررسی می‌کنیم (ممکن است در حالی که در حال ایجاد بودیم، ایجاد شده باشد)
+                            $retryResponse = $crmClient->request("contacts", "GET", [
+                                '$select' => 'contactid,fullname,mobilephone',
+                                '$filter' => "mobilephone eq '$mobile'"
+                            ]);
+                            if ($retryResponse->successful()) {
+                                $retryBody = $retryResponse->json();
+                                if (!empty($retryBody['value'])) {
+                                    $contactId = $retryBody['value'][0]['contactid'];
+                                }
+                            }
                         }
                     }
                 }
@@ -252,15 +267,23 @@ class GetTicketController extends Controller
             // ۵. پیدا کردن ID دسته‌بندی در CRM
             $categoryCrmId = null;
             if ($category) {
-                $response = $crmClient->request("new_ticketcategories", "GET", [
-                    '$select' => 'new_name,new_ticketcategoryid',
-                    '$filter' => "new_name eq '{$category->name}'"
-                ]);
-                if ($response->successful()) {
-                    $body = $response->json();
-                    if (!empty($body['value'])) {
-                        $categoryCrmId = $body['value'][0]['new_ticketcategoryid'];
+                try {
+                    $response = $crmClient->request("new_ticketcategories", "GET", [
+                        '$select' => 'new_name,new_ticketcategoryid',
+                        '$filter' => "new_name eq '{$category->name}'"
+                    ]);
+                    if ($response->successful()) {
+                        $body = $response->json();
+                        if (!empty($body['value'])) {
+                            $categoryCrmId = $body['value'][0]['new_ticketcategoryid'];
+                        }
                     }
+                } catch (\Exception $e) {
+                    Log::warning("Failed to get category from CRM", [
+                        'category_id' => $category->id,
+                        'category_name' => $category->name,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
 
@@ -316,6 +339,15 @@ class GetTicketController extends Controller
                     if ($createResponse->successful()) {
                         return 'success';
                     } else {
+                        // بررسی خطای duplicate
+                        $errorBody = $createResponse->json();
+                        if (isset($errorBody['error']['message']) && 
+                            (strpos($errorBody['error']['message'], 'duplicate') !== false || 
+                             strpos($errorBody['error']['message'], 'already exists') !== false)) {
+                            // تیکت احتمالاً در حالی که در حال ایجاد بودیم، ایجاد شده است
+                            return 'skipped';
+                        }
+                        
                         Log::error("Failed to create ticket in CRM", [
                             'ticket_id' => $ticket->id,
                             'title' => $ticket->title,
@@ -332,6 +364,15 @@ class GetTicketController extends Controller
                 ]);
                 return 'error';
             }
+        } catch (\Exception $e) {
+            Log::error("Exception while syncing ticket", [
+                'ticket_id' => $ticket->id,
+                'title' => $ticket->title,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 'error';
+        }
     }
 
     private function convertPersianToEnglish($string)
