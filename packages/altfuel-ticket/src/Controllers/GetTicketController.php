@@ -151,12 +151,64 @@ class GetTicketController extends Controller
 
     public function syncTickets(CrmClient $crmClient)
     {
-        // ۱. خواندن 50 تیکت آخر از جدول altfuel_tickets (برای تست)
+        // ۱. شمارش کل تیکت‌ها
+        $totalTickets = Ticket::count();
+        $processedCount = 0;
+        $successCount = 0;
+        $errorCount = 0;
+        $skippedCount = 0;
+        
+        echo "Total tickets to sync: $totalTickets<br>";
+        echo "Starting sync process...<br><br>";
+        flush();
+        ob_flush();
+        
+        // ۲. پردازش دسته‌ای (هر دسته 10 تیکت) برای جلوگیری از overload
+        $chunkSize = 10;
+        $delayBetweenChunks = 2; // ثانیه
+        
+        Ticket::orderBy('id', 'asc')->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
+            foreach ($tickets as $ticket) {
+                $processedCount++;
+                $result = $this->syncSingleTicket($crmClient, $ticket);
+                
+                if ($result === 'success') {
+                    $successCount++;
+                } elseif ($result === 'skipped') {
+                    $skippedCount++;
+                } else {
+                    $errorCount++;
+                }
+                
+                // نمایش پیشرفت
+                if ($processedCount % 10 == 0 || $processedCount == $totalTickets) {
+                    $progress = round(($processedCount / $totalTickets) * 100, 2);
+                    echo "Progress: $processedCount/$totalTickets ($progress%) - Success: $successCount, Skipped: $skippedCount, Errors: $errorCount<br>";
+                    flush();
+                    ob_flush();
+                }
+                
+                // تأخیر کوتاه بین هر تیکت برای جلوگیری از rate limiting
+                usleep(500000); // 0.5 ثانیه
+            }
+            
+            // تأخیر بین دسته‌ها
+            if ($processedCount < $totalTickets) {
+                sleep($delayBetweenChunks);
+            }
+        });
 
-        $tickets = Ticket::all();
+        echo "<br>=== Sync Summary ===<br>";
+        echo "Total: $totalTickets<br>";
+        echo "Success: $successCount<br>";
+        echo "Skipped: $skippedCount<br>";
+        echo "Errors: $errorCount<br>";
+        
+        return "Tickets sync process completed. Processed: $processedCount, Success: $successCount, Skipped: $skippedCount, Errors: $errorCount";
+    }
 
-        // ۲. حلقه برای ارسال داده‌ها به API برای هر تیکت
-        foreach ($tickets as $ticket) {
+    private function syncSingleTicket(CrmClient $crmClient, $ticket)
+    {
             // ۳. دریافت اطلاعات مرتبط
             $category = TicketCatagory::find($ticket->cat_id);
             $user = $ticket->user();
@@ -256,24 +308,30 @@ class GetTicketController extends Controller
                 $body = $response->json();
                 if (!empty($body['value'])) {
                     // تیکت موجود است
-                    $ticketCrmId = $body['value'][0]['new_ticketid'];
-                    echo "Ticket '{$ticket->title}' (ID: {$ticket->id}) already exists in CRM: $ticketCrmId<br>";
+                    return 'skipped';
                 } else {
                     // تیکت وجود ندارد → ایجاد جدید
                     $createResponse = $crmClient->request("new_tickets", "POST", $ticketData);
 
                     if ($createResponse->successful()) {
-                        echo "New ticket '{$ticket->title}' (ID: {$ticket->id}) created successfully!<br>";
+                        return 'success';
                     } else {
-                        echo "Failed to create ticket '{$ticket->title}' (ID: {$ticket->id}): " . $createResponse->body() . "<br>";
+                        Log::error("Failed to create ticket in CRM", [
+                            'ticket_id' => $ticket->id,
+                            'title' => $ticket->title,
+                            'response' => $createResponse->body()
+                        ]);
+                        return 'error';
                     }
                 }
             } else {
-                echo "Failed to query CRM for ticket '{$ticket->title}' (ID: {$ticket->id}): " . $response->body() . "<br>";
+                Log::error("Failed to query CRM for ticket", [
+                    'ticket_id' => $ticket->id,
+                    'title' => $ticket->title,
+                    'response' => $response->body()
+                ]);
+                return 'error';
             }
-        }
-
-        return 'Tickets sync process completed.';
     }
 
     private function convertPersianToEnglish($string)
