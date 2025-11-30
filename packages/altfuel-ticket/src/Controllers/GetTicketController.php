@@ -164,7 +164,7 @@ class GetTicketController extends Controller
         ob_flush();
         
         // ۲. پردازش دسته‌ای (هر دسته 10 تیکت) برای جلوگیری از overload
-        $chunkSize = 10;
+        $chunkSize = 100;
         $delayBetweenChunks = 2; // ثانیه
         
         Ticket::orderBy('id', 'asc')->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
