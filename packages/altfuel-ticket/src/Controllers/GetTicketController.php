@@ -152,7 +152,7 @@ class GetTicketController extends Controller
     public function syncTickets(CrmClient $crmClient)
     {
         // ۱. خواندن 50 تیکت آخر از جدول altfuel_tickets (برای تست)
-        $tickets = Ticket::latest()->take(50)->get();
+        $tickets = Ticket::latest()->take(10)->get();
 
         // ۲. حلقه برای ارسال داده‌ها به API برای هر تیکت
         foreach ($tickets as $ticket) {
