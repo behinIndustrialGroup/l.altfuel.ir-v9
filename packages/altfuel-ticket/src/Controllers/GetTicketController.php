@@ -307,8 +307,8 @@ class GetTicketController extends Controller
                 'new_conversion_type' => $ticket->conversion_type,
                 'new_score' => $ticket->score,
                 'new_ticket_id' => $ticket->id, // ID اصلی تیکت برای اتصال کامنت‌ها
-                'createdon' => $createdOn,
-                'modifiedon' => $modifiedOn,
+                'new_created_at' => $createdOn,
+                'new_updated_at' => $modifiedOn,
             ];
 
             // ۷. اضافه کردن رابطه با دسته‌بندی
