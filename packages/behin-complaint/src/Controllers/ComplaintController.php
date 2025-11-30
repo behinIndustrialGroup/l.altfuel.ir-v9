@@ -75,6 +75,7 @@ class ComplaintController extends Controller
         $visit_date = Carbon::parse((int)$visit_date / 1000);
 
         $mobile = $this->convertPersianToEnglish($data['mobile']);
+        $contactId = null;
 
         $response = $crmClient->request("contacts", "GET", [
             '$select' => 'contactid,fullname,mobilephone',
@@ -97,23 +98,66 @@ class ComplaintController extends Controller
                     "rhs_address" => $data['address'],
                 ]);
 
-                $entityIdHeader = $response->header('OData-EntityId');
+                if ($response->successful()) {
+                    $entityIdHeader = $response->header('OData-EntityId');
 
-                if ($entityIdHeader) {
-                    // استخراج GUID از داخل پرانتز
-                    preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
-                    $contactId = $matches[1] ?? null;
+                    if ($entityIdHeader) {
+                        // استخراج GUID از داخل پرانتز
+                        preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+                        $contactId = $matches[1] ?? null;
+                    }
+                } else {
+                    Log::error('Failed to create contact in CRM', [
+                        'mobile' => $mobile,
+                        'response' => $response->body(),
+                        'status' => $response->status()
+                    ]);
                 }
             }
         } else {
-            // echo "CRM query failed: " . $response->body();
+            // اگر query fail شد، سعی می‌کنیم کانتکت را ایجاد کنیم
+            Log::warning('Failed to query contacts from CRM, attempting to create new contact', [
+                'mobile' => $mobile,
+                'response' => $response->body(),
+                'status' => $response->status()
+            ]);
+            
+            $response = $crmClient->save('contacts', [
+                "rhs_nationalcode" => $data['national_code'],
+                "createdon" => now(),
+                "telephone1" => $mobile,
+                "mobilephone" => $mobile,
+                "firstname" => $data['first_name_last_name'],
+                "rhs_address" => $data['address'],
+            ]);
+
+            if ($response->successful()) {
+                $entityIdHeader = $response->header('OData-EntityId');
+
+                if ($entityIdHeader) {
+                    preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+                    $contactId = $matches[1] ?? null;
+                }
+            } else {
+                Log::error('Failed to create contact in CRM after query failure', [
+                    'mobile' => $mobile,
+                    'response' => $response->body(),
+                    'status' => $response->status()
+                ]);
+            }
         }
 
+        // اگر کانتکت ایجاد شد، annotation را اضافه می‌کنیم
         if ($contactId) {
             $response = $crmClient->save('annotations', [
                 "subject" => "شکایت ثبت کردن در تاریخ " . verta()->today(),
                 "notetext" => "شماره وین: ". $data['vin'],
                 "objectid_contact@odata.bind" => "/contacts($contactId)",
+            ]);
+        } else {
+            Log::warning('Contact ID is missing, proceeding without contact binding', [
+                'mobile' => $mobile,
+                'national_code' => $data['national_code']
             ]);
         }
 
@@ -134,8 +178,12 @@ class ComplaintController extends Controller
             "rhs_city" => $data['city'],
             "rhs_tradeunitname" => $data['business_name'],
             "rhs_description" => 'VIN: ' . $data['vin'] . ' توضیحات: ' . $data['description'],
-            "rhs_Contact@odata.bind" => "/contacts($contactId)",
         ];
+
+        // فقط اگر contactId موجود باشد، آن را به payload اضافه می‌کنیم
+        if ($contactId) {
+            $payload["rhs_Contact@odata.bind"] = "/contacts($contactId)";
+        }
         $response = $crmClient->save('rhs_complaintsprocesses', $payload);
         
         $entityIdHeader = $response->header('OData-EntityId');
