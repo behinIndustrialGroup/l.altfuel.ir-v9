@@ -232,10 +232,10 @@ class GetTicketController extends Controller
                 $ticketData['new_Contact@odata.bind'] = "/contacts($contactId)";
             }
 
-            // ۹. بررسی وجود تیکت در سیستم CRM (بر اساس ticket_id یا id)
+            // ۹. بررسی وجود تیکت در سیستم CRM (بر اساس new_ticket_id)
             $response = $crmClient->request("new_tickets", "GET", [
-                '$select' => 'new_ticketid,new_title',
-                '$filter' => "new_ticketid eq '{$ticket->ticket_id}' or new_ticketid eq '{$ticket->id}'"
+                '$select' => 'new_ticketid,new_title,new_ticket_id',
+                '$filter' => "new_ticket_id eq {$ticket->id}"
             ]);
 
             if ($response->successful()) {
