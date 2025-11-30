@@ -165,7 +165,7 @@ class GetTicketController extends Controller
         
         // ۲. پردازش دسته‌ای (هر دسته 10 تیکت) برای جلوگیری از overload
         $chunkSize = 100;
-        $delayBetweenChunks = 2; // ثانیه
+        $delayBetweenChunks = 0.5; // ثانیه
         
         Ticket::orderBy('id', 'asc')->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
             foreach ($tickets as $ticket) {
