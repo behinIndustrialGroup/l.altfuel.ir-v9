@@ -27,7 +27,7 @@ class AddTicketCommentController extends Controller
 
     public function syncComments(CrmClient $crmClient)
     {
-        $totalComments = TicketComment::count();
+        $totalComments = TicketComment::where('id', '>', 4100)->count();
         $processedCount = 0;
         $successCount = 0;
         $errorCount = 0;
@@ -41,7 +41,8 @@ class AddTicketCommentController extends Controller
         $chunkSize = 1000;
         $delayBetweenChunks = 0;
 
-        TicketComment::select('id', 'ticket_id', 'user_id', 'text', 'created_at', 'updated_at')
+        TicketComment::where('id', '>', 4100)
+            ->select('id', 'ticket_id', 'user_id', 'text', 'created_at', 'updated_at')
             ->orderBy('id', 'asc')
             ->chunk($chunkSize, function ($comments) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalComments, $delayBetweenChunks) {
                 foreach ($comments as $comment) {
@@ -152,8 +153,8 @@ class AddTicketCommentController extends Controller
 
     public function syncCommentsSample(CrmClient $crmClient)
     {
-        $comments = TicketComment::select('id','ticket_id','user_id','text','created_at','updated_at')
-            ->orderBy('id','asc')
+        $comments = TicketComment::select('id', 'ticket_id', 'user_id', 'text', 'created_at', 'updated_at')
+            ->orderBy('id', 'asc')
             ->limit(2)
             ->get();
 
@@ -207,4 +208,3 @@ class AddTicketCommentController extends Controller
         return "Sample sync completed";
     }
 }
-

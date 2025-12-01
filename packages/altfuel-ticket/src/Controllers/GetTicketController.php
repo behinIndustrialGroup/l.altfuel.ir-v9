@@ -152,7 +152,7 @@ class GetTicketController extends Controller
     public function syncTickets(CrmClient $crmClient)
     {
         // ۱. شمارش کل تیکت‌ها از آیدی ۲۸۴۰ به بعد
-        $totalTickets = Ticket::where('id', '>', 11850)->count();
+        $totalTickets = Ticket::where('id', '>', 12100)->count();
         $processedCount = 0;
         $successCount = 0;
         $errorCount = 0;
@@ -167,7 +167,7 @@ class GetTicketController extends Controller
         $chunkSize = 100;
         $delayBetweenChunks = 0.5; // ثانیه
 
-        Ticket::where('id', '>', 11850)
+        Ticket::where('id', '>', 12100)
             ->orderBy('id', 'asc')
             ->chunk($chunkSize, function ($tickets) use ($crmClient, &$processedCount, &$successCount, &$errorCount, &$skippedCount, $totalTickets, $delayBetweenChunks) {
                 foreach ($tickets as $ticket) {
