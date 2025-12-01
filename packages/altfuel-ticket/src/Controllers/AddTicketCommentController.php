@@ -106,8 +106,8 @@ class AddTicketCommentController extends Controller
                 }
             }
 
-            $createdOn = $comment->created_at ? Carbon::parse($comment->created_at) : now();
-            $modifiedOn = $comment->updated_at ? Carbon::parse($comment->updated_at) : now();
+            $createdOn = $comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String();
+            $modifiedOn = $comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String();
 
             $isOwner = ($comment->user_id === $ticket->user_id);
             $commentData = [
@@ -125,11 +125,18 @@ class AddTicketCommentController extends Controller
             if ($create->successful()) {
                 return 'success';
             } else {
+                $errorBody = $create->json();
+                $errorMsg = is_array($errorBody) ? ($errorBody['error']['message'] ?? $create->body()) : $create->body();
+                if (is_string($errorMsg) && (strpos($errorMsg, 'duplicate') !== false || strpos($errorMsg, 'already exists') !== false)) {
+                    return 'skipped';
+                }
                 Log::error("Failed to create comment in CRM", [
                     'comment_id' => $comment->id,
                     'ticket_id' => $ticket->id,
+                    'payload' => $commentData,
                     'response' => $create->body()
                 ]);
+                echo "Error creating comment: " . htmlspecialchars($create->body()) . "<br>";
                 return 'error';
             }
         } catch (\Exception $e) {
