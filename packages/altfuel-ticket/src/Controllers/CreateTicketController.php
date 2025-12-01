@@ -64,8 +64,7 @@ class CreateTicketController extends Controller
                 $saveImprovedResponse = self::saveImprovedResponse($question, $answer);
             }
         }
-        $comment = AddTicketCommentController::add($ticket->id, $r->text, $file_path);
-        AddTicketCommentController::createCrmComment($crmClient, $comment);
+        $comment = AddTicketCommentController::add($crmClient, $ticket->id, $r->text, $file_path);
         if ($r->file('files')) {
             foreach ($r->file('files') as $name) {
                 $attach = CommentAttachmentController::upload($name, $ticket->ticket_id);

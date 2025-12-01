@@ -15,14 +15,16 @@ use Mkhodroo\AltfuelTicket\Models\TicketComment;
 class AddTicketCommentController extends Controller
 {
 
-    public static function add($ticket_id, $text = null, $voice = null)
+    public static function add(CrmClient $crmClient, $ticket_id, $text = null, $voice = null)
     {
-        return TicketComment::create([
+        $comment = TicketComment::create([
             'user_id' => Auth::id(),
             'ticket_id' => $ticket_id,
             'text' => $text,
             'voice' => $voice
         ]);
+        self::createCrmComment($crmClient, $comment);
+        return $comment;
     }
 
     public function syncComments(CrmClient $crmClient)
