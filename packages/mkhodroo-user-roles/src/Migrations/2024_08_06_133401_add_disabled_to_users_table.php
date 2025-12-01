@@ -13,9 +13,11 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->tinyInteger('disabled')->default(0);
-        });
+        if (!Schema::hasColumn('users', 'disabled')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->tinyInteger('disabled')->default(0);
+            });
+        }
     }
 
     /**
@@ -25,8 +27,10 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
-            //
-        });
+        if (Schema::hasColumn('users', 'disabled')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('disabled');
+            });
+        }
     }
 };
