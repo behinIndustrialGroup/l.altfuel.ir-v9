@@ -38,7 +38,7 @@ class AuthenticatedSessionController extends Controller
         UserAgentController::set();
         $user = User::where('email', $request->email)->first();
         if (!$user->crm_contact_id) {
-            $mobile = $this->convertPersianToEnglish($user->email);
+            $mobile = $user->email;
             $response = $crmClient->request("contacts", "GET", [
                 '$select' => 'contactid,fullname,mobilephone',
                 '$filter' => "mobilephone eq '$mobile'"
