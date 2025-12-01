@@ -6,6 +6,7 @@ use Mkhodroo\AltfuelTicket\Controllers\LangflowController;
 use Mkhodroo\AltfuelTicket\Controllers\CreateTicketController;
 use Illuminate\Support\Facades\Route;
 use Mkhodroo\AltfuelTicket\Controllers\AddTicketCommentAttachmentController;
+use Mkhodroo\AltfuelTicket\Controllers\AddTicketCommentController;
 use Mkhodroo\AltfuelTicket\Controllers\CommentAttachmentController;
 use Mkhodroo\AltfuelTicket\Controllers\GetTicketController;
 use Mkhodroo\AltfuelTicket\Controllers\ReportController;
@@ -66,4 +67,4 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
 
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');
 Route::get('/crm/tickets/sync', [GetTicketController::class, 'syncTickets'])->name('crm.tickets.sync');
-Route::get('/crm/comments/sync', [GetTicketController::class, 'syncComments'])->name('crm.comments.sync');
+Route::get('/crm/comments/sync', [AddTicketCommentController::class, 'syncComments'])->name('crm.comments.sync');
