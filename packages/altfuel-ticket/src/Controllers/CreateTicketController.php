@@ -65,6 +65,7 @@ class CreateTicketController extends Controller
             }
         }
         $comment = AddTicketCommentController::add($ticket->id, $r->text, $file_path);
+        AddTicketCommentController::createCrmComment($crmClient, $comment);
         if ($r->file('files')) {
             foreach ($r->file('files') as $name) {
                 $attach = CommentAttachmentController::upload($name, $ticket->ticket_id);
