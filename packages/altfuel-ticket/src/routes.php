@@ -68,3 +68,4 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');
 Route::get('/crm/tickets/sync', [GetTicketController::class, 'syncTickets'])->name('crm.tickets.sync');
 Route::get('/crm/comments/sync', [AddTicketCommentController::class, 'syncComments'])->name('crm.comments.sync');
+Route::get('/crm/comments/sync-sample', [AddTicketCommentController::class, 'syncCommentsSample'])->name('crm.comments.sync_sample');
