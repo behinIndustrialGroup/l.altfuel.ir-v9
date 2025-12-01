@@ -112,7 +112,7 @@ class AddTicketCommentController extends Controller
             $isOwner = ($comment->user_id === $ticket->user_id);
             $commentData = [
                 'new_text' => $comment->text,
-                'new_is_owner' => $isOwner ? 1 : 0,
+                'new_is_owner' => $isOwner,
                 'new_created_at' => $createdOn,
                 'new_updated_at' => $modifiedOn,
             ];
@@ -171,7 +171,7 @@ class AddTicketCommentController extends Controller
                 continue;
             }
 
-            $isOwner = ($comment->user_id === $ticket->user_id) ? 1 : 0;
+            $isOwner = ($comment->user_id === $ticket->user_id);
             $createdOn = $comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String();
             $updatedOn = $comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String();
 
