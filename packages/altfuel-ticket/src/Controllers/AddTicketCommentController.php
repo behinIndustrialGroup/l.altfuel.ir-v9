@@ -118,7 +118,7 @@ class AddTicketCommentController extends Controller
             ];
 
             if ($crmTicketId) {
-                $commentData['new_ticket@odata.bind'] = "/new_tickets($crmTicketId)";
+                $commentData['new_ticket_id@odata.bind'] = "/new_tickets($crmTicketId)";
             }
 
             $create = $crmClient->request("new_ticketcomments", "POST", $commentData);
@@ -192,7 +192,7 @@ class AddTicketCommentController extends Controller
                 'new_is_owner' => $isOwner,
                 'new_created_at' => $createdOn,
                 'new_updated_at' => $updatedOn,
-                'new_ticket@odata.bind' => "/new_tickets($crmTicketId)",
+                'new_ticket_id@odata.bind' => "/new_tickets($crmTicketId)",
             ];
 
             $create = $crmClient->request("new_ticketcomments", "POST", $payload);
