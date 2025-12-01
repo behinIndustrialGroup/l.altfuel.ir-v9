@@ -153,62 +153,62 @@ class AddTicketCommentController extends Controller
         }
     }
 
-    public function syncCommentsSample(CrmClient $crmClient)
-    {
-        $comments = TicketComment::select('id', 'ticket_id', 'user_id', 'text', 'created_at', 'updated_at')
-            ->orderBy('id', 'asc')
-            ->limit(2)
-            ->get();
+    // public function syncCommentsSample(CrmClient $crmClient)
+    // {
+    //     $comments = TicketComment::select('id', 'ticket_id', 'user_id', 'text', 'created_at', 'updated_at')
+    //         ->orderBy('id', 'asc')
+    //         ->limit(2)
+    //         ->get();
 
-        if ($comments->isEmpty()) {
-            echo "No comments found.<br>";
-            return "Sample sync completed";
-        }
+    //     if ($comments->isEmpty()) {
+    //         echo "No comments found.<br>";
+    //         return "Sample sync completed";
+    //     }
 
-        echo "Running sample sync for 2 comments...<br>";
+    //     echo "Running sample sync for 2 comments...<br>";
 
-        foreach ($comments as $comment) {
-            $ticket = Ticket::find($comment->ticket_id);
-            if (!$ticket) {
-                echo "Comment {$comment->id}: skipped (ticket not found)<br>";
-                continue;
-            }
+    //     foreach ($comments as $comment) {
+    //         $ticket = Ticket::find($comment->ticket_id);
+    //         if (!$ticket) {
+    //             echo "Comment {$comment->id}: skipped (ticket not found)<br>";
+    //             continue;
+    //         }
 
-            $isOwner = ($comment->user_id === $ticket->user_id);
-            $createdOn = $comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String();
-            $updatedOn = $comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String();
+    //         $isOwner = ($comment->user_id === $ticket->user_id);
+    //         $createdOn = $comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String();
+    //         $updatedOn = $comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String();
 
-            $ticketLookup = $crmClient->request("new_tickets", "GET", [
-                '$select' => 'new_ticketid,new_ticket_id',
-                '$filter' => "new_ticket_id eq {$ticket->id}"
-            ]);
+    //         $ticketLookup = $crmClient->request("new_tickets", "GET", [
+    //             '$select' => 'new_ticketid,new_ticket_id',
+    //             '$filter' => "new_ticket_id eq {$ticket->id}"
+    //         ]);
 
-            if (!($ticketLookup->successful() && !empty($ticketLookup->json()['value']))) {
-                echo "Comment {$comment->id}: error (CRM ticket not found). Response: " . htmlspecialchars($ticketLookup->body()) . "<br>";
-                continue;
-            }
+    //         if (!($ticketLookup->successful() && !empty($ticketLookup->json()['value']))) {
+    //             echo "Comment {$comment->id}: error (CRM ticket not found). Response: " . htmlspecialchars($ticketLookup->body()) . "<br>";
+    //             continue;
+    //         }
 
-            $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
+    //         $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
 
-            $payload = [
-                'new_text' => $comment->text,
-                'new_is_owner' => $isOwner,
-                'new_created_at' => $createdOn,
-                'new_updated_at' => $updatedOn,
-                'new_ticket_id@odata.bind' => "/new_tickets($crmTicketId)",
-            ];
+    //         $payload = [
+    //             'new_text' => $comment->text,
+    //             'new_is_owner' => $isOwner,
+    //             'new_created_at' => $createdOn,
+    //             'new_updated_at' => $updatedOn,
+    //             'new_ticket_id@odata.bind' => "/new_tickets($crmTicketId)",
+    //         ];
 
-            $create = $crmClient->request("new_ticketcomments", "POST", $payload);
-            if ($create->successful()) {
-                echo "Comment {$comment->id}: success<br>";
-            } else {
-                $body = $create->body();
-                echo "Comment {$comment->id}: error -> " . htmlspecialchars($body) . "<br>";
-            }
-        }
+    //         $create = $crmClient->request("new_ticketcomments", "POST", $payload);
+    //         if ($create->successful()) {
+    //             echo "Comment {$comment->id}: success<br>";
+    //         } else {
+    //             $body = $create->body();
+    //             echo "Comment {$comment->id}: error -> " . htmlspecialchars($body) . "<br>";
+    //         }
+    //     }
 
-        return "Sample sync completed";
-    }
+    //     return "Sample sync completed";
+    // }
 
     public static function createCrmComment(CrmClient $crmClient, TicketComment $comment)
     {
@@ -237,7 +237,7 @@ class AddTicketCommentController extends Controller
                 'new_is_owner' => ($comment->user_id === $ticket->user_id),
                 'new_created_at' => ($comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String()),
                 'new_updated_at' => ($comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String()),
-                'new_ticket_id@odata.bind' => "/new_tickets($crmTicketId)",
+                'new_ticket@odata.bind' => "/new_tickets($crmTicketId)",
             ];
 
             $create = $crmClient->request("new_ticketcomments", "POST", $payload);
