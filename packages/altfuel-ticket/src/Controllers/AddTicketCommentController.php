@@ -207,4 +207,60 @@ class AddTicketCommentController extends Controller
 
         return "Sample sync completed";
     }
+
+    public static function createCrmComment(CrmClient $crmClient, TicketComment $comment)
+    {
+        try {
+            $ticket = Ticket::find($comment->ticket_id);
+            if (!$ticket) {
+                return false;
+            }
+
+            $ticketLookup = $crmClient->request("new_tickets", "GET", [
+                '$select' => 'new_ticketid,new_ticket_id',
+                '$filter' => "new_ticket_id eq {$ticket->id}"
+            ]);
+            if (!($ticketLookup->successful() && !empty($ticketLookup->json()['value']))) {
+                Log::error('CRM ticket not found for comment', [
+                    'comment_id' => $comment->id,
+                    'ticket_id' => $ticket->id,
+                    'response' => $ticketLookup->body()
+                ]);
+                return false;
+            }
+            $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
+
+            $payload = [
+                'new_text' => $comment->text,
+                'new_is_owner' => ($comment->user_id === $ticket->user_id),
+                'new_created_at' => ($comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String()),
+                'new_updated_at' => ($comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String()),
+                'new_ticket_id@odata.bind' => "/new_tickets($crmTicketId)",
+            ];
+
+            $create = $crmClient->request("new_ticketcomments", "POST", $payload);
+            if ($create->successful()) {
+                return true;
+            }
+            $errorBody = $create->json();
+            $errorMsg = is_array($errorBody) ? ($errorBody['error']['message'] ?? $create->body()) : $create->body();
+            if (is_string($errorMsg) && (strpos($errorMsg, 'duplicate') !== false || strpos($errorMsg, 'already exists') !== false)) {
+                return true;
+            }
+            Log::error('Failed to create comment in CRM', [
+                'comment_id' => $comment->id,
+                'ticket_id' => $ticket->id,
+                'payload' => $payload,
+                'response' => $create->body()
+            ]);
+            return false;
+        } catch (\Exception $e) {
+            Log::error('Exception while creating comment in CRM', [
+                'comment_id' => $comment->id,
+                'ticket_id' => $comment->ticket_id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
 }
