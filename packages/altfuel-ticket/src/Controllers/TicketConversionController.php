@@ -7,10 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Mkhodroo\AltfuelTicket\Models\TicketCatagory;
+use Behin\CrmClient\CrmClient;
 
 class TicketConversionController extends Controller
 {
-    public function update(Request $request)
+    public function update(Request $request, CrmClient $crmClient)
     {
         if (!auth()->user()->access('Ticket-Actors')) {
             return response(trans('auth.failed'), 403);
@@ -55,6 +56,7 @@ class TicketConversionController extends Controller
 
         if ($oldValue !== $ticket->conversion_type) {
             AddTicketCommentController::add(
+                $crmClient,
                 $ticket->id,
                 trans('ATTrans.conversion-type-changed', [
                     'old' => $oldLabel,

@@ -56,7 +56,7 @@ class TicketCatagoryController extends Controller
     }
 
 
-    function changeCatagory(Request $r)
+    function changeCatagory(Request $r, CrmClient $crmClient)
     {
         $ticket = GetTicketController::findByTicketId($r->ticket_id);
         // if($ticket->actor_id != Auth::id() and $ticket->actor_id != null){
@@ -72,7 +72,7 @@ class TicketCatagoryController extends Controller
             'parent_cat' => $this->get($catagory->parent_id)->name,
             'child_cat' => $catagory->name
         ]);
-        AddTicketCommentController::add($ticket->id, $text);
+        AddTicketCommentController::add($crmClient, $ticket->id, $text);
         return $r->ticket_id;
     }
 
