@@ -68,7 +68,7 @@ class CreateTicketController extends Controller
         if ($r->file('files')) {
             foreach ($r->file('files') as $name) {
                 $attach = CommentAttachmentController::upload($name, $ticket->ticket_id);
-                AddTicketCommentAttachmentController::add($comment->id, $attach);
+                AddTicketCommentAttachmentController::add($crmClient, $comment->id, $attach);
             }
         }
         if(Auth::id() != $ticket->user_id){

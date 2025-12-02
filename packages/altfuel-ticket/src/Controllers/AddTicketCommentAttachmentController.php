@@ -9,16 +9,110 @@ use Illuminate\Support\Facades\Auth;
 use Mkhodroo\AltfuelTicket\Models\CommentAttachments;
 use Mkhodroo\AltfuelTicket\Models\Ticket;
 use Mkhodroo\AltfuelTicket\Models\TicketComment;
+use Behin\CrmClient\CrmClient;
+use Illuminate\Support\Facades\Log;
 use ZipArchive;
 
 class AddTicketCommentAttachmentController extends Controller
 {
     
-    public static function add($comment_id , $file){
-        return CommentAttachments::create([
+    public static function add(CrmClient $crmClient, $comment_id, $file)
+    {
+        $attachment = CommentAttachments::create([
             'comment_id' => $comment_id,
             'file' => $file
         ]);
+
+        try {
+            $comment = TicketComment::find($comment_id);
+            if ($comment) {
+                $ticketId = $comment->ticket_id;
+                $ticketLookup = $crmClient->request("new_tickets", "GET", [
+                    '$select' => 'new_ticketid,new_ticket_id',
+                    '$filter' => "new_ticket_id eq {$ticketId}"
+                ]);
+                if ($ticketLookup->successful() && !empty($ticketLookup->json()['value'])) {
+                    $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
+                    $localPath = public_path('\\..\\' . $file);
+                    if (file_exists($localPath)) {
+                        $payload = [
+                            "subject" => "پیوست تیکت",
+                            "notetext" => "پیوست برای کامنت شماره {$comment_id}",
+                            "filename" => basename($localPath),
+                            "mimetype" => mime_content_type($localPath),
+                            "documentbody" => base64_encode(file_get_contents($localPath)),
+                            "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
+                        ];
+                        $crmClient->save('annotations', $payload);
+                    } else {
+                        Log::warning('Ticket attachment file not found', [
+                            'comment_id' => $comment_id,
+                            'file' => $file,
+                            'resolved_path' => $localPath
+                        ]);
+                    }
+                } else {
+                    Log::error('CRM ticket not found for attachment', [
+                        'comment_id' => $comment_id,
+                        'ticket_id' => $ticketId,
+                        'response' => $ticketLookup->body()
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception while sending ticket attachment to CRM', [
+                'comment_id' => $comment_id,
+                'file' => $file,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return $attachment;
+    }
+
+    public function syncAllAttachments(CrmClient $crmClient)
+    {
+        $processed = 0;
+        $success = 0;
+        $skipped = 0;
+        $errors = 0;
+        $chunkSize = 1000;
+        CommentAttachments::select('id','comment_id','file')->orderBy('id','asc')->chunk($chunkSize, function ($attachments) use ($crmClient, &$processed, &$success, &$skipped, &$errors) {
+            foreach ($attachments as $att) {
+                $processed++;
+                try {
+                    $comment = TicketComment::find($att->comment_id);
+                    if (!$comment) { $skipped++; continue; }
+                    $ticketId = $comment->ticket_id;
+                    $ticketLookup = $crmClient->request("new_tickets", "GET", [
+                        '$select' => 'new_ticketid,new_ticket_id',
+                        '$filter' => "new_ticket_id eq {$ticketId}"
+                    ]);
+                    if (!($ticketLookup->successful() && !empty($ticketLookup->json()['value']))) { $errors++; continue; }
+                    $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
+                    $localPath = public_path('\\..\\' . $att->file);
+                    if (!file_exists($localPath)) { $skipped++; continue; }
+                    $payload = [
+                        "subject" => "پیوست تیکت",
+                        "notetext" => "پیوست برای کامنت شماره {$att->comment_id}",
+                        "filename" => basename($localPath),
+                        "mimetype" => mime_content_type($localPath),
+                        "documentbody" => base64_encode(file_get_contents($localPath)),
+                        "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
+                    ];
+                    $resp = $crmClient->save('annotations', $payload);
+                    if ($resp->successful()) { $success++; } else { $errors++; }
+                } catch (\Exception $e) {
+                    $errors++;
+                    Log::error('Exception while syncing attachments to CRM', [
+                        'attachment_id' => $att->id,
+                        'comment_id' => $att->comment_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        });
+        return "Processed: {$processed}, Success: {$success}, Skipped: {$skipped}, Errors: {$errors}";
     }
 
     public function downloadZip(Request $request)
