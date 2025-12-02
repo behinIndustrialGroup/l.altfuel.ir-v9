@@ -33,24 +33,12 @@ class AddTicketCommentAttachmentController extends Controller
                 ]);
                 if ($ticketLookup->successful() && !empty($ticketLookup->json()['value'])) {
                     $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
-                    $localPath = public_path('\\..\\' . $file);
-                    if (file_exists($localPath)) {
-                        $payload = [
-                            "subject" => "پیوست تیکت",
-                            "notetext" => "پیوست برای کامنت شماره {$comment_id}",
-                            "filename" => basename($localPath),
-                            "mimetype" => mime_content_type($localPath),
-                            "documentbody" => base64_encode(file_get_contents($localPath)),
-                            "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
-                        ];
-                        $crmClient->save('annotations', $payload);
-                    } else {
-                        Log::warning('Ticket attachment file not found', [
-                            'comment_id' => $comment_id,
-                            'file' => $file,
-                            'resolved_path' => $localPath
-                        ]);
-                    }
+                    $payload = [
+                        "subject" => "پیوست تیکت (لینک)",
+                        "notetext" => $file,
+                        "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
+                    ];
+                    $crmClient->save('annotations', $payload);
                 } else {
                     Log::error('CRM ticket not found for attachment', [
                         'comment_id' => $comment_id,
@@ -90,14 +78,9 @@ class AddTicketCommentAttachmentController extends Controller
                     ]);
                     if (!($ticketLookup->successful() && !empty($ticketLookup->json()['value']))) { $errors++; continue; }
                     $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
-                    $localPath = public_path('\\..\\' . $att->file);
-                    if (!file_exists($localPath)) { $skipped++; continue; }
                     $payload = [
-                        "subject" => "پیوست تیکت",
-                        "notetext" => "پیوست برای کامنت شماره {$att->comment_id}",
-                        "filename" => basename($localPath),
-                        "mimetype" => mime_content_type($localPath),
-                        "documentbody" => base64_encode(file_get_contents($localPath)),
+                        "subject" => "پیوست تیکت (لینک)",
+                        "notetext" => $att->file,
                         "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
                     ];
                     $resp = $crmClient->save('annotations', $payload);
