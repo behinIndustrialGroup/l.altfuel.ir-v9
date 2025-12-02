@@ -113,6 +113,23 @@ class AddTicketCommentController extends Controller
             $modifiedOn = $comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String();
 
             $isOwner = ($comment->user_id === $ticket->user_id);
+            $contactId = null;
+            if ($isOwner) {
+                $user = $comment->user();
+                if ($user && $user->email) {
+                    $resp = $crmClient->request("contacts", "GET", [
+                        '$select' => 'contactid,mobilephone',
+                        '$filter' => "mobilephone eq '{$user->email}'"
+                    ]);
+                    if ($resp->successful()) {
+                        $b = $resp->json();
+                        if (!empty($b['value'])) {
+                            $contactId = $b['value'][0]['contactid'];
+                        }
+                    }
+                }
+            }
+
             $commentData = [
                 'new_text' => $comment->text,
                 'new_is_owner' => $isOwner,
@@ -122,6 +139,9 @@ class AddTicketCommentController extends Controller
 
             if ($crmTicketId) {
                 $commentData['new_ticket@odata.bind'] = "/new_tickets($crmTicketId)";
+            }
+            if ($contactId) {
+                $commentData['new_contact_id@odata.bind'] = "/contacts($contactId)";
             }
 
             $create = $crmClient->request("new_ticketcomments", "POST", $commentData);
@@ -232,13 +252,34 @@ class AddTicketCommentController extends Controller
             }
             $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
 
+            $isOwner = ($comment->user_id === $ticket->user_id);
+            $contactId = null;
+            if ($isOwner) {
+                $user = $comment->user();
+                if ($user && $user->email) {
+                    $resp = $crmClient->request("contacts", "GET", [
+                        '$select' => 'contactid,mobilephone',
+                        '$filter' => "mobilephone eq '{$user->email}'"
+                    ]);
+                    if ($resp->successful()) {
+                        $b = $resp->json();
+                        if (!empty($b['value'])) {
+                            $contactId = $b['value'][0]['contactid'];
+                        }
+                    }
+                }
+            }
+
             $payload = [
                 'new_text' => $comment->text,
-                'new_is_owner' => ($comment->user_id === $ticket->user_id),
+                'new_is_owner' => $isOwner,
                 'new_created_at' => ($comment->created_at ? Carbon::parse($comment->created_at)->toIso8601String() : now()->toIso8601String()),
                 'new_updated_at' => ($comment->updated_at ? Carbon::parse($comment->updated_at)->toIso8601String() : now()->toIso8601String()),
                 'new_ticket@odata.bind' => "/new_tickets($crmTicketId)",
             ];
+            if ($contactId) {
+                $payload['new_contact_id@odata.bind'] = "/contacts($contactId)";
+            }
 
             $create = $crmClient->request("new_ticketcomments", "POST", $payload);
             if ($create->successful()) {
