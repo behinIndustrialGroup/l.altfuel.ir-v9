@@ -278,7 +278,7 @@ class AddTicketCommentController extends Controller
                 'new_ticket@odata.bind' => "/new_tickets($crmTicketId)",
             ];
             if ($contactId) {
-                $payload['new_contact_id@odata.bind'] = "/contacts($contactId)";
+                $payload['new_contact@odata.bind'] = "/contacts($contactId)";
             }
 
             $create = $crmClient->request("new_ticketcomments", "POST", $payload);
