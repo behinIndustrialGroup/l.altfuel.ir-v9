@@ -252,7 +252,7 @@ class AddTicketCommentController extends Controller
             }
             $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
 
-            $isOwner = ($comment->user_id === $ticket->user_id);
+            $isOwner = ($comment->user_id == $ticket->user_id);
             $contactId = null;
             if ($isOwner) {
                 $user = $comment->user();
