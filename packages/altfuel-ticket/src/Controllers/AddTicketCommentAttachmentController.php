@@ -35,7 +35,7 @@ class AddTicketCommentAttachmentController extends Controller
                     $crmTicketId = $ticketLookup->json()['value'][0]['new_ticketid'];
                     $payload = [
                         "subject" => "پیوست تیکت (لینک)",
-                        "notetext" => $file,
+                        "notetext" => '<a href="https://l.altfuel.ir'.$file.'" target="_blank">دانلود فایل</a>',
                         "objectid_new_ticket@odata.bind" => "/new_tickets($crmTicketId)",
                     ];
                     $crmClient->save('annotations', $payload);
