@@ -42,7 +42,7 @@ class ShowCrmTicketController extends Controller
      */
     function show(Request $request)
     {
-        $ticketId = $request->input('id');
+        $ticketId = $request->input('ticket_id');
         
         if (!$ticketId) {
             return response()->json(['error' => 'Ticket ID is required'], 400);
@@ -133,27 +133,59 @@ class ShowCrmTicketController extends Controller
     private function getTicketComments($ticketId)
     {
         try {
+            // حذف براکت‌ها و فاصله‌ها از GUID
+            $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
+            
+            // تلاش با فیلدهای مختلف
+            // اول با _new_ticket_value (lookup field برای GUID)
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_user_name',
-                '$filter' => "_new_ticket_value eq $ticketId",
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_user_name,new_is_owner',
+                '$filter' => "_new_ticket_value eq $cleanTicketId",
                 '$orderby' => 'new_created_at asc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
-                return $body['value'] ?? [];
+                
+                if (!empty($body['value'])) {
+                    Log::info("Comments retrieved from CRM using _new_ticket_value", [
+                        'ticket_id' => $ticketId,
+                        'count' => count($body['value'])
+                    ]);
+                    return $body['value'];
+                }
             }
 
-            Log::error("Failed to get comments from CRM", [
+            // اگر نتیجه‌ای نیامد، با expand امتحان کن
+            $response2 = $this->crmClient->request("new_tickets($cleanTicketId)/new_ticket_new_ticketcomment", "GET", [
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_user_name,new_is_owner',
+                '$orderby' => 'new_created_at asc'
+            ]);
+
+            if ($response2->successful()) {
+                $body2 = $response2->json();
+                
+                Log::info("Comments retrieved from CRM using navigation property", [
+                    'ticket_id' => $ticketId,
+                    'count' => count($body2['value'] ?? [])
+                ]);
+                
+                return $body2['value'] ?? [];
+            }
+
+            Log::warning("No comments found for ticket", [
                 'ticket_id' => $ticketId,
-                'response' => $response->body()
+                'clean_id' => $cleanTicketId,
+                'response1' => $response->body(),
+                'response2' => $response2->body()
             ]);
 
             return [];
         } catch (\Exception $e) {
             Log::error("Exception while getting comments from CRM", [
                 'ticket_id' => $ticketId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return [];
         }
@@ -231,6 +263,31 @@ class ShowCrmTicketController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'خطا در ثبت کامنت'], 500);
+        }
+    }
+
+    /**
+     * متد کمکی برای debug - نمایش ساختار entity
+     */
+    public function debugCommentStructure(Request $request)
+    {
+        try {
+            // دریافت یک کامنت نمونه
+            $response = $this->crmClient->request("new_ticketcomments", "GET", [
+                '$top' => 1
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return response()->json([
+                    'sample_comment' => $body['value'][0] ?? null,
+                    'all_fields' => array_keys($body['value'][0] ?? [])
+                ]);
+            }
+
+            return response()->json(['error' => 'Failed to get sample comment', 'response' => $response->body()]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
         }
     }
 
