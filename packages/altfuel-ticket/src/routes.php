@@ -11,6 +11,7 @@ use Mkhodroo\AltfuelTicket\Controllers\CommentAttachmentController;
 use Mkhodroo\AltfuelTicket\Controllers\GetTicketController;
 use Mkhodroo\AltfuelTicket\Controllers\ReportController;
 use Mkhodroo\AltfuelTicket\Controllers\ShowTicketController;
+use Mkhodroo\AltfuelTicket\Controllers\ShowCrmTicketController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketAssignController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketCatagoryController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketConversionController;
@@ -63,6 +64,12 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
     Route::get('ticket-download-zip', [AddTicketCommentAttachmentController::class, 'downloadZip'])->name('ticket.download.zip');
 
     Route::post('filter', [TicketFilterController::class, 'filterByAgent'])->name('filterByAgent'); 
+});
+
+// CRM Ticket Routes
+Route::name('ATRoutes.crm.')->prefix(config('ATConfig.route-prefix') . 'crm/tickets')->middleware(['web','auth', 'access'])->group(function(){
+    Route::get('list', [ShowCrmTicketController::class, 'list'])->name('list');
+    Route::post('show', [ShowCrmTicketController::class, 'show'])->name('show');
 });
 
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');
