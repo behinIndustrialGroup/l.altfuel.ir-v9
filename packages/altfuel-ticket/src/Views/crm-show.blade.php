@@ -77,7 +77,7 @@
     <!-- بخش نظرات -->
     <hr class="my-4">
     <h6>پیام‌ها</h6>
-    <div class="direct-chat-messages overflow-auto border rounded p-3 bg-light" style="height: 500px">
+    <div class="direct-chat-messages overflow-auto border rounded p-3 bg-light" style="height: 400px" id="comments-container">
         @if(count($comments) > 0)
             @foreach ($comments as $comment)
                 <div class="direct-chat-msg mb-3">
@@ -99,10 +99,106 @@
             </div>
         @endif
     </div>
+
+    <!-- فرم افزودن کامنت -->
+    <div class="mt-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form id="crm-comment-form">
+                    @csrf
+                    <input type="hidden" name="ticket_id" value="{{ $ticket['new_ticketid'] }}">
+                    <div class="form-group">
+                        <label for="comment_text">پیام جدید</label>
+                        <textarea name="text" id="comment_text" class="form-control" rows="4" placeholder="متن پیام خود را وارد کنید..." required></textarea>
+                    </div>
+                    <button type="button" class="btn btn-success mt-2" onclick="submitCrmComment()">
+                        <i class="fa fa-paper-plane"></i> ارسال پیام
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
     function closeModal() {
         $('#ticket-modal').modal('hide');
+    }
+
+    function submitCrmComment() {
+        const form = document.getElementById('crm-comment-form');
+        const formData = new FormData(form);
+
+        // بررسی اینکه متن خالی نباشد
+        const text = formData.get('text');
+        if (!text || text.trim() === '') {
+            alert('لطفاً متن پیام را وارد کنید');
+            return;
+        }
+
+        // غیرفعال کردن دکمه تا زمان اتمام درخواست
+        const submitBtn = event.target;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> در حال ارسال...';
+
+        $.ajax({
+            url: "{{ route('ATRoutes.crm.addComment') }}",
+            method: 'POST',
+            data: {
+                ticket_id: formData.get('ticket_id'),
+                text: text,
+                _token: formData.get('_token')
+            },
+            success: function(response) {
+                if (response.success) {
+                    // پاک کردن فرم
+                    form.reset();
+                    
+                    // نمایش پیام موفقیت
+                    if (typeof show_message === 'function') {
+                        show_message(response.message);
+                    } else {
+                        alert(response.message);
+                    }
+
+                    // افزودن کامنت جدید به لیست
+                    const now = new Date();
+                    const persianDate = now.toLocaleDateString('fa-IR');
+                    const time = now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const newComment = `
+                        <div class="direct-chat-msg mb-3">
+                            <div class="p-3 rounded shadow-sm bg-white">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <small><strong>{{ auth()->user()->display_name ?? auth()->user()->name }}</strong></small>
+                                    <small class="text-muted">${persianDate} ${time}</small>
+                                </div>
+                                <hr>
+                                <div style="white-space: pre-line">${text}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    $('#comments-container').append(newComment);
+                    
+                    // اسکرول به پایین
+                    $('#comments-container').scrollTop($('#comments-container')[0].scrollHeight);
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.error || 'خطا در ارسال پیام';
+                if (typeof show_error === 'function') {
+                    show_error(errorMsg);
+                } else {
+                    alert(errorMsg);
+                }
+                console.error(xhr);
+            },
+            complete: function() {
+                // فعال کردن دوباره دکمه
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> ارسال پیام';
+            }
+        });
     }
 </script>

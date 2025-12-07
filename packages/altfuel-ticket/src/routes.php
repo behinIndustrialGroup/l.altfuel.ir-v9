@@ -70,6 +70,7 @@ Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->m
 Route::name('ATRoutes.crm.')->prefix(config('ATConfig.route-prefix') . 'crm/tickets')->middleware(['web','auth', 'access'])->group(function(){
     Route::get('list', [ShowCrmTicketController::class, 'list'])->name('list');
     Route::post('show', [ShowCrmTicketController::class, 'show'])->name('show');
+    Route::post('add-comment', [ShowCrmTicketController::class, 'addComment'])->name('addComment');
 });
 
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');
