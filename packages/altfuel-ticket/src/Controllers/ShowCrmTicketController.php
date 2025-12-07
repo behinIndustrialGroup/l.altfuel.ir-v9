@@ -322,17 +322,28 @@ class ShowCrmTicketController extends Controller
     public function debugCommentStructure(Request $request)
     {
         try {
-            // دریافت چند کامنت نمونه
-            $response = $this->crmClient->request("new_ticketcomments", "GET", [
+            // دریافت چند کامنت نمونه بدون expand
+            $response1 = $this->crmClient->request("new_ticketcomments", "GET", [
                 '$top' => 5,
                 '$orderby' => 'createdon desc'
             ]);
 
-            if ($response->successful()) {
-                $body = $response->json();
+            // دریافت با expand
+            $response2 = $this->crmClient->request("new_ticketcomments", "GET", [
+                '$top' => 5,
+                '$orderby' => 'createdon desc',
+                '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname)'
+            ]);
+
+            $result = [
+                'without_expand' => null,
+                'with_expand' => null,
+            ];
+
+            if ($response1->successful()) {
+                $body = $response1->json();
                 $comments = $body['value'] ?? [];
                 
-                // پیدا کردن کامنتی که _new_contact_value داره
                 $commentWithContact = null;
                 foreach ($comments as $comment) {
                     if (!empty($comment['_new_contact_value'])) {
@@ -341,18 +352,34 @@ class ShowCrmTicketController extends Controller
                     }
                 }
                 
-                return response()->json([
-                    'total_comments' => count($comments),
-                    'first_comment' => $comments[0] ?? null,
+                $result['without_expand'] = [
+                    'total' => count($comments),
                     'comment_with_contact' => $commentWithContact,
-                    'all_fields' => array_keys($comments[0] ?? []),
-                    'contact_fields' => array_filter(array_keys($comments[0] ?? []), function($key) {
-                        return strpos($key, 'contact') !== false || strpos($key, 'Contact') !== false;
-                    })
-                ]);
+                    'contact_id' => $commentWithContact['_new_contact_value'] ?? null
+                ];
             }
 
-            return response()->json(['error' => 'Failed to get sample comment', 'response' => $response->body()]);
+            if ($response2->successful()) {
+                $body = $response2->json();
+                $comments = $body['value'] ?? [];
+                
+                $commentWithContact = null;
+                foreach ($comments as $comment) {
+                    if (!empty($comment['_new_contact_value'])) {
+                        $commentWithContact = $comment;
+                        break;
+                    }
+                }
+                
+                $result['with_expand'] = [
+                    'total' => count($comments),
+                    'comment_with_contact' => $commentWithContact,
+                    'has_new_contact_field' => isset($commentWithContact['new_contact']),
+                    'new_contact_data' => $commentWithContact['new_contact'] ?? null
+                ];
+            }
+
+            return response()->json($result);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()]);
         }
