@@ -138,7 +138,7 @@ class ShowCrmTicketController extends Controller
             
             // دریافت کامنت‌ها با expand برای contact
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,new_contact',
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,_new_contact_value',
                 '$filter' => "_new_ticket_value eq $cleanTicketId",
                 '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname)',
                 '$orderby' => 'new_created_at asc'
