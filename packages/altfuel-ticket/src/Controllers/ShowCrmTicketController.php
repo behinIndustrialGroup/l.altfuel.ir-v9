@@ -322,16 +322,33 @@ class ShowCrmTicketController extends Controller
     public function debugCommentStructure(Request $request)
     {
         try {
-            // دریافت یک کامنت نمونه
+            // دریافت چند کامنت نمونه
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$top' => 1
+                '$top' => 5,
+                '$orderby' => 'createdon desc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
+                $comments = $body['value'] ?? [];
+                
+                // پیدا کردن کامنتی که _new_contact_value داره
+                $commentWithContact = null;
+                foreach ($comments as $comment) {
+                    if (!empty($comment['_new_contact_value'])) {
+                        $commentWithContact = $comment;
+                        break;
+                    }
+                }
+                
                 return response()->json([
-                    'sample_comment' => $body['value'][0] ?? null,
-                    'all_fields' => array_keys($body['value'][0] ?? [])
+                    'total_comments' => count($comments),
+                    'first_comment' => $comments[0] ?? null,
+                    'comment_with_contact' => $commentWithContact,
+                    'all_fields' => array_keys($comments[0] ?? []),
+                    'contact_fields' => array_filter(array_keys($comments[0] ?? []), function($key) {
+                        return strpos($key, 'contact') !== false || strpos($key, 'Contact') !== false;
+                    })
                 ]);
             }
 
