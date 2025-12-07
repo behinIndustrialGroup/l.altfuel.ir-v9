@@ -71,7 +71,7 @@ class ShowCrmTicketController extends Controller
         try {
             $response = $this->crmClient->request("new_tickets", "GET", [
                 '$select' => 'new_ticketid,new_title,new_status,new_status_option,new_created_at,new_updated_at,new_ticket_id',
-                '$filter' => "new_contact eq $contactId",
+                '$filter' => "_new_contact_value eq $contactId",
                 '$orderby' => 'new_created_at desc'
             ]);
 
@@ -167,8 +167,8 @@ class ShowCrmTicketController extends Controller
                         }
                     }
                     // اگر expand کار نکرد، مستقیم از API بگیر
-                    elseif (!empty($comment['new_contact'])) {
-                        $contactId = $comment['new_contact'];
+                    elseif (!empty($comment['_new_contact_value'])) {
+                        $contactId = $comment['_new_contact_value'];
                         $contactInfo = $this->getContactInfo($contactId);
                         
                         Log::info("Fetched contact info", [
@@ -189,8 +189,8 @@ class ShowCrmTicketController extends Controller
                     
                     Log::info("Comment processed", [
                         'comment_id' => $comment['new_ticketcommentid'] ?? 'unknown',
-                        'has_contact_value' => !empty($comment['new_contact']),
-                        'contact_value' => $comment['new_contact'] ?? null,
+                        'has_contact_value' => !empty($comment['_new_contact_value']),
+                        'contact_value' => $comment['_new_contact_value'] ?? null,
                         'has_expanded_contact' => isset($comment['new_contact']),
                         'final_name' => $contactName
                     ]);
