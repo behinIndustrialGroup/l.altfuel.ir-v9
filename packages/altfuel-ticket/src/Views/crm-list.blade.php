@@ -7,21 +7,33 @@
             <h4>تیکت‌های CRM</h4>
         </div>
         <div class="card-body">
-            <!-- فرم جستجو بر اساس Contact ID -->
-            <form method="GET" action="{{ route('ATRoutes.crm.list') }}" class="mb-4">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="contact_id">شناسه مخاطب (Contact ID)</label>
-                            <input type="text" name="contact_id" id="contact_id" class="form-control" 
-                                   value="{{ $contactId ?? '' }}" placeholder="مثال: 12345678-1234-1234-1234-123456789012">
+            <!-- فرم جستجو بر اساس Contact ID - فقط برای کارشناسان -->
+            @if(auth()->user()->access('Ticket-Actors'))
+                <form method="GET" action="{{ route('ATRoutes.crm.list') }}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="contact_id">شناسه مخاطب (Contact ID)</label>
+                                <input type="text" name="contact_id" id="contact_id" class="form-control" 
+                                       value="{{ $contactId ?? '' }}" placeholder="مثال: 12345678-1234-1234-1234-123456789012">
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">جستجو</button>
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary">جستجو</button>
+                </form>
+            @else
+                @if($contactId)
+                    <div class="alert alert-info mb-3">
+                        در حال نمایش تیکت‌های شما
                     </div>
-                </div>
-            </form>
+                @else
+                    <div class="alert alert-warning mb-3">
+                        شناسه مخاطب CRM برای حساب کاربری شما ثبت نشده است.
+                    </div>
+                @endif
+            @endif
 
             @if($contactId && count($tickets) > 0)
                 <!-- جدول تیکت‌ها -->
@@ -63,7 +75,7 @@
                 <div class="alert alert-warning">
                     هیچ تیکتی برای این مخاطب یافت نشد.
                 </div>
-            @else
+            @elseif(auth()->user()->access('Ticket-Actors'))
                 <div class="alert alert-info">
                     لطفاً شناسه مخاطب را وارد کنید.
                 </div>

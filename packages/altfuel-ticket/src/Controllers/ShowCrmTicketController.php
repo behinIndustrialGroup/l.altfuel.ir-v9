@@ -22,9 +22,14 @@ class ShowCrmTicketController extends Controller
      */
     function list(Request $request): View
     {
+        // اگر contact_id در request باشه از اون استفاده کن، وگرنه از user لاگین شده بگیر
         $contactId = $request->input('contact_id');
-        $tickets = [];
+        
+        if (!$contactId && auth()->check()) {
+            $contactId = auth()->user()->crm_contact_id;
+        }
 
+        $tickets = [];
         if ($contactId) {
             $tickets = $this->getTicketsByContactId($contactId);
         }
