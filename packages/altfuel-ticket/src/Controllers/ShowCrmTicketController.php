@@ -136,10 +136,11 @@ class ShowCrmTicketController extends Controller
             // حذف براکت‌ها و فاصله‌ها از GUID
             $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
             
-            // دریافت کامنت‌ها - فقط فیلدهای اصلی
+            // دریافت کامنت‌ها با expand برای contact
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
                 '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,_new_contact_value',
                 '$filter' => "_new_ticket_value eq $cleanTicketId",
+                '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname)',
                 '$orderby' => 'new_created_at asc'
             ]);
 
@@ -147,27 +148,53 @@ class ShowCrmTicketController extends Controller
                 $body = $response->json();
                 $comments = $body['value'] ?? [];
                 
-                // برای هر کامنت، اگر contact_id داره، اسم رو از جدول contacts بگیر
+                Log::info("Raw comments from CRM", [
+                    'ticket_id' => $ticketId,
+                    'count' => count($comments),
+                    'sample' => $comments[0] ?? null
+                ]);
+                
+                // برای هر کامنت، تعیین نام
                 foreach ($comments as &$comment) {
-                    if (!empty($comment['_new_contact_value'])) {
+                    $contactName = 'کاربر';
+                    
+                    // اول سعی کن از expand بگیری
+                    if (isset($comment['new_contact'])) {
+                        if (!empty($comment['new_contact']['fullname'])) {
+                            $contactName = $comment['new_contact']['fullname'];
+                        } elseif (!empty($comment['new_contact']['firstname']) || !empty($comment['new_contact']['lastname'])) {
+                            $contactName = trim(($comment['new_contact']['firstname'] ?? '') . ' ' . ($comment['new_contact']['lastname'] ?? ''));
+                        }
+                    }
+                    // اگر expand کار نکرد، مستقیم از API بگیر
+                    elseif (!empty($comment['_new_contact_value'])) {
                         $contactId = $comment['_new_contact_value'];
                         $contactInfo = $this->getContactInfo($contactId);
+                        
+                        Log::info("Fetched contact info", [
+                            'contact_id' => $contactId,
+                            'contact_info' => $contactInfo
+                        ]);
+                        
                         if ($contactInfo) {
-                            $comment['contact_name'] = $contactInfo['fullname'] ?? 
-                                                       trim(($contactInfo['firstname'] ?? '') . ' ' . ($contactInfo['lastname'] ?? '')) ?: 
-                                                       'کاربر';
-                        } else {
-                            $comment['contact_name'] = 'کاربر';
+                            if (!empty($contactInfo['fullname'])) {
+                                $contactName = $contactInfo['fullname'];
+                            } elseif (!empty($contactInfo['firstname']) || !empty($contactInfo['lastname'])) {
+                                $contactName = trim(($contactInfo['firstname'] ?? '') . ' ' . ($contactInfo['lastname'] ?? ''));
+                            }
                         }
-                    } else {
-                        $comment['contact_name'] = 'کاربر';
                     }
+                    
+                    $comment['contact_name'] = $contactName;
+                    
+                    Log::info("Comment processed", [
+                        'comment_id' => $comment['new_ticketcommentid'] ?? 'unknown',
+                        'has_contact_value' => !empty($comment['_new_contact_value']),
+                        'contact_value' => $comment['_new_contact_value'] ?? null,
+                        'has_expanded_contact' => isset($comment['new_contact']),
+                        'final_name' => $contactName
+                    ]);
                 }
-                
-                Log::info("Comments retrieved from CRM", [
-                    'ticket_id' => $ticketId,
-                    'count' => count($comments)
-                ]);
                 
                 return $comments;
             }
