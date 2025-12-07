@@ -136,23 +136,35 @@ class ShowCrmTicketController extends Controller
             // حذف براکت‌ها و فاصله‌ها از GUID
             $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
             
-            // دریافت کامنت‌ها با expand برای گرفتن اطلاعات contact و createdby
+            // دریافت کامنت‌ها با expand برای گرفتن اطلاعات contact
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner',
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,_new_contact_value',
                 '$filter' => "_new_ticket_value eq $cleanTicketId",
-                '$expand' => 'new_contact($select=fullname),createdby($select=fullname)',
+                '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname)',
                 '$orderby' => 'new_created_at asc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
+                $comments = $body['value'] ?? [];
+                
+                // برای هر کامنت که contact نداره، سعی کن از _new_contact_value بگیری
+                foreach ($comments as &$comment) {
+                    if (empty($comment['new_contact']) && !empty($comment['_new_contact_value'])) {
+                        $contactId = $comment['_new_contact_value'];
+                        $contactInfo = $this->getContactInfo($contactId);
+                        if ($contactInfo) {
+                            $comment['new_contact'] = $contactInfo;
+                        }
+                    }
+                }
                 
                 Log::info("Comments retrieved from CRM", [
                     'ticket_id' => $ticketId,
-                    'count' => count($body['value'] ?? [])
+                    'count' => count($comments)
                 ]);
                 
-                return $body['value'] ?? [];
+                return $comments;
             }
 
             Log::warning("Failed to get comments from CRM", [
@@ -169,6 +181,32 @@ class ShowCrmTicketController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return [];
+        }
+    }
+
+    /**
+     * دریافت اطلاعات یک مخاطب از CRM
+     */
+    private function getContactInfo($contactId)
+    {
+        try {
+            $cleanContactId = str_replace(['{', '}', ' '], '', $contactId);
+            
+            $response = $this->crmClient->request("contacts($cleanContactId)", "GET", [
+                '$select' => 'contactid,fullname,firstname,lastname'
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error("Failed to get contact info", [
+                'contact_id' => $contactId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
         }
     }
 
