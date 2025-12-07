@@ -80,11 +80,23 @@
     <div class="direct-chat-messages overflow-auto border rounded p-3 bg-light" style="height: 400px" id="comments-container">
         @if(count($comments) > 0)
             @foreach ($comments as $comment)
+                @php
+                    // تعیین نام کاربر از contact یا createdby
+                    $userName = 'کاربر';
+                    if (isset($comment['new_contact']['fullname'])) {
+                        $userName = $comment['new_contact']['fullname'];
+                    } elseif (isset($comment['createdby']['fullname'])) {
+                        $userName = $comment['createdby']['fullname'];
+                    }
+                    
+                    // تعیین رنگ بر اساس is_owner
+                    $bgClass = ($comment['new_is_owner'] ?? false) ? 'bg-primary text-white' : 'bg-white';
+                @endphp
                 <div class="direct-chat-msg mb-3">
-                    <div class="p-3 rounded shadow-sm bg-white">
+                    <div class="p-3 rounded shadow-sm {{ $bgClass }}">
                         <div class="d-flex justify-content-between mb-2">
-                            <small><strong>{{ $comment['new_user_name'] ?? 'کاربر' }}</strong></small>
-                            <small class="text-muted">
+                            <small><strong>{{ $userName }}</strong></small>
+                            <small class="{{ ($comment['new_is_owner'] ?? false) ? 'text-white-50' : 'text-muted' }}">
                                 {{ $comment['new_created_at'] ? verta($comment['new_created_at'])->format('Y/m/d H:i') : '-' }}
                             </small>
                         </div>

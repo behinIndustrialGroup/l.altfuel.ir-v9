@@ -136,48 +136,29 @@ class ShowCrmTicketController extends Controller
             // حذف براکت‌ها و فاصله‌ها از GUID
             $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
             
-            // تلاش با فیلدهای مختلف
-            // اول با _new_ticket_value (lookup field برای GUID)
+            // دریافت کامنت‌ها با expand برای گرفتن اطلاعات contact و createdby
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_user_name,new_is_owner',
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner',
                 '$filter' => "_new_ticket_value eq $cleanTicketId",
+                '$expand' => 'new_contact($select=fullname),createdby($select=fullname)',
                 '$orderby' => 'new_created_at asc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
                 
-                if (!empty($body['value'])) {
-                    Log::info("Comments retrieved from CRM using _new_ticket_value", [
-                        'ticket_id' => $ticketId,
-                        'count' => count($body['value'])
-                    ]);
-                    return $body['value'];
-                }
-            }
-
-            // اگر نتیجه‌ای نیامد، با expand امتحان کن
-            $response2 = $this->crmClient->request("new_tickets($cleanTicketId)/new_ticket_new_ticketcomment", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_user_name,new_is_owner',
-                '$orderby' => 'new_created_at asc'
-            ]);
-
-            if ($response2->successful()) {
-                $body2 = $response2->json();
-                
-                Log::info("Comments retrieved from CRM using navigation property", [
+                Log::info("Comments retrieved from CRM", [
                     'ticket_id' => $ticketId,
-                    'count' => count($body2['value'] ?? [])
+                    'count' => count($body['value'] ?? [])
                 ]);
                 
-                return $body2['value'] ?? [];
+                return $body['value'] ?? [];
             }
 
-            Log::warning("No comments found for ticket", [
+            Log::warning("Failed to get comments from CRM", [
                 'ticket_id' => $ticketId,
                 'clean_id' => $cleanTicketId,
-                'response1' => $response->body(),
-                'response2' => $response2->body()
+                'response' => $response->body()
             ]);
 
             return [];
@@ -230,7 +211,6 @@ class ShowCrmTicketController extends Controller
             $commentData = [
                 'new_text' => $text,
                 'new_is_owner' => $isOwner,
-                'new_user_name' => auth()->user()->display_name ?? auth()->user()->name,
                 'new_created_at' => now()->toIso8601String(),
                 'new_updated_at' => now()->toIso8601String(),
                 'new_ticket@odata.bind' => "/new_tickets($ticketId)",
