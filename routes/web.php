@@ -53,11 +53,11 @@ use function PHPSTORM_META\type;
 
 Route::get('test', function(){
     $registrations = WorkshopRegistration::where('status', 'pending')->take(1)->get()->each(function($row){
-            // $request = new Request([
-            //     'Status' => 'OK',
-            //     'Authority' => $row->authority
-            // ]);
-            // WorkshopRegistrationController::verify($request);
+            $request = new Request([
+                'Status' => 'OK',
+                'Authority' => $row->authority
+            ]);
+            $row->new_status = WorkshopRegistrationController::verify($request);
         });
         return $registrations;
 });
