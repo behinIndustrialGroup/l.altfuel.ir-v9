@@ -20,6 +20,8 @@ use App\Models\Workshop;
 use App\Repository\RGenCode;
 use App\Repository\RReport;
 use App\Repository\RSendExpSms;
+use CourseRegistrationLite\Controllers\WorkshopRegistrationController;
+use CourseRegistrationLite\Models\WorkshopRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -50,13 +52,14 @@ use function PHPSTORM_META\type;
 */
 
 Route::get('test', function(){
-    $users = User::take(100)->get();
-    foreach($users as $user){
-        $agencyInfo = AgencyInfo::where('key', 'mobile')->where('value', $user->email)->first();
-        if($agencyInfo){
-            echo $user->email . '<br>';
-        }
-    }
+    $registrations = WorkshopRegistration::where('status', 'pending')->take(1)->get()->each(function($row){
+            // $request = new Request([
+            //     'Status' => 'OK',
+            //     'Authority' => $row->authority
+            // ]);
+            // WorkshopRegistrationController::verify($request);
+        });
+        return $registrations;
 });
 
 Route::get('/migrate', function () {
