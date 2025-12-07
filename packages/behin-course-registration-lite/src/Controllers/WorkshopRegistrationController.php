@@ -81,7 +81,7 @@ class WorkshopRegistrationController extends Controller
         return redirect(config('zarinpal.pay_url') . $authorityCode);
     }
 
-    public function verify(Request $request)
+    public static function verify(Request $request)
     {
         $registration = WorkshopRegistration::where('authority', $request->Authority)->firstOrFail();
         $result = zarinPal::verify($request, $registration->price);
@@ -106,4 +106,6 @@ class WorkshopRegistrationController extends Controller
 
         return view('CourseRegistrationLiteViews::verify', ['refId' => $result]);
     }
+
+
 }
