@@ -59,8 +59,8 @@
                                             {{ $ticket['new_status'] ?? 'نامشخص' }}
                                         </span>
                                     </td>
-                                    <td>{{ $ticket['new_created_at'] ? \Morilog\Jalali\Jalalian::fromDateTime($ticket['new_created_at'])->format('Y/m/d H:i') : '-' }}</td>
-                                    <td>{{ $ticket['new_updated_at'] ? \Morilog\Jalali\Jalalian::fromDateTime($ticket['new_updated_at'])->format('Y/m/d H:i') : '-' }}</td>
+                                    <td>{{ $ticket['new_created_at'] ? verta($ticket['new_created_at'])->format('Y/m/d H:i') : '-' }}</td>
+                                    <td>{{ $ticket['new_updated_at'] ? verta($ticket['new_updated_at'])->format('Y/m/d H:i') : '-' }}</td>
                                     <td>
                                         <button class="btn btn-sm btn-info" onclick="showTicket('{{ $ticket['new_ticketid'] }}')">
                                             مشاهده

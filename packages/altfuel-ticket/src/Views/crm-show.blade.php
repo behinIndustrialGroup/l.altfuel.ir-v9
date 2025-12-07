@@ -59,13 +59,13 @@
                         <div class="col-md-6">
                             <p class="mb-2">
                                 <strong>تاریخ ایجاد:</strong> 
-                                {{ $ticket['new_created_at'] ? \Morilog\Jalali\Jalalian::fromDateTime($ticket['new_created_at'])->format('Y/m/d H:i:s') : '-' }}
+                                {{ $ticket['new_created_at'] ? verta($ticket['new_created_at'])->format('Y/m/d H:i:s') : '-' }}
                             </p>
                         </div>
                         <div class="col-md-6">
                             <p class="mb-2">
                                 <strong>آخرین بروزرسانی:</strong> 
-                                {{ $ticket['new_updated_at'] ? \Morilog\Jalali\Jalalian::fromDateTime($ticket['new_updated_at'])->format('Y/m/d H:i:s') : '-' }}
+                                {{ $ticket['new_updated_at'] ? verta($ticket['new_updated_at'])->format('Y/m/d H:i:s') : '-' }}
                             </p>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                         <div class="d-flex justify-content-between mb-2">
                             <small><strong>{{ $comment['new_user_name'] ?? 'کاربر' }}</strong></small>
                             <small class="text-muted">
-                                {{ $comment['new_created_at'] ? \Morilog\Jalali\Jalalian::fromDateTime($comment['new_created_at'])->format('Y/m/d H:i') : '-' }}
+                                {{ $comment['new_created_at'] ? verta($comment['new_created_at'])->format('Y/m/d H:i') : '-' }}
                             </small>
                         </div>
                         <hr>
