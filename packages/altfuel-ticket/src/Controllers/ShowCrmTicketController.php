@@ -136,11 +136,11 @@ class ShowCrmTicketController extends Controller
             // حذف براکت‌ها و فاصله‌ها از GUID
             $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
             
-            // دریافت کامنت‌ها با expand برای گرفتن اطلاعات contact
+            // دریافت کامنت‌ها با expand برای گرفتن اطلاعات contact و createdby
             $response = $this->crmClient->request("new_ticketcomments", "GET", [
-                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,_new_contact_value',
+                '$select' => 'new_ticketcommentid,new_text,new_created_at,new_is_owner,_new_contact_value,_createdby_value,_ownerid_value',
                 '$filter' => "_new_ticket_value eq $cleanTicketId",
-                '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname)',
+                '$expand' => 'new_contact($select=contactid,fullname,firstname,lastname),createdby($select=systemuserid,fullname),ownerid($select=systemuserid,fullname)',
                 '$orderby' => 'new_created_at asc'
             ]);
 
@@ -148,13 +148,32 @@ class ShowCrmTicketController extends Controller
                 $body = $response->json();
                 $comments = $body['value'] ?? [];
                 
-                // برای هر کامنت که contact نداره، سعی کن از _new_contact_value بگیری
+                // برای هر کامنت، اطمینان از وجود اطلاعات کامل
                 foreach ($comments as &$comment) {
+                    // اگر contact نداره، سعی کن از _new_contact_value بگیری
                     if (empty($comment['new_contact']) && !empty($comment['_new_contact_value'])) {
                         $contactId = $comment['_new_contact_value'];
                         $contactInfo = $this->getContactInfo($contactId);
                         if ($contactInfo) {
                             $comment['new_contact'] = $contactInfo;
+                        }
+                    }
+                    
+                    // اگر createdby نداره، سعی کن از _createdby_value بگیری
+                    if (empty($comment['createdby']) && !empty($comment['_createdby_value'])) {
+                        $userId = $comment['_createdby_value'];
+                        $userInfo = $this->getSystemUserInfo($userId);
+                        if ($userInfo) {
+                            $comment['createdby'] = $userInfo;
+                        }
+                    }
+                    
+                    // اگر ownerid نداره، سعی کن از _ownerid_value بگیری
+                    if (empty($comment['ownerid']) && !empty($comment['_ownerid_value'])) {
+                        $ownerId = $comment['_ownerid_value'];
+                        $ownerInfo = $this->getSystemUserInfo($ownerId);
+                        if ($ownerInfo) {
+                            $comment['ownerid'] = $ownerInfo;
                         }
                     }
                 }
@@ -204,6 +223,32 @@ class ShowCrmTicketController extends Controller
         } catch (\Exception $e) {
             Log::error("Failed to get contact info", [
                 'contact_id' => $contactId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * دریافت اطلاعات یک کاربر سیستم (کارشناس) از CRM
+     */
+    private function getSystemUserInfo($userId)
+    {
+        try {
+            $cleanUserId = str_replace(['{', '}', ' '], '', $userId);
+            
+            $response = $this->crmClient->request("systemusers($cleanUserId)", "GET", [
+                '$select' => 'systemuserid,fullname,firstname,lastname'
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error("Failed to get system user info", [
+                'user_id' => $userId,
                 'error' => $e->getMessage()
             ]);
             return null;

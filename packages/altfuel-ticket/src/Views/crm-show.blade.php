@@ -81,26 +81,46 @@
         @if(count($comments) > 0)
             @foreach ($comments as $comment)
                 @php
-                    // تعیین نام کاربر از contact
-                    $userName = 'کاربر';
+                    $userName = 'نامشخص';
                     $userRole = '';
+                    $bgClass = 'bg-light';
+                    $textClass = 'text-muted';
                     
-                    if (isset($comment['new_contact'])) {
-                        // اولویت با fullname
-                        if (!empty($comment['new_contact']['fullname'])) {
-                            $userName = $comment['new_contact']['fullname'];
-                        } elseif (!empty($comment['new_contact']['firstname']) || !empty($comment['new_contact']['lastname'])) {
-                            $userName = trim(($comment['new_contact']['firstname'] ?? '') . ' ' . ($comment['new_contact']['lastname'] ?? ''));
-                        }
-                    }
-                    
-                    // تعیین رنگ و نقش بر اساس is_owner
+                    // تعیین نام و نقش بر اساس is_owner
                     if ($comment['new_is_owner'] ?? false) {
-                        $bgClass = 'bg-success text-white';
+                        // کامنت از کاربر (صاحب تیکت)
                         $userRole = '(کاربر)';
+                        $bgClass = 'bg-success text-white';
+                        $textClass = 'text-white-50';
+                        
+                        // دریافت نام از contact
+                        if (isset($comment['new_contact'])) {
+                            if (!empty($comment['new_contact']['fullname'])) {
+                                $userName = $comment['new_contact']['fullname'];
+                            } elseif (!empty($comment['new_contact']['firstname']) || !empty($comment['new_contact']['lastname'])) {
+                                $userName = trim(($comment['new_contact']['firstname'] ?? '') . ' ' . ($comment['new_contact']['lastname'] ?? ''));
+                            }
+                        }
                     } else {
-                        $bgClass = 'bg-light';
+                        // کامنت از کارشناس
                         $userRole = '(کارشناس)';
+                        $bgClass = 'bg-info text-white';
+                        $textClass = 'text-white-50';
+                        
+                        // دریافت نام از createdby یا ownerid
+                        if (isset($comment['createdby'])) {
+                            if (!empty($comment['createdby']['fullname'])) {
+                                $userName = $comment['createdby']['fullname'];
+                            } elseif (!empty($comment['createdby']['firstname']) || !empty($comment['createdby']['lastname'])) {
+                                $userName = trim(($comment['createdby']['firstname'] ?? '') . ' ' . ($comment['createdby']['lastname'] ?? ''));
+                            }
+                        } elseif (isset($comment['ownerid'])) {
+                            if (!empty($comment['ownerid']['fullname'])) {
+                                $userName = $comment['ownerid']['fullname'];
+                            } elseif (!empty($comment['ownerid']['firstname']) || !empty($comment['ownerid']['lastname'])) {
+                                $userName = trim(($comment['ownerid']['firstname'] ?? '') . ' ' . ($comment['ownerid']['lastname'] ?? ''));
+                            }
+                        }
                     }
                 @endphp
                 <div class="direct-chat-msg mb-3">
@@ -108,13 +128,13 @@
                         <div class="d-flex justify-content-between mb-2">
                             <small>
                                 <strong>{{ $userName }}</strong>
-                                <span class="{{ ($comment['new_is_owner'] ?? false) ? 'text-white-50' : 'text-muted' }}">{{ $userRole }}</span>
+                                <span class="{{ $textClass }}">{{ $userRole }}</span>
                             </small>
-                            <small class="{{ ($comment['new_is_owner'] ?? false) ? 'text-white-50' : 'text-muted' }}">
+                            <small class="{{ $textClass }}">
                                 {{ $comment['new_created_at'] ? verta($comment['new_created_at'])->format('Y/m/d H:i') : '-' }}
                             </small>
                         </div>
-                        <hr class="{{ ($comment['new_is_owner'] ?? false) ? 'border-white' : '' }}">
+                        <hr class="{{ ($comment['new_is_owner'] ?? false) ? 'border-white' : 'border-white' }}">
                         <div style="white-space: pre-line">{{ $comment['new_text'] ?? 'بدون متن' }}</div>
                     </div>
                 </div>
