@@ -114,18 +114,17 @@ class AddTicketCommentController extends Controller
 
             $isOwner = ($comment->user_id === $ticket->user_id);
             $contactId = null;
-            if ($isOwner) {
-                $user = $comment->user();
-                if ($user && $user->email) {
-                    $resp = $crmClient->request("contacts", "GET", [
-                        '$select' => 'contactid,mobilephone',
-                        '$filter' => "mobilephone eq '{$user->email}'"
-                    ]);
-                    if ($resp->successful()) {
-                        $b = $resp->json();
-                        if (!empty($b['value'])) {
-                            $contactId = $b['value'][0]['contactid'];
-                        }
+            
+            $user = $comment->user();
+            if ($user && $user->email) {
+                $resp = $crmClient->request("contacts", "GET", [
+                    '$select' => 'contactid,mobilephone',
+                    '$filter' => "mobilephone eq '{$user->email}'"
+                ]);
+                if ($resp->successful()) {
+                    $b = $resp->json();
+                    if (!empty($b['value'])) {
+                        $contactId = $b['value'][0]['contactid'];
                     }
                 }
             }
@@ -141,7 +140,7 @@ class AddTicketCommentController extends Controller
                 $commentData['new_ticket@odata.bind'] = "/new_tickets($crmTicketId)";
             }
             if ($contactId) {
-                $commentData['new_contact_id@odata.bind'] = "/contacts($contactId)";
+                $commentData['new_contact@odata.bind'] = "/contacts($contactId)";
             }
 
             $create = $crmClient->request("new_ticketcomments", "POST", $commentData);
@@ -254,18 +253,17 @@ class AddTicketCommentController extends Controller
 
             $isOwner = ($comment->user_id == $ticket->user_id);
             $contactId = null;
-            if ($isOwner) {
-                $user = $comment->user();
-                if ($user && $user->email) {
-                    $resp = $crmClient->request("contacts", "GET", [
-                        '$select' => 'contactid,mobilephone',
-                        '$filter' => "mobilephone eq '{$user->email}'"
-                    ]);
-                    if ($resp->successful()) {
-                        $b = $resp->json();
-                        if (!empty($b['value'])) {
-                            $contactId = $b['value'][0]['contactid'];
-                        }
+            
+            $user = $comment->user();
+            if ($user && $user->email) {
+                $resp = $crmClient->request("contacts", "GET", [
+                    '$select' => 'contactid,mobilephone',
+                    '$filter' => "mobilephone eq '{$user->email}'"
+                ]);
+                if ($resp->successful()) {
+                    $b = $resp->json();
+                    if (!empty($b['value'])) {
+                        $contactId = $b['value'][0]['contactid'];
                     }
                 }
             }
