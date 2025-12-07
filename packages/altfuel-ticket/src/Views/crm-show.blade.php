@@ -81,46 +81,18 @@
         @if(count($comments) > 0)
             @foreach ($comments as $comment)
                 @php
-                    $userName = 'نامشخص';
-                    $userRole = '';
-                    $bgClass = 'bg-light';
-                    $textClass = 'text-muted';
+                    // نام کاربر از contact_name که در کنترلر ست شده
+                    $userName = $comment['contact_name'] ?? 'کاربر';
                     
-                    // تعیین نام و نقش بر اساس is_owner
+                    // تعیین رنگ و نقش بر اساس is_owner
                     if ($comment['new_is_owner'] ?? false) {
-                        // کامنت از کاربر (صاحب تیکت)
-                        $userRole = '(کاربر)';
                         $bgClass = 'bg-success text-white';
                         $textClass = 'text-white-50';
-                        
-                        // دریافت نام از contact
-                        if (isset($comment['new_contact'])) {
-                            if (!empty($comment['new_contact']['fullname'])) {
-                                $userName = $comment['new_contact']['fullname'];
-                            } elseif (!empty($comment['new_contact']['firstname']) || !empty($comment['new_contact']['lastname'])) {
-                                $userName = trim(($comment['new_contact']['firstname'] ?? '') . ' ' . ($comment['new_contact']['lastname'] ?? ''));
-                            }
-                        }
+                        $userRole = '(کاربر)';
                     } else {
-                        // کامنت از کارشناس
-                        $userRole = '(کارشناس)';
                         $bgClass = 'bg-info text-white';
                         $textClass = 'text-white-50';
-                        
-                        // دریافت نام از createdby یا ownerid
-                        if (isset($comment['createdby'])) {
-                            if (!empty($comment['createdby']['fullname'])) {
-                                $userName = $comment['createdby']['fullname'];
-                            } elseif (!empty($comment['createdby']['firstname']) || !empty($comment['createdby']['lastname'])) {
-                                $userName = trim(($comment['createdby']['firstname'] ?? '') . ' ' . ($comment['createdby']['lastname'] ?? ''));
-                            }
-                        } elseif (isset($comment['ownerid'])) {
-                            if (!empty($comment['ownerid']['fullname'])) {
-                                $userName = $comment['ownerid']['fullname'];
-                            } elseif (!empty($comment['ownerid']['firstname']) || !empty($comment['ownerid']['lastname'])) {
-                                $userName = trim(($comment['ownerid']['firstname'] ?? '') . ' ' . ($comment['ownerid']['lastname'] ?? ''));
-                            }
-                        }
+                        $userRole = '(کارشناس)';
                     }
                 @endphp
                 <div class="direct-chat-msg mb-3">
@@ -134,7 +106,7 @@
                                 {{ $comment['new_created_at'] ? verta($comment['new_created_at'])->format('Y/m/d H:i') : '-' }}
                             </small>
                         </div>
-                        <hr class="{{ ($comment['new_is_owner'] ?? false) ? 'border-white' : 'border-white' }}">
+                        <hr class="border-white">
                         <div style="white-space: pre-line">{{ $comment['new_text'] ?? 'بدون متن' }}</div>
                     </div>
                 </div>
