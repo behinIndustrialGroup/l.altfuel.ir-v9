@@ -42,7 +42,7 @@ class ShowCrmTicketController extends Controller
      */
     function show(Request $request)
     {
-        $ticketId = $request->input('ticket_id');
+        $ticketId = $request->input('id');
         
         if (!$ticketId) {
             return response()->json(['error' => 'Ticket ID is required'], 400);
