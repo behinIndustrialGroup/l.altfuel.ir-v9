@@ -55,7 +55,7 @@ class zarinPal
                 'Authority'      => $request->Authority,
                 'Amount'         => $price,
             ]);
-            Log::info('zarinpal', array($result));
+            // Log::info('zarinpal', array($result));
 
             if ($result->Status == 100 or $result->Status == 101) {
                 return $result->RefID;
