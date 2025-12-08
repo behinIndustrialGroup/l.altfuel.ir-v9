@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\CustomClasses\ExcelReader;
 use App\CustomClasses\SimpleXLSX;
+use App\CustomClasses\zarinPal;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LableController;
@@ -52,13 +53,11 @@ use function PHPSTORM_META\type;
 */
 
 Route::get('test', function(){
-    $registrations = WorkshopRegistration::where('status', 'pending')->take(1)->get()->each(function($row){
             $request = new Request([
                 'Status' => 'OK',
-                'Authority' => $row->authority
+                'Authority' => 'A000000000000000000000000000nx877yje',
             ]);
-            $row->new_status = WorkshopRegistrationController::verify($request);
-        });
+            return zarinPal::verify($request, '3000000');
         return $registrations;
 });
 
