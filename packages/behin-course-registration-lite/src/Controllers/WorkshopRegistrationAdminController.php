@@ -45,9 +45,6 @@ class WorkshopRegistrationAdminController extends Controller
         $registrations = WorkshopRegistration::orderBy($column, $direction)
             ->paginate(25)
             ->appends($request->except('page'));
-        foreach($registrations->where() as $registration){
-
-        }
 
         return view('CourseRegistrationLiteViews::admin.index', [
             'registrations' => $registrations,
