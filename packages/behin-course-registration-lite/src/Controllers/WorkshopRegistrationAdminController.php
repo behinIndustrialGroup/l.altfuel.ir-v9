@@ -33,7 +33,7 @@ class WorkshopRegistrationAdminController extends Controller
     public function index(Request $request)
     {
         [$column, $direction] = $this->resolveSorting($request);
-        $registrations = WorkshopRegistration::whereIn('status', ['pending', 'failed'])
+        $registrations = WorkshopRegistration::whereIn('status', ['pending'])
         ->whereNotNull('ref_id')->get();
         foreach($registrations as $registration){
             $request = new Request([
@@ -43,6 +43,9 @@ class WorkshopRegistrationAdminController extends Controller
             $refId = zarinPal::verify($request, $registration->price);
             if($refId > 1){
                 $registration->status = 'success';
+                $registration->save();
+            }else{
+                $registration->status = 'failed';
                 $registration->save();
             }
         }
