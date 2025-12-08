@@ -32,11 +32,22 @@ class WorkshopRegistrationAdminController extends Controller
     public function index(Request $request)
     {
         [$column, $direction] = $this->resolveSorting($request);
+        $registrations = WorkshopRegistration::where('status', 'pending')->get()->each(function($row){
+            $request = new Request([
+                'Status' => 'OK',
+                'Authority' => $row->authority
+            ]);
+            WorkshopRegistrationController::verify($request);
+        });
+
 
         /** @var LengthAwarePaginator $registrations */
         $registrations = WorkshopRegistration::orderBy($column, $direction)
             ->paginate(25)
             ->appends($request->except('page'));
+        foreach($registrations->where() as $registration){
+
+        }
 
         return view('CourseRegistrationLiteViews::admin.index', [
             'registrations' => $registrations,
