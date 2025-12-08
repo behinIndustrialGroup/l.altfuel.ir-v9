@@ -57,7 +57,7 @@ class zarinPal
             ]);
             Log::info('zarinpal', array($result));
 
-            if ($result->Status == 100) {
+            if ($result->Status == 100 or $result->Status == 101) {
                 return $result->RefID;
 
             }else {

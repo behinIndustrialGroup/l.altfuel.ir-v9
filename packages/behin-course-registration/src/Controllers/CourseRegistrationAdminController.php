@@ -2,6 +2,7 @@
 
 namespace CourseRegistration\Controllers;
 
+use App\CustomClasses\zarinPal;
 use App\Http\Controllers\Controller;
 use CourseRegistration\Models\CourseRegistration;
 use Illuminate\Http\Request;
@@ -33,10 +34,17 @@ class CourseRegistrationAdminController extends Controller
     {
         [$column, $direction] = $this->resolveSorting($request);
         $registrations = CourseRegistration::whereIn('status', ['pending', 'failed'])
-        ->whereNotNull('ref_id')->get();
+        ->get();
         foreach($registrations as $registration){
-            $registration->status = 'success';
-            $registration->save();
+            $request = new Request([
+                'Status' => 'OK',
+                'Authority' => $registration->authority,
+            ]);
+            $refId = zarinPal::verify($request, $registration->price);
+            if($refId > 1){
+                $registration->status = 'success';
+                $registration->save();
+            }
         }
 
         /** @var LengthAwarePaginator $registrations */
