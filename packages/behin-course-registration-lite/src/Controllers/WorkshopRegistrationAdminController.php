@@ -32,13 +32,12 @@ class WorkshopRegistrationAdminController extends Controller
     public function index(Request $request)
     {
         [$column, $direction] = $this->resolveSorting($request);
-        $registrations = WorkshopRegistration::where('status', 'pending')->get()->each(function($row){
-            $request = new Request([
-                'Status' => 'OK',
-                'Authority' => $row->authority
-            ]);
-            WorkshopRegistrationController::verify($request);
-        });
+        $registrations = WorkshopRegistration::where('status', 'pending')
+        ->whereNotNull('ref_id')->get();
+        foreach($registrations as $registration){
+            $registration->status = 'success';
+            $registration->save();
+        }
 
 
         /** @var LengthAwarePaginator $registrations */
