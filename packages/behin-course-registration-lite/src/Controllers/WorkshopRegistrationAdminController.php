@@ -2,6 +2,7 @@
 
 namespace CourseRegistrationLite\Controllers;
 
+use App\CustomClasses\zarinPal;
 use App\Http\Controllers\Controller;
 use CourseRegistrationLite\Models\WorkshopRegistration;
 use Illuminate\Http\Request;
@@ -35,8 +36,15 @@ class WorkshopRegistrationAdminController extends Controller
         $registrations = WorkshopRegistration::whereIn('status', ['pending', 'failed'])
         ->whereNotNull('ref_id')->get();
         foreach($registrations as $registration){
-            $registration->status = 'success';
-            $registration->save();
+            $request = new Request([
+                'Status' => 'OK',
+                'Authority' => $registration->authority,
+            ]);
+            $refId = zarinPal::verify($request, $registration->price);
+            if($refId > 1){
+                $registration->status = 'success';
+                $registration->save();
+            }
         }
 
 
