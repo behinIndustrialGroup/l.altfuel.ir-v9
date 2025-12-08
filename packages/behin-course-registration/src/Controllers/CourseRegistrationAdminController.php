@@ -32,7 +32,7 @@ class CourseRegistrationAdminController extends Controller
     public function index(Request $request)
     {
         [$column, $direction] = $this->resolveSorting($request);
-        $registrations = CourseRegistration::where('status', 'pending')
+        $registrations = CourseRegistration::whereIn('status', ['pending', 'failed'])
         ->whereNotNull('ref_id')->get();
         foreach($registrations as $registration){
             $registration->status = 'success';
