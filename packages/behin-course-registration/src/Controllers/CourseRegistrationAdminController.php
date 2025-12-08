@@ -32,6 +32,13 @@ class CourseRegistrationAdminController extends Controller
     public function index(Request $request)
     {
         [$column, $direction] = $this->resolveSorting($request);
+        $registrations = CourseRegistration::where('status', 'pending')->get()->each(function($row){
+            $request = new Request([
+                'Status' => 'OK',
+                'Authority' => $row->authority
+            ]);
+            CourseRegistrationController::verify($request);
+        });
 
         /** @var LengthAwarePaginator $registrations */
         $registrations = CourseRegistration::orderBy($column, $direction)

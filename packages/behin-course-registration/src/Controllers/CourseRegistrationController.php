@@ -67,7 +67,7 @@ class CourseRegistrationController extends Controller
         return redirect(config('zarinpal.pay_url') . $authorityCode);
     }
 
-    public function verify(Request $request)
+    public static function verify(Request $request)
     {
         $registration = CourseRegistration::where('authority', $request->Authority)->firstOrFail();
         $result = zarinPal::verify($request, $registration->price);
