@@ -3,6 +3,7 @@
 namespace App\CustomClasses;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use SoapClient;
 
 class zarinPal
@@ -54,6 +55,7 @@ class zarinPal
                 'Authority'      => $request->Authority,
                 'Amount'         => $price,
             ]);
+            Log::info('zarinpal', $result);
 
             if ($result->Status == 100) {
                 return $result->RefID;
