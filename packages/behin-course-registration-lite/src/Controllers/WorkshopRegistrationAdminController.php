@@ -34,7 +34,7 @@ class WorkshopRegistrationAdminController extends Controller
     {
         [$column, $direction] = $this->resolveSorting($request);
         $registrations = WorkshopRegistration::whereIn('status', ['pending'])
-        ->whereNotNull('ref_id')->get();
+        ->get();
         foreach($registrations as $registration){
             $request = new Request([
                 'Status' => 'OK',
