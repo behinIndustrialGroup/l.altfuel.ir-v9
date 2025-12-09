@@ -34,7 +34,7 @@
                     </p>
                     <p class="mb-2">
                         <strong>وضعیت:</strong> 
-                        <span class="badge badge-info">{{ $ticket['new_status'] ?? 'نامشخص' }}</span>
+                        <span class="badge badge-info">{{ $ticket['new_status_option'] ?? 'نامشخص' }}</span>
                     </p>
                     @if(isset($ticket['new_conversion_type']))
                         <p class="mb-2">
