@@ -56,10 +56,14 @@ class ShowCrmTicketController extends Controller
 
         // دریافت کامنت‌های تیکت
         $comments = $this->getTicketComments($ticketId);
+        
+        // دریافت پیوست‌های تیکت
+        $attachments = $this->getTicketAttachments($ticketId);
 
         return view('ATView::crm-show')->with([
             'ticket' => $ticket,
             'comments' => $comments,
+            'attachments' => $attachments,
         ]);
     }
 
@@ -217,6 +221,35 @@ class ShowCrmTicketController extends Controller
     }
 
     /**
+     * دریافت پیوست‌های یک تیکت از CRM
+     */
+    private function getTicketAttachments($ticketId)
+    {
+        try {
+            $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
+            
+            $response = $this->crmClient->request("annotations", "GET", [
+                '$select' => 'annotationid,subject,notetext,filename,createdon',
+                '$filter' => "_objectid_value eq $cleanTicketId",
+                '$orderby' => 'createdon asc'
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return $body['value'] ?? [];
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error("Exception while getting attachments from CRM", [
+                'ticket_id' => $ticketId,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
      * دریافت اطلاعات یک مخاطب از CRM
      */
     private function getContactInfo($contactId)
@@ -250,6 +283,7 @@ class ShowCrmTicketController extends Controller
         $request->validate([
             'ticket_id' => 'required',
             'text' => 'required|string',
+            'files.*' => 'file|max:' . config('ATConfig.max-attach-file-size'),
         ]);
 
         $ticketId = $request->input('ticket_id');
@@ -294,6 +328,20 @@ class ShowCrmTicketController extends Controller
             $response = $this->crmClient->request("new_ticketcomments", "POST", $commentData);
 
             if ($response->successful()) {
+                // ذخیره فایل‌ها اگر وجود داشته باشند
+                if ($request->hasFile('files')) {
+                    foreach ($request->file('files') as $file) {
+                        if ($file->isValid()) {
+                            // آپلود فایل
+                            $path = $file->store('ticket-uploads', 'public');
+                            $fullPath = '/storage/' . $path;
+
+                            // ارسال به CRM به عنوان annotation
+                            $this->uploadAttachmentToCrm($ticketId, $fullPath, $file->getClientOriginalName());
+                        }
+                    }
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'کامنت با موفقیت ثبت شد'
@@ -382,6 +430,44 @@ class ShowCrmTicketController extends Controller
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * آپلود فایل پیوست به CRM
+     */
+    private function uploadAttachmentToCrm($ticketId, $filePath, $fileName)
+    {
+        try {
+            $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
+            
+            $payload = [
+                "subject" => "پیوست تیکت",
+                "notetext" => $filePath,
+                "filename" => $fileName,
+                "mimetype" => "text/html",
+                "isdocument" => false,
+                "objectid_new_ticket@odata.bind" => "/new_tickets($cleanTicketId)",
+            ];
+
+            $response = $this->crmClient->save('annotations', $payload);
+            
+            if (!$response->successful()) {
+                Log::error("Failed to upload attachment to CRM", [
+                    'ticket_id' => $ticketId,
+                    'file_path' => $filePath,
+                    'response' => $response->body()
+                ]);
+            }
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error("Exception while uploading attachment to CRM", [
+                'ticket_id' => $ticketId,
+                'file_path' => $filePath,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 

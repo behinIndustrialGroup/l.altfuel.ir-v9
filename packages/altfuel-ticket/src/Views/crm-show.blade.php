@@ -116,6 +116,32 @@
                         </div>
                         <hr class="border-white">
                         <div style="white-space: pre-line">{{ $comment['new_text'] ?? 'بدون متن' }}</div>
+                        
+                        {{-- نمایش پیوست‌ها --}}
+                        @if(isset($attachments) && count($attachments) > 0)
+                            @php
+                                $commentAttachments = array_filter($attachments, function($att) use ($comment) {
+                                    // فیلتر attachments مربوط به این کامنت بر اساس زمان
+                                    $commentTime = strtotime($comment['new_created_at'] ?? '');
+                                    $attachTime = strtotime($att['createdon'] ?? '');
+                                    return abs($commentTime - $attachTime) < 60; // در بازه 60 ثانیه
+                                });
+                            @endphp
+                            
+                            @if(count($commentAttachments) > 0)
+                                <div class="mt-2 pt-2 border-top {{ ($comment['new_is_owner'] ?? false) ? 'border-white' : '' }}">
+                                    <small class="{{ ($comment['new_is_owner'] ?? false) ? 'text-white-50' : 'text-muted' }}">
+                                        <i class="fa fa-paperclip"></i> پیوست‌ها:
+                                    </small>
+                                    @foreach($commentAttachments as $index => $attach)
+                                        <a href="{{ $attach['notetext'] ?? '#' }}" target="_blank" 
+                                           class="d-block mt-1 {{ ($comment['new_is_owner'] ?? false) ? 'text-white' : '' }}">
+                                            <i class="fa fa-file"></i> {{ $attach['filename'] ?? 'پیوست ' . ($index + 1) }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -135,12 +161,29 @@
         <div class="mt-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <form id="crm-comment-form">
+                    <form id="crm-comment-form" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="ticket_id" value="{{ $ticket['new_ticketid'] }}">
-                        <div class="form-group">
-                            <label for="comment_text">پیام جدید</label>
-                            <textarea name="text" id="comment_text" class="form-control" rows="4" placeholder="متن پیام خود را وارد کنید..." required></textarea>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label for="comment_text">پیام جدید</label>
+                                    <textarea name="text" id="comment_text" class="form-control" rows="4" placeholder="متن پیام خود را وارد کنید..." required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>پیوست</label>
+                                    <small class="d-block text-muted mb-2">
+                                        فایل های مجاز: {{ implode(', ', config('ATConfig.attachment-file-types-translate')) }}
+                                    </small>
+                                    <input type="file" name="files[]" class="form-control-file file-input mb-2">
+                                    <div id="crm-inputFields"></div>
+                                    <button type="button" class="btn btn-sm btn-info" onclick="addCrmFile()">
+                                        <i class="fa fa-plus"></i> افزودن فایل دیگر
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <button type="button" class="btn btn-success mt-2" onclick="submitCrmComment()">
                             <i class="fa fa-paper-plane"></i> ارسال پیام
@@ -195,7 +238,56 @@
         $('#ticket-modal').modal('hide');
     }
 
-    function submitCrmComment() {
+    // افزودن فایل جدید
+    function addCrmFile() {
+        const divEle = document.getElementById("crm-inputFields");
+        const wrapper = document.createElement("div");
+        wrapper.className = "mb-2";
+        const iField = document.createElement("input");
+        iField.setAttribute("type", "file");
+        iField.setAttribute("name", "files[]");
+        iField.classList.add("form-control-file", "file-input");
+        wrapper.appendChild(iField);
+        divEle.appendChild(wrapper);
+    }
+
+    // بررسی حجم فایل
+    var maxFileSizeInMB = parseInt('{{ config('ATConfig.max-attach-file-size') }}') / 1024;
+
+    function checkFileSize(file) {
+        var maxSizeInBytes = maxFileSizeInMB * 1024 * 1024;
+        return file.size <= maxSizeInBytes;
+    }
+
+    // فشرده‌سازی تصویر
+    async function compressImage(file) {
+        return new Promise(function(resolve, reject) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const maxWidth = 700;
+                    const scaleSize = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scaleSize;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function(blob) {
+                        resolve(blob)
+                    }, 'image/jpeg', 1);
+                };
+            };
+        })
+    }
+
+    async function submitCrmComment() {
         const form = document.getElementById('crm-comment-form');
         const formData = new FormData(form);
 
@@ -211,14 +303,48 @@
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> در حال ارسال...';
 
+        // پردازش فایل‌ها (فشرده‌سازی تصاویر بزرگ)
+        const fileInputs = $('.file-input');
+        const finalFormData = new FormData();
+        finalFormData.append('ticket_id', formData.get('ticket_id'));
+        finalFormData.append('text', text);
+        finalFormData.append('_token', formData.get('_token'));
+
+        for (let i = 0; i < fileInputs.length; i++) {
+            const inputElement = fileInputs[i];
+            const file = inputElement.files[0];
+
+            if (!file) continue;
+
+            if (!checkFileSize(file)) {
+                if (file.type.startsWith('image/')) {
+                    try {
+                        const compressedBlob = await compressImage(file);
+                        finalFormData.append(`files[${i}]`, compressedBlob, file.name);
+                    } catch (error) {
+                        console.error('Error compressing image:', error);
+                        alert('خطا در فشرده‌سازی تصویر!');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> ارسال پیام';
+                        return;
+                    }
+                } else {
+                    alert(`فایل ${file.name} بیش از حد مجاز است و نمی‌تواند آپلود شود.`);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> ارسال پیام';
+                    return;
+                }
+            } else {
+                finalFormData.append(`files[${i}]`, file);
+            }
+        }
+
         $.ajax({
             url: "{{ route('ATRoutes.crm.addComment') }}",
             method: 'POST',
-            data: {
-                ticket_id: formData.get('ticket_id'),
-                text: text,
-                _token: formData.get('_token')
-            },
+            data: finalFormData,
+            processData: false,
+            contentType: false,
             success: function(response) {
                 if (response.success) {
                     // پاک کردن فرم
