@@ -386,6 +386,53 @@ class ShowCrmTicketController extends Controller
     }
 
     /**
+     * ثبت امتیاز برای تیکت در CRM
+     */
+    public function setScore(Request $request)
+    {
+        $request->validate([
+            'ticket_id' => 'required',
+            'score' => 'required|integer|min:1|max:5',
+        ]);
+
+        $ticketId = $request->input('ticket_id');
+        $score = $request->input('score');
+
+        try {
+            $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
+            
+            // بروزرسانی امتیاز در CRM
+            $response = $this->crmClient->request("new_tickets($cleanTicketId)", "PATCH", [
+                'new_score' => $score
+            ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'امتیاز با موفقیت ثبت شد',
+                    'score' => $score
+                ]);
+            }
+
+            Log::error("Failed to set score in CRM", [
+                'ticket_id' => $ticketId,
+                'score' => $score,
+                'response' => $response->body()
+            ]);
+
+            return response()->json(['error' => 'خطا در ثبت امتیاز'], 500);
+
+        } catch (\Exception $e) {
+            Log::error("Exception while setting score", [
+                'ticket_id' => $ticketId,
+                'score' => $score,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'خطا در ثبت امتیاز'], 500);
+        }
+    }
+
+    /**
      * تبدیل Option Set به متن فارسی
      */
     private function mapOptionSetToStatus($optionSet)

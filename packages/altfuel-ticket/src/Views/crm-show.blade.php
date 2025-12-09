@@ -41,11 +41,19 @@
                             <strong>نوع تبدیل:</strong> {{ $ticket['new_conversion_type'] }}
                         </p>
                     @endif
-                    @if(isset($ticket['new_score']))
-                        <p class="mb-2">
-                            <strong>امتیاز:</strong> {{ $ticket['new_score'] }}
-                        </p>
-                    @endif
+                    <p class="mb-2">
+                        <strong>امتیاز:</strong>
+                        <span id="ticket-score-display">
+                            @if(isset($ticket['new_score']) && $ticket['new_score'] > 0)
+                                @for($i = 1; $i <= 5; $i++)
+                                    <i class="fa fa-star {{ $i <= $ticket['new_score'] ? 'text-warning' : 'text-muted' }}"></i>
+                                @endfor
+                                ({{ $ticket['new_score'] }}/5)
+                            @else
+                                <span class="text-muted">امتیازی ثبت نشده</span>
+                            @endif
+                        </span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -118,24 +126,68 @@
         @endif
     </div>
 
-    <!-- فرم افزودن کامنت -->
-    <div class="mt-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <form id="crm-comment-form">
-                    @csrf
-                    <input type="hidden" name="ticket_id" value="{{ $ticket['new_ticketid'] }}">
-                    <div class="form-group">
-                        <label for="comment_text">پیام جدید</label>
-                        <textarea name="text" id="comment_text" class="form-control" rows="4" placeholder="متن پیام خود را وارد کنید..." required></textarea>
-                    </div>
-                    <button type="button" class="btn btn-success mt-2" onclick="submitCrmComment()">
-                        <i class="fa fa-paper-plane"></i> ارسال پیام
-                    </button>
-                </form>
+    <!-- فرم افزودن کامنت - فقط برای تیکت‌های باز -->
+    @php
+        $isClosed = ($ticket['new_status'] ?? '') === 'بسته شده' || ($ticket['new_status_option'] ?? 0) == 100000003;
+    @endphp
+
+    @if(!$isClosed)
+        <div class="mt-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form id="crm-comment-form">
+                        @csrf
+                        <input type="hidden" name="ticket_id" value="{{ $ticket['new_ticketid'] }}">
+                        <div class="form-group">
+                            <label for="comment_text">پیام جدید</label>
+                            <textarea name="text" id="comment_text" class="form-control" rows="4" placeholder="متن پیام خود را وارد کنید..." required></textarea>
+                        </div>
+                        <button type="button" class="btn btn-success mt-2" onclick="submitCrmComment()">
+                            <i class="fa fa-paper-plane"></i> ارسال پیام
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
+    @else
+        <div class="mt-3">
+            <div class="alert alert-warning text-center">
+                <i class="fa fa-lock"></i> این تیکت بسته شده است و امکان ارسال پیام جدید وجود ندارد.
+            </div>
+        </div>
+    @endif
+
+    <!-- فرم امتیازدهی - فقط برای کاربر -->
+    @php
+        $isOwner = false;
+        if (auth()->check() && isset($ticket['new_contact']['contactid'])) {
+            $userContactId = auth()->user()->crm_contact_id;
+            $ticketContactId = $ticket['new_contact']['contactid'];
+            $isOwner = ($userContactId && $ticketContactId && $userContactId === $ticketContactId);
+        }
+        
+        $hasScore = isset($ticket['new_score']) && $ticket['new_score'] > 0;
+    @endphp
+
+    @if($isOwner && !$hasScore)
+        <div class="mt-3">
+            <div class="card border-0 shadow-sm" id="rating-card">
+                <div class="card-body">
+                    <h6 class="mb-3">امتیازدهی به خدمات</h6>
+                    <p class="text-muted small">لطفاً کیفیت خدمات دریافتی را امتیاز دهید:</p>
+                    <div class="rating-stars mb-3" id="rating-stars">
+                        @for($i = 1; $i <= 5; $i++)
+                            <i class="fa fa-star star-rating" data-score="{{ $i }}" 
+                               style="font-size: 2rem; cursor: pointer; color: #ddd;"></i>
+                        @endfor
+                    </div>
+                    <button type="button" class="btn btn-primary" id="submit-score-btn" onclick="submitScore()" style="display: none;">
+                        <i class="fa fa-check"></i> ثبت امتیاز
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 <script>
@@ -216,6 +268,96 @@
                 // فعال کردن دوباره دکمه
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> ارسال پیام';
+            }
+        });
+    }
+
+    // امتیازدهی
+    let selectedScore = 0;
+
+    $(document).ready(function() {
+        // رویداد hover برای ستاره‌ها
+        $('.star-rating').hover(
+            function() {
+                const score = $(this).data('score');
+                highlightStars(score);
+            },
+            function() {
+                highlightStars(selectedScore);
+            }
+        );
+
+        // رویداد کلیک برای انتخاب امتیاز
+        $('.star-rating').click(function() {
+            selectedScore = $(this).data('score');
+            highlightStars(selectedScore);
+            $('#submit-score-btn').show();
+        });
+    });
+
+    function highlightStars(score) {
+        $('.star-rating').each(function() {
+            const starScore = $(this).data('score');
+            if (starScore <= score) {
+                $(this).css('color', '#ffc107'); // طلایی
+            } else {
+                $(this).css('color', '#ddd'); // خاکستری
+            }
+        });
+    }
+
+    function submitScore() {
+        if (selectedScore === 0) {
+            alert('لطفاً امتیاز خود را انتخاب کنید');
+            return;
+        }
+
+        const submitBtn = $('#submit-score-btn');
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="fa fa-spinner fa-spin"></i> در حال ثبت...');
+
+        $.ajax({
+            url: "{{ route('ATRoutes.crm.setScore') }}",
+            method: 'POST',
+            data: {
+                ticket_id: '{{ $ticket['new_ticketid'] }}',
+                score: selectedScore,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (typeof show_message === 'function') {
+                        show_message(response.message);
+                    } else {
+                        alert(response.message);
+                    }
+
+                    // بروزرسانی نمایش امتیاز
+                    let starsHtml = '';
+                    for (let i = 1; i <= 5; i++) {
+                        starsHtml += `<i class="fa fa-star ${i <= selectedScore ? 'text-warning' : 'text-muted'}"></i> `;
+                    }
+                    starsHtml += `(${selectedScore}/5)`;
+                    $('#ticket-score-display').html(starsHtml);
+
+                    // مخفی کردن فرم امتیازدهی
+                    $('#rating-card').fadeOut(function() {
+                        $(this).remove();
+                    });
+                }
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.error || 'خطا در ثبت امتیاز';
+                if (typeof show_error === 'function') {
+                    show_error(errorMsg);
+                } else {
+                    alert(errorMsg);
+                }
+                console.error(xhr);
+            },
+            complete: function() {
+                submitBtn.prop('disabled', false);
+                submitBtn.html('<i class="fa fa-check"></i> ثبت امتیاز');
             }
         });
     }
