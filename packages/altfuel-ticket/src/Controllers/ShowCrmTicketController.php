@@ -81,7 +81,16 @@ class ShowCrmTicketController extends Controller
 
             if ($response->successful()) {
                 $body = $response->json();
-                return $body['value'] ?? [];
+                $tickets = $body['value'] ?? [];
+                
+                // تبدیل status_option به متن فارسی
+                foreach ($tickets as &$ticket) {
+                    if (isset($ticket['new_status_option'])) {
+                        $ticket['new_status'] = self::mapOptionSetToStatus($ticket['new_status_option']);
+                    }
+                }
+                
+                return $tickets;
             }
 
             Log::error("Failed to get tickets from CRM", [
@@ -113,7 +122,14 @@ class ShowCrmTicketController extends Controller
 
             if ($response->successful()) {
                 $body = $response->json();
-                return $body['value'][0] ?? null;
+                $ticket = $body['value'][0] ?? null;
+                
+                // تبدیل status_option به متن فارسی
+                if ($ticket && isset($ticket['new_status_option'])) {
+                    $ticket['new_status'] = self::mapOptionSetToStatus($ticket['new_status_option']);
+                }
+                
+                return $ticket;
             }
 
             Log::error("Failed to get ticket from CRM", [
@@ -521,7 +537,7 @@ class ShowCrmTicketController extends Controller
     /**
      * تبدیل Option Set به متن فارسی
      */
-    private function mapOptionSetToStatus($optionSet)
+    public static function mapOptionSetToStatus($optionSet)
     {
         return match ($optionSet) {
             100000000 => 'جدید',

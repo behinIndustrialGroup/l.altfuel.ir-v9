@@ -56,7 +56,7 @@
                                     <td>{{ $ticket['new_title'] ?? 'بدون عنوان' }}</td>
                                     <td>
                                         <span class="badge badge-info">
-                                            {{ $ticket['new_status_option'] ?? 'نامشخص' }}
+                                            {{ $ticket['new_status'] ?? 'نامشخص' }}
                                         </span>
                                     </td>
                                     <td>{{ $ticket['new_created_at'] ? verta($ticket['new_created_at'])->format('Y/m/d H:i') : '-' }}</td>
