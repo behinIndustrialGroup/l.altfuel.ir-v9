@@ -77,6 +77,7 @@ class ComplaintController extends Controller
         $mobile = $this->convertPersianToEnglish($data['mobile']);
         $contactId = null;
 
+        // جستجوی کانتکت موجود
         $response = $crmClient->request("contacts", "GET", [
             '$select' => 'contactid,fullname,mobilephone',
             '$filter' => "mobilephone eq '$mobile'"
@@ -87,32 +88,11 @@ class ComplaintController extends Controller
             if (!empty($body['value'])) {
                 // مخاطب موجود است
                 $contactId = $body['value'][0]['contactid'];
+                Log::info('Existing contact found', ['contactId' => $contactId, 'mobile' => $mobile]);
             } else {
                 // مخاطب وجود ندارد → ایجاد جدید
-                $response = $crmClient->save('contacts', [
-                    "rhs_nationalcode" => $data['national_code'],
-                    "createdon" => now(),
-                    "telephone1" => $mobile,
-                    "mobilephone" => $mobile,
-                    "firstname" => $data['first_name_last_name'],
-                    "rhs_address" => $data['address'],
-                ]);
-
-                if ($response->successful()) {
-                    $entityIdHeader = $response->header('OData-EntityId');
-
-                    if ($entityIdHeader) {
-                        // استخراج GUID از داخل پرانتز
-                        preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
-                        $contactId = $matches[1] ?? null;
-                    }
-                } else {
-                    Log::error('Failed to create contact in CRM', [
-                        'mobile' => $mobile,
-                        'response' => $response->body(),
-                        'status' => $response->status()
-                    ]);
-                }
+                Log::info('Contact not found, creating new contact', ['mobile' => $mobile]);
+                $contactId = $this->createContact($crmClient, $data, $mobile);
             }
         } else {
             // اگر query fail شد، سعی می‌کنیم کانتکت را ایجاد کنیم
@@ -122,29 +102,7 @@ class ComplaintController extends Controller
                 'status' => $response->status()
             ]);
             
-            $response = $crmClient->save('contacts', [
-                "rhs_nationalcode" => $data['national_code'],
-                "createdon" => now(),
-                "telephone1" => $mobile,
-                "mobilephone" => $mobile,
-                "firstname" => $data['first_name_last_name'],
-                "rhs_address" => $data['address'],
-            ]);
-
-            if ($response->successful()) {
-                $entityIdHeader = $response->header('OData-EntityId');
-
-                if ($entityIdHeader) {
-                    preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
-                    $contactId = $matches[1] ?? null;
-                }
-            } else {
-                Log::error('Failed to create contact in CRM after query failure', [
-                    'mobile' => $mobile,
-                    'response' => $response->body(),
-                    'status' => $response->status()
-                ]);
-            }
+            $contactId = $this->createContact($crmClient, $data, $mobile);
         }
 
         // اگر کانتکت ایجاد شد، annotation را اضافه می‌کنیم
@@ -215,6 +173,58 @@ class ComplaintController extends Controller
 
         return redirect()->route('complaint.create')->with('success', 'شکایت با موفقیت ثبت شد');
     }
+    private function createContact(CrmClient $crmClient, array $data, string $mobile): ?string
+    {
+        $contactData = [
+            "rhs_nationalcode" => $data['national_code'],
+            "createdon" => now(),
+            "telephone1" => $mobile,
+            "mobilephone" => $mobile,
+            "firstname" => $data['first_name_last_name'],
+            "rhs_address" => $data['address'],
+        ];
+
+        $response = $crmClient->save('contacts', $contactData);
+
+        if ($response->successful()) {
+            $entityIdHeader = $response->header('OData-EntityId');
+
+            if ($entityIdHeader) {
+                preg_match('/\(([^)]+)\)/', $entityIdHeader, $matches);
+                $contactId = $matches[1] ?? null;
+                
+                Log::info('Contact created successfully', [
+                    'contactId' => $contactId,
+                    'mobile' => $mobile,
+                    'entityIdHeader' => $entityIdHeader
+                ]);
+                
+                return $contactId;
+            } else {
+                // اگر header موجود نبود، سعی کنیم از response body استخراج کنیم
+                $responseBody = $response->json();
+                if (isset($responseBody['contactid'])) {
+                    $contactId = $responseBody['contactid'];
+                    Log::info('Contact ID extracted from response body', ['contactId' => $contactId]);
+                    return $contactId;
+                } else {
+                    Log::warning('No OData-EntityId header and no contactid in response body', [
+                        'response' => $response->body()
+                    ]);
+                }
+            }
+        } else {
+            Log::error('Failed to create contact in CRM', [
+                'mobile' => $mobile,
+                'response' => $response->body(),
+                'status' => $response->status(),
+                'contactData' => $contactData
+            ]);
+        }
+
+        return null;
+    }
+
     public function convertPersianToEnglish($string) {
         static $map = [
             '۰' => '0',
