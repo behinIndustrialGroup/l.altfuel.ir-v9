@@ -115,16 +115,19 @@ class AddTicketCommentController extends Controller
             $isOwner = ($comment->user_id === $ticket->user_id);
             $contactId = null;
             
-            $user = $comment->user();
-            if ($user && $user->email) {
-                $resp = $crmClient->request("contacts", "GET", [
-                    '$select' => 'contactid,mobilephone',
-                    '$filter' => "mobilephone eq '{$user->email}'"
-                ]);
-                if ($resp->successful()) {
-                    $b = $resp->json();
-                    if (!empty($b['value'])) {
-                        $contactId = $b['value'][0]['contactid'];
+            // اگر کامنت گذار owner نیست (کارشناس است)، contact پر نشود
+            if ($isOwner) {
+                $user = $comment->user();
+                if ($user && $user->email) {
+                    $resp = $crmClient->request("contacts", "GET", [
+                        '$select' => 'contactid,mobilephone',
+                        '$filter' => "mobilephone eq '{$user->email}'"
+                    ]);
+                    if ($resp->successful()) {
+                        $b = $resp->json();
+                        if (!empty($b['value'])) {
+                            $contactId = $b['value'][0]['contactid'];
+                        }
                     }
                 }
             }
@@ -143,7 +146,22 @@ class AddTicketCommentController extends Controller
                 $commentData['new_contact@odata.bind'] = "/contacts($contactId)";
             }
 
-            $create = $crmClient->request("new_ticketcomments", "POST", $commentData);
+            // استفاده از crm_username کاربر برای ارسال به CRM
+            $user = $comment->user();
+            $crmUsername = $user && $user->crm_username ? $user->crm_username : null;
+            
+            // اگر کاربر crm_username دارد، از آن استفاده کن
+            if ($crmUsername) {
+                $userCrmClient = new CrmClient(
+                    config('services.crm.base_url'),
+                    $crmUsername,
+                    config('services.crm.password'), // از پسورد پیش‌فرض استفاده کن
+                    config('services.crm.path')
+                );
+                $create = $userCrmClient->request("new_ticketcomments", "POST", $commentData);
+            } else {
+                $create = $crmClient->request("new_ticketcomments", "POST", $commentData);
+            }
             if ($create->successful()) {
                 return 'success';
             } else {
@@ -255,7 +273,9 @@ class AddTicketCommentController extends Controller
             $contactId = null;
             
             $user = $comment->user();
-            if ($user && $user->email) {
+            
+            // اگر کامنت گذار owner نیست (کارشناس است)، contact پر نشود
+            if ($isOwner && $user && $user->email) {
                 $resp = $crmClient->request("contacts", "GET", [
                     '$select' => 'contactid,mobilephone',
                     '$filter' => "mobilephone eq '{$user->email}'"
@@ -279,7 +299,21 @@ class AddTicketCommentController extends Controller
                 $payload['new_contact@odata.bind'] = "/contacts($contactId)";
             }
 
-            $create = $crmClient->request("new_ticketcomments", "POST", $payload);
+            // استفاده از crm_username کاربر برای ارسال به CRM
+            $crmUsername = $user && $user->crm_username ? $user->crm_username : null;
+            
+            // اگر کاربر crm_username دارد، از آن استفاده کن
+            if ($crmUsername) {
+                $userCrmClient = new CrmClient(
+                    config('services.crm.base_url'),
+                    $crmUsername,
+                    config('services.crm.password'), // از پسورد پیش‌فرض استفاده کن
+                    config('services.crm.path')
+                );
+                $create = $userCrmClient->request("new_ticketcomments", "POST", $payload);
+            } else {
+                $create = $crmClient->request("new_ticketcomments", "POST", $payload);
+            }
             if ($create->successful()) {
                 return true;
             }
