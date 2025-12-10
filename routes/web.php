@@ -91,8 +91,9 @@ Route::get('/update-crm-credentials', function () {
         ['id' => 1365, 'username' => 'S.Ahangaran'],
         ['id' => 1793, 'username' => 'F.Damghanian'],
         ['id' => 1799, 'username' => 'A.Nazari'],
-        ['id' => 10, 'username' => 'M.Khodru'],
         ['id' => 1791, 'username' => 'R.Lak'],
+        ['id' => 1501, 'username' => 'A.Hoseini'],
+        ['id' => 10, 'username' => 'M.Khodru'],
     ];
 
     $updated = 0;
