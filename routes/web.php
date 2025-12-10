@@ -73,6 +73,36 @@ Route::get('send-alert-sms', function (SendSmsController $sms) {
         return $response;
     });
 
+Route::get('/update-crm-credentials', function () {
+    // هر کاربر رو دونه دونه آپدیت کن
+    $users = [
+        ['id' => 14, 'username' => 'A.Kaboli'],
+        ['id' => 15, 'username' => 'M.GolGavahi'],
+        ['id' => 18, 'username' => 'M.Shenasandeh'],
+        ['id' => 19, 'username' => 'H.Mohammadi'],
+        ['id' => 25, 'username' => 'F.Shahidi'],
+        ['id' => 28, 'username' => 'T.Babaei'],
+        ['id' => 37, 'username' => 'P.Ahmadi'],
+        ['id' => 39, 'username' => 'E.Seyedi'],
+        ['id' => 40, 'username' => 'R.Shadman'],
+        ['id' => 41, 'username' => 'F.Shahriari'],
+        ['id' => 42, 'username' => 'V.Shahab'],
+        ['id' => 1158, 'username' => 'M.HajiVand'],
+        ['id' => 1365, 'username' => 'S.Ahangaran'],
+        ['id' => 1793, 'username' => 'F.Damghanian'],
+    ];
+
+    $updated = 0;
+    foreach ($users as $userData) {
+        User::where('id', $userData['id'])->update([
+            'crm_username' => $userData['username'],
+        ]);
+        $updated++;
+    }
+
+    return "✓ {$updated} کاربر با موفقیت آپدیت شد";
+});
+
 Route::post('/mv/send-code', [MobileVerificationController::class, 'send_code_sms']);
 Route::any('/mv/check-code/{mobile}/{code}', [MobileVerificationController::class, 'check_code']);
 
