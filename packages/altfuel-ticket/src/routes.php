@@ -75,6 +75,7 @@ Route::name('ATRoutes.crm.')->prefix(config('ATConfig.route-prefix') . 'crm/tick
     Route::post('change-category', [ShowCrmTicketController::class, 'changeCrmTicketCategory'])->name('changeCategory');
     Route::get('child-categories', [ShowCrmTicketController::class, 'getCrmChildCategories'])->name('getChildCategories');
     Route::get('debug-comment-structure', [ShowCrmTicketController::class, 'debugCommentStructure'])->name('debugCommentStructure');
+    Route::get('debug-category-structure', [ShowCrmTicketController::class, 'debugCategoryStructure'])->name('debugCategoryStructure');
 });
 
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');

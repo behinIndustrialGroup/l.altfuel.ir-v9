@@ -61,6 +61,8 @@
                     method: 'GET',
                     data: { parent_id: parentId },
                     success: function(response) {
+                        console.log('Child categories response:', response);
+                        
                         childSelect.html('<option value="">انتخاب کنید...</option>');
                         
                         if (response && response.length > 0) {
@@ -73,8 +75,27 @@
                             childSelect.html('<option value="">زیردسته‌ای موجود نیست</option>');
                         }
                     },
-                    error: function() {
-                        childSelect.html('<option value="">خطا در بارگذاری</option>');
+                    error: function(xhr, status, error) {
+                        console.error('Error loading child categories:', {
+                            status: status,
+                            error: error,
+                            response: xhr.responseText,
+                            parentId: parentId
+                        });
+                        
+                        let errorMsg = 'خطا در بارگذاری';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        
+                        childSelect.html(`<option value="">خطا: ${errorMsg}</option>`);
+                        
+                        // نمایش خطا به کاربر
+                        if (typeof show_error === 'function') {
+                            show_error('خطا در دریافت زیردسته‌ها: ' + errorMsg);
+                        } else {
+                            alert('خطا در دریافت زیردسته‌ها: ' + errorMsg);
+                        }
                     }
                 });
             } else {
