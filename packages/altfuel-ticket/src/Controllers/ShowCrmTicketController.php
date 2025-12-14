@@ -551,47 +551,21 @@ class ShowCrmTicketController extends Controller
     public function getCrmParentCategories()
     {
         try {
-            Log::info("Getting parent categories from CRM");
-
-            // ابتدا بدون فیلتر تست کنیم
             $response = $this->crmClient->request("new_ticketcategories", "GET", [
-                '$select' => 'new_ticketcategoryid,new_name,_new_parent_id_value',
-                '$orderby' => 'new_name asc',
-                '$top' => 100
+                '$select' => 'new_ticketcategoryid,new_name',
+                '$filter' => 'new_parent_id eq null',
+                '$orderby' => 'new_name asc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
-                $allCategories = $body['value'] ?? [];
-                
-                // فیلتر کردن دسته‌بندی‌های والد (آنهایی که parent_id ندارند)
-                $parentCategories = array_filter($allCategories, function($category) {
-                    return empty($category['_new_parent_id_value']) || $category['_new_parent_id_value'] === null;
-                });
-                
-                // تبدیل به array با index های پیوسته
-                $parentCategories = array_values($parentCategories);
-                
-                Log::info("Parent categories retrieved successfully", [
-                    'total_count' => count($allCategories),
-                    'parent_count' => count($parentCategories),
-                    'sample_all' => array_slice($allCategories, 0, 3),
-                    'parent_categories' => $parentCategories
-                ]);
-                
-                return $parentCategories;
+                return $body['value'] ?? [];
             }
-
-            Log::error("Failed to get parent categories from CRM", [
-                'response_status' => $response->status(),
-                'response_body' => $response->body()
-            ]);
 
             return [];
         } catch (\Exception $e) {
             Log::error("Exception while getting parent categories from CRM", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
             return [];
         }
@@ -609,48 +583,24 @@ class ShowCrmTicketController extends Controller
         }
 
         try {
-            // پاک کردن GUID از براکت‌ها و فاصله‌ها
-            $cleanParentId = str_replace(['{', '}', ' '], '', $parentId);
-            
-            Log::info("Getting child categories from CRM", [
-                'original_parent_id' => $parentId,
-                'clean_parent_id' => $cleanParentId
-            ]);
-
             $response = $this->crmClient->request("new_ticketcategories", "GET", [
                 '$select' => 'new_ticketcategoryid,new_name',
-                '$filter' => "_new_parent_id_value eq $cleanParentId",
+                '$filter' => "_new_parent_id_value eq $parentId",
                 '$orderby' => 'new_name asc'
             ]);
 
             if ($response->successful()) {
                 $body = $response->json();
-                $categories = $body['value'] ?? [];
-                
-                Log::info("Child categories retrieved successfully", [
-                    'parent_id' => $parentId,
-                    'count' => count($categories),
-                    'categories' => $categories
-                ]);
-                
-                return response()->json($categories);
+                return response()->json($body['value'] ?? []);
             }
-
-            Log::error("Failed to get child categories from CRM", [
-                'parent_id' => $parentId,
-                'clean_parent_id' => $cleanParentId,
-                'response_status' => $response->status(),
-                'response_body' => $response->body()
-            ]);
 
             return response()->json([]);
         } catch (\Exception $e) {
             Log::error("Exception while getting child categories from CRM", [
                 'parent_id' => $parentId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
-            return response()->json(['error' => 'خطا در دریافت زیردسته‌ها'], 500);
+            return response()->json([]);
         }
     }
 
@@ -749,84 +699,6 @@ class ShowCrmTicketController extends Controller
                 'error' => $e->getMessage()
             ]);
             return false;
-        }
-    }
-
-    /**
-     * متد تست برای بررسی ساختار دسته‌بندی‌ها در CRM
-     */
-    public function debugCategoryStructure(Request $request)
-    {
-        try {
-            // دریافت تمام دسته‌بندی‌ها
-            $allCategoriesResponse = $this->crmClient->request("new_ticketcategories", "GET", [
-                '$select' => 'new_ticketcategoryid,new_name,new_parent_id,_new_parent_id_value',
-                '$orderby' => 'new_name asc',
-                '$top' => 50
-            ]);
-
-            $result = [
-                'all_categories' => null,
-                'parent_categories' => null,
-                'sample_child_lookup' => null
-            ];
-
-            if ($allCategoriesResponse->successful()) {
-                $body = $allCategoriesResponse->json();
-                $allCategories = $body['value'] ?? [];
-                
-                $result['all_categories'] = [
-                    'count' => count($allCategories),
-                    'sample' => array_slice($allCategories, 0, 5),
-                    'structure_info' => [
-                        'has_parent_id_field' => !empty($allCategories) && isset($allCategories[0]['new_parent_id']),
-                        'has_parent_id_value_field' => !empty($allCategories) && isset($allCategories[0]['_new_parent_id_value']),
-                    ]
-                ];
-
-                // جداسازی والدها و فرزندها
-                $parents = array_filter($allCategories, function($cat) {
-                    return empty($cat['_new_parent_id_value']) || $cat['_new_parent_id_value'] === null;
-                });
-
-                $children = array_filter($allCategories, function($cat) {
-                    return !empty($cat['_new_parent_id_value']);
-                });
-
-                $result['parent_categories'] = [
-                    'count' => count($parents),
-                    'items' => array_values($parents)
-                ];
-
-                // اگر والدی وجود دارد، زیردسته‌هایش را تست کن
-                if (!empty($parents)) {
-                    $firstParent = array_values($parents)[0];
-                    $parentId = $firstParent['new_ticketcategoryid'];
-                    
-                    $childResponse = $this->crmClient->request("new_ticketcategories", "GET", [
-                        '$select' => 'new_ticketcategoryid,new_name',
-                        '$filter' => "_new_parent_id_value eq $parentId",
-                        '$orderby' => 'new_name asc'
-                    ]);
-
-                    if ($childResponse->successful()) {
-                        $childBody = $childResponse->json();
-                        $result['sample_child_lookup'] = [
-                            'parent_id' => $parentId,
-                            'parent_name' => $firstParent['new_name'],
-                            'children_count' => count($childBody['value'] ?? []),
-                            'children' => $childBody['value'] ?? []
-                        ];
-                    }
-                }
-            }
-
-            return response()->json($result);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
         }
     }
 
