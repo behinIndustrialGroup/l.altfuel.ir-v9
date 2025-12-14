@@ -17,6 +17,7 @@ use Mkhodroo\AltfuelTicket\Controllers\TicketCatagoryController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketConversionController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketFilterController;
 use Mkhodroo\AltfuelTicket\Controllers\TicketStatusController;
+use Mkhodroo\AltfuelTicket\Controllers\CreateCrmTicketController;
 
 Route::name('ATRoutes.')->prefix(config('ATConfig.route-prefix') . 'tickets')->middleware(['web','auth', 'access'])->group(function(){
     Route::get('', [CreateTicketController::class, 'index'])->name('index');
@@ -72,7 +73,17 @@ Route::name('ATRoutes.crm.')->prefix(config('ATConfig.route-prefix') . 'crm/tick
     Route::post('show', [ShowCrmTicketController::class, 'show'])->name('show');
     Route::post('add-comment', [ShowCrmTicketController::class, 'addComment'])->name('addComment');
     Route::post('set-score', [ShowCrmTicketController::class, 'setScore'])->name('setScore');
+    Route::post('change-category', [ShowCrmTicketController::class, 'changeCrmTicketCategory'])->name('changeCategory');
+    Route::get('child-categories', [ShowCrmTicketController::class, 'getCrmChildCategories'])->name('getChildCategories');
     Route::get('debug-comment-structure', [ShowCrmTicketController::class, 'debugCommentStructure'])->name('debugCommentStructure');
+    Route::get('debug-category-structure', [ShowCrmTicketController::class, 'debugCategoryStructure'])->name('debugCategoryStructure');
+});
+
+// CRM Create Ticket Routes
+Route::name('ATRoutes.crm.create.')->prefix(config('ATConfig.route-prefix') . 'crm/create')->middleware(['web','auth', 'access'])->group(function(){
+    Route::get('', [CreateCrmTicketController::class, 'index'])->name('index');
+    Route::post('store', [CreateCrmTicketController::class, 'store'])->name('store');
+    Route::get('child-categories', [CreateCrmTicketController::class, 'getChildCategories'])->name('getChildCategories');
 });
 
 Route::get('/crm/categories/sync', [TicketCatagoryController::class, 'sync'])->name('crm.categories.sync');

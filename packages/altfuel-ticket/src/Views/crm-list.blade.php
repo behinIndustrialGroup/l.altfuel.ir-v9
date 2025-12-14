@@ -3,8 +3,11 @@
 @section('content')
 <div class="container-fluid">
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h4>تیکت‌های CRM</h4>
+            <a href="{{ route('ATRoutes.crm.create.index') }}" class="btn btn-success">
+                <i class="fa fa-plus"></i> ایجاد تیکت جدید
+            </a>
         </div>
         <div class="card-body">
             <!-- فرم جستجو بر اساس Contact ID - فقط برای کارشناسان -->
