@@ -30,7 +30,7 @@
                     <h6 class="mb-3">اطلاعات تیکت</h6>
                     <p class="mb-2">
                         <strong>دسته‌بندی:</strong> 
-                        <span class="ticket-category-display">{{ $ticket['new_cat_id']['new_name'] ?? 'نامشخص' }}</span>
+                        {{ $ticket['new_cat_id']['new_name'] ?? 'نامشخص' }}
                     </p>
                     <p class="mb-2">
                         <strong>وضعیت:</strong> 
@@ -197,16 +197,6 @@
             <div class="alert alert-warning text-center">
                 <i class="fa fa-lock"></i> این تیکت بسته شده است و امکان ارسال پیام جدید وجود ندارد.
             </div>
-        </div>
-    @endif
-
-    <!-- فرم تغییر دسته‌بندی - فقط برای کارشناسان -->
-    @if(auth()->user()->access('change-catagory') && !$isClosed)
-        <div class="mt-3">
-            @include('ATView::partial-view.crm-change-category-form', [
-                'ticket' => $ticket,
-                'parentCategories' => $parentCategories
-            ])
         </div>
     @endif
 
