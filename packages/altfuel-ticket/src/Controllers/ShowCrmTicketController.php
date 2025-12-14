@@ -60,10 +60,21 @@ class ShowCrmTicketController extends Controller
         // دریافت پیوست‌های تیکت
         $attachments = $this->getTicketAttachments($ticketId);
 
+        // دریافت دسته‌بندی‌های والد از CRM برای فرم تغییر دسته‌بندی
+        $parentCategories = $this->getCrmParentCategories();
+        
+        // اگر دسته‌بندی‌های والد خالی باشد، لاگ کن
+        if (empty($parentCategories)) {
+            Log::warning("No parent categories found in CRM for ticket display", [
+                'ticket_id' => $ticketId
+            ]);
+        }
+
         return view('ATView::crm-show')->with([
             'ticket' => $ticket,
             'comments' => $comments,
             'attachments' => $attachments,
+            'parentCategories' => $parentCategories,
         ]);
     }
 
@@ -531,6 +542,163 @@ class ShowCrmTicketController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'خطا در ثبت امتیاز'], 500);
+        }
+    }
+
+    /**
+     * دریافت تمام دسته‌بندی‌های والد از CRM
+     */
+    public function getCrmParentCategories()
+    {
+        try {
+            $response = $this->crmClient->request("new_ticketcategories", "GET", [
+                '$select' => 'new_ticketcategoryid,new_name',
+                '$filter' => 'new_parent_id eq null',
+                '$orderby' => 'new_name asc'
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return $body['value'] ?? [];
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error("Exception while getting parent categories from CRM", [
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * دریافت دسته‌بندی‌های فرزند از CRM بر اساس والد
+     */
+    public function getCrmChildCategories(Request $request)
+    {
+        $parentId = $request->input('parent_id');
+        
+        if (!$parentId) {
+            return response()->json(['error' => 'Parent ID is required'], 400);
+        }
+
+        try {
+            $response = $this->crmClient->request("new_ticketcategories", "GET", [
+                '$select' => 'new_ticketcategoryid,new_name',
+                '$filter' => "_new_parent_id_value eq $parentId",
+                '$orderby' => 'new_name asc'
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return response()->json($body['value'] ?? []);
+            }
+
+            return response()->json([]);
+        } catch (\Exception $e) {
+            Log::error("Exception while getting child categories from CRM", [
+                'parent_id' => $parentId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([]);
+        }
+    }
+
+    /**
+     * تغییر دسته‌بندی تیکت در CRM
+     */
+    public function changeCrmTicketCategory(Request $request)
+    {
+        $request->validate([
+            'ticket_id' => 'required',
+            'category_id' => 'required',
+        ]);
+
+        $ticketId = $request->input('ticket_id');
+        $categoryId = $request->input('category_id');
+
+        try {
+            $cleanTicketId = str_replace(['{', '}', ' '], '', $ticketId);
+            
+            // بروزرسانی دسته‌بندی تیکت در CRM
+            $response = $this->crmClient->request("new_tickets($cleanTicketId)", "PATCH", [
+                'new_cat_id@odata.bind' => "/new_ticketcategories($categoryId)"
+            ]);
+
+            if ($response->successful()) {
+                // دریافت نام دسته‌بندی جدید برای نمایش
+                $categoryResponse = $this->crmClient->request("new_ticketcategories($categoryId)", "GET", [
+                    '$select' => 'new_name'
+                ]);
+
+                $categoryName = 'نامشخص';
+                if ($categoryResponse->successful()) {
+                    $categoryData = $categoryResponse->json();
+                    $categoryName = $categoryData['new_name'] ?? 'نامشخص';
+                }
+
+                // افزودن کامنت تغییر دسته‌بندی
+                $userName = auth()->user()->display_name ?? auth()->user()->name ?? 'کارشناس';
+                $commentText = "دسته‌بندی تیکت توسط {$userName} به «{$categoryName}» تغییر یافت.";
+                $this->addSystemComment($ticketId, $commentText);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'دسته‌بندی تیکت با موفقیت تغییر یافت',
+                    'category_name' => $categoryName
+                ]);
+            }
+
+            Log::error("Failed to change ticket category in CRM", [
+                'ticket_id' => $ticketId,
+                'category_id' => $categoryId,
+                'response' => $response->body()
+            ]);
+
+            return response()->json(['error' => 'خطا در تغییر دسته‌بندی'], 500);
+
+        } catch (\Exception $e) {
+            Log::error("Exception while changing ticket category", [
+                'ticket_id' => $ticketId,
+                'category_id' => $categoryId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'خطا در تغییر دسته‌بندی'], 500);
+        }
+    }
+
+    /**
+     * افزودن کامنت سیستمی به تیکت
+     */
+    private function addSystemComment($ticketId, $text)
+    {
+        try {
+            $commentData = [
+                'new_text' => $text,
+                'new_is_owner' => false,
+                'new_created_at' => now()->toIso8601String(),
+                'new_updated_at' => now()->toIso8601String(),
+                'new_ticket@odata.bind' => "/new_tickets($ticketId)",
+            ];
+
+            $response = $this->crmClient->request("new_ticketcomments", "POST", $commentData);
+            
+            if (!$response->successful()) {
+                Log::error("Failed to add system comment to CRM", [
+                    'ticket_id' => $ticketId,
+                    'text' => $text,
+                    'response' => $response->body()
+                ]);
+            }
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::error("Exception while adding system comment", [
+                'ticket_id' => $ticketId,
+                'text' => $text,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 

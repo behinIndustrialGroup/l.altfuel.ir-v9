@@ -72,6 +72,8 @@ Route::name('ATRoutes.crm.')->prefix(config('ATConfig.route-prefix') . 'crm/tick
     Route::post('show', [ShowCrmTicketController::class, 'show'])->name('show');
     Route::post('add-comment', [ShowCrmTicketController::class, 'addComment'])->name('addComment');
     Route::post('set-score', [ShowCrmTicketController::class, 'setScore'])->name('setScore');
+    Route::post('change-category', [ShowCrmTicketController::class, 'changeCrmTicketCategory'])->name('changeCategory');
+    Route::get('child-categories', [ShowCrmTicketController::class, 'getCrmChildCategories'])->name('getChildCategories');
     Route::get('debug-comment-structure', [ShowCrmTicketController::class, 'debugCommentStructure'])->name('debugCommentStructure');
 });
 
