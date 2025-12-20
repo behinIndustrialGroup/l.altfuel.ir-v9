@@ -216,7 +216,7 @@ class SendToCrmController extends Controller
                 'rhs_lastname' => $firstAgency['lastname'] ?? 'نام خانوادگی',
                 'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? '09123456789'),
                 'rhs_agencycode' => $firstAgency['agency_code'] ?? '12003',
-                'rhs_contact@odata.bind' => "/contacts($contactId)"
+                'new_contact@odata.bind' => "/contacts($contactId)"
             ];
 
             echo "<h3>ارسال داده‌های تست:</h3>";
@@ -439,7 +439,7 @@ class SendToCrmController extends Controller
                 'statecode' => $this->formatEnable($agency['enable'] ?? ''),
                 'rhs_location' => $agency['location'] ?? '',
                 'createdon' => now()->toIso8601String(),
-                'new_contact@odata.bind' => "/contacts($contactId)" // تغییر از rhs_contact به new_contact
+                'new_contact@odata.bind' => "/contacts($contactId)" // تغییر از rhs_contact به ne
             ];
 
             // حذف فیلدهای خالی
