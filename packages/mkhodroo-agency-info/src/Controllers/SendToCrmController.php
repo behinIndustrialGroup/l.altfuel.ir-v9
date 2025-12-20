@@ -175,8 +175,86 @@ class SendToCrmController extends Controller
         }
     }
     /**
-     * تست ایجاد Service Center با فیلدهای محدود
+     * تست ساده با حداقل فیلدها
      */
+    public function testMinimalServiceCenter()
+    {
+        try {
+            echo "<h2>تست ایجاد Service Center با حداقل فیلدها</h2>";
+            
+            // تست 1: فقط با نام
+            echo "<h3>تست 1: فقط با نام</h3>";
+            $serviceCenterData1 = [
+                'rhs_name' => 'تست مرکز خدمات'
+            ];
+            
+            echo "<pre>";
+            print_r($serviceCenterData1);
+            echo "</pre>";
+            
+            $response1 = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData1);
+            
+            if ($response1->successful()) {
+                echo "<p style='color: green;'>✓ تست 1 موفق</p>";
+            } else {
+                echo "<p style='color: red;'>✗ تست 1 ناموفق: " . $response1->status() . "</p>";
+                echo "<pre>" . $response1->body() . "</pre>";
+            }
+            
+            echo "<hr>";
+            
+            // تست 2: با نام و موبایل
+            echo "<h3>تست 2: با نام و موبایل</h3>";
+            $serviceCenterData2 = [
+                'rhs_name' => 'تست مرکز خدمات 2',
+                'rhs_mobile' => '09123456789'
+            ];
+            
+            echo "<pre>";
+            print_r($serviceCenterData2);
+            echo "</pre>";
+            
+            $response2 = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData2);
+            
+            if ($response2->successful()) {
+                echo "<p style='color: green;'>✓ تست 2 موفق</p>";
+            } else {
+                echo "<p style='color: red;'>✗ تست 2 ناموفق: " . $response2->status() . "</p>";
+                echo "<pre>" . $response2->body() . "</pre>";
+            }
+            
+            echo "<hr>";
+            
+            // تست 3: با فیلدهای text ساده
+            echo "<h3>تست 3: با فیلدهای text ساده</h3>";
+            $serviceCenterData3 = [
+                'rhs_name' => 'تست مرکز خدمات 3',
+                'rhs_fullname' => 'جهانگیر',
+                'rhs_lastname' => 'قاسم وند',
+                'rhs_mobile' => '09143553102',
+                'rhs_agencycode' => '12003'
+            ];
+            
+            echo "<pre>";
+            print_r($serviceCenterData3);
+            echo "</pre>";
+            
+            $response3 = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData3);
+            
+            if ($response3->successful()) {
+                echo "<p style='color: green;'>✓ تست 3 موفق</p>";
+                $serviceCenterId = $this->extractEntityId($response3);
+                echo "<p>Service Center ID: $serviceCenterId</p>";
+            } else {
+                echo "<p style='color: red;'>✗ تست 3 ناموفق: " . $response3->status() . "</p>";
+                echo "<pre>" . $response3->body() . "</pre>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در تست:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
     public function testCreateServiceCenter()
     {
         try {
