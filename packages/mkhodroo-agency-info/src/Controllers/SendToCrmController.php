@@ -214,14 +214,24 @@ class SendToCrmController extends Controller
     {
         try {
             $serviceCenterData = [
-                'rhs_name' => $agency['name'],
-                'rhs_agency_code' => $agency['agency_code'] ?? '',
+                'rhs_row' => $agency['customer_type'] ?? '',
+                'rhs_fullname' => $agency['firstname'] ?? '',
+                'rhs_lastname' => $agency['lastname'] ?? '',
+                'rhs_yearofreceivingthecode' => $agency['recieving_code_year'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($agency['national_id'] ?? ''),
+                'rhs_servicecenterid' => $agency['agency_code'] ?? '',
+                'rhs_address' => $agency['address'] ?? '',
+                'rhs_guildnumber' => $agency['guild_number'] ?? '',
                 'rhs_mobile' => $this->cleanMobile($agency['mobile'] ?? ''),
                 'rhs_phone' => $this->cleanMobile($agency['phone'] ?? ''),
-                'rhs_address' => $agency['address'] ?? '',
-                'rhs_national_id' => $this->cleanMobile($agency['national_id'] ?? ''),
+                'rhs_dateofissue' => $this->formatDate($agency['issued_date'] ?? ''),
+                'rhs_expirydate' => $this->formatDate($agency['exp_date'] ?? ''),
+                'rhs_description' => $agency['description'] ?? '',
                 'rhs_province' => $agency['province'] ?? '',
                 'rhs_city' => $agency['city'] ?? '',
+                'rhs_postalcode' => $agency['postal_code'] ?? '',
+                'statecode' => $this->formatEnable($agency['enable'] ?? ''),
+                'rhs_location' => $agency['location'] ?? '',
                 'createdon' => now()->toIso8601String(),
                 'rhs_contact@odata.bind' => "/contacts($contactId)"
             ];
@@ -260,15 +270,24 @@ class SendToCrmController extends Controller
     private function getAgencyData()
     {
         $desiredKeys = [
+            'customer_type',
             'firstname',
             'lastname',
+            'recieving_code_year',
             'national_id',
             'agency_code',
             'address',
+            'guild_number',
             'mobile',
             'phone',
+            'issued_date',
+            'exp_date',
+            'description',
             'province',
-            'city'
+            'city',
+            'postal_code',
+            'enable',
+            'location'
         ];
 
         // گرفتن اطلاعات شهرها و استان‌ها
@@ -324,6 +343,32 @@ class SendToCrmController extends Controller
         $englishNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
         
         return str_replace($persianNumbers, $englishNumbers, $mobile);
+    }
+
+    /**
+     * فرمت کردن تاریخ برای CRM
+     */
+    private function formatDate($date)
+    {
+        if (!$date) return null;
+        
+        try {
+            return \Carbon\Carbon::parse($date)->toIso8601String();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * فرمت کردن وضعیت enable برای statecode
+     */
+    private function formatEnable($enable)
+    {
+        return match ($enable) {
+            '1', 1, 'true', true => 0, // فعال = 0 در CRM
+            '0', 0, 'false', false => 1, // غیرفعال = 1 در CRM
+            default => 0
+        };
     }
 
     /**

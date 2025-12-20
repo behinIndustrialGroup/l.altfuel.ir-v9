@@ -15,14 +15,24 @@ GET /agency-info/send-to-crm
 ## فیلدهای مورد نیاز در CRM:
 
 ### Entity: `rhs_servicecenter`
-- `rhs_name` - نام مرکز
-- `rhs_agency_code` - کد نمایندگی
-- `rhs_mobile` - موبایل
-- `rhs_phone` - تلفن
-- `rhs_address` - آدرس
-- `rhs_national_id` - کد ملی
-- `rhs_province` - استان
-- `rhs_city` - شهر
+- `rhs_row` - نوع مشتری (customer_type)
+- `rhs_fullname` - نام (firstname)
+- `rhs_lastname` - نام خانوادگی (lastname)
+- `rhs_yearofreceivingthecode` - سال دریافت کد (recieving_code_year)
+- `rhs_nationalcode` - کد ملی (national_id)
+- `rhs_servicecenterid` - کد نمایندگی (agency_code)
+- `rhs_address` - آدرس (address)
+- `rhs_guildnumber` - شماره صنفی (guild_number)
+- `rhs_mobile` - موبایل (mobile)
+- `rhs_phone` - تلفن (phone)
+- `rhs_dateofissue` - تاریخ صدور (issued_date)
+- `rhs_expirydate` - تاریخ انقضا (exp_date)
+- `rhs_description` - توضیحات (description)
+- `rhs_province` - استان (province)
+- `rhs_city` - شهر (city)
+- `rhs_postalcode` - کد پستی (postal_code)
+- `statecode` - وضعیت فعال/غیرفعال (enable) - 0=فعال, 1=غیرفعال
+- `rhs_location` - موقعیت (location)
 - `rhs_contact` - Lookup به Contact
 
 ### Entity: `contacts` (استاندارد)
@@ -32,6 +42,26 @@ GET /agency-info/send-to-crm
 - `mobilephone` - موبایل
 - `telephone1` - تلفن
 - `address1_line1` - آدرس
+
+## فیلدهای ارسالی از دیتابیس:
+customer_type → rhs_row
+firstname → rhs_fullname  
+lastname → rhs_lastname
+recieving_code_year → rhs_yearofreceivingthecode
+national_id → rhs_nationalcode
+agency_code → rhs_servicecenterid
+address → rhs_address
+guild_number → rhs_guildnumber
+mobile → rhs_mobile
+phone → rhs_phone
+issued_date → rhs_dateofissue
+exp_date → rhs_expirydate
+description → rhs_description
+province → rhs_province
+city → rhs_city
+postal_code → rhs_postalcode
+enable → statecode (0=فعال, 1=غیرفعال)
+location → rhs_location
 
 ## استفاده:
 ```
