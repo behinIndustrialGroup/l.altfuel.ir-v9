@@ -232,7 +232,7 @@ class SendToCrmController extends Controller
                 'rhs_fullname' => 'جهانگیر',
                 'rhs_lastname' => 'قاسم وند',
                 'rhs_mobile' => '09143553102',
-                'rhs_agencycode' => '12003'
+                'rhs_centercode' => '12003'
             ];
             
             echo "<pre>";
@@ -293,7 +293,7 @@ class SendToCrmController extends Controller
                 'rhs_fullname' => $firstAgency['firstname'] ?? 'تست',
                 'rhs_lastname' => $firstAgency['lastname'] ?? 'نام خانوادگی',
                 'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? '09123456789'),
-                'rhs_agencycode' => $firstAgency['agency_code'] ?? '12003',
+                'rhs_centercode' => $firstAgency['agency_code'] ?? '12003',
                 'new_contact@odata.bind' => "/contacts($contactId)"
             ];
 
@@ -503,7 +503,7 @@ class SendToCrmController extends Controller
                 'rhs_lastname' => $agency['lastname'] ?? '',
                 'rhs_yearofreceivingthecode' => $agency['recieving_code_year'] ?? '',
                 'rhs_nationalcode' => $this->cleanMobile($agency['national_id'] ?? ''),
-                'rhs_agencycode' => $agency['agency_code'] ?? '', // تغییر نام از rhs_servicecenterid به rhs_agencycode
+                'rhs_centercode' => $agency['agency_code'] ?? '', // تغییر نام از rhs_servicecenterid به rhs_centercode
                 'rhs_address' => $agency['address'] ?? '',
                 'rhs_guildnumber' => $agency['guild_number'] ?? '',
                 'rhs_mobile' => $this->cleanMobile($agency['mobile'] ?? ''),
