@@ -233,6 +233,79 @@ class SendToCrmController extends Controller
     }
 
     /**
+     * مقایسه داده‌های ارسالی با داده‌های ذخیره شده در CRM
+     */
+    private function compareDataWithCrm($serviceCenterId, $sentData)
+    {
+        try {
+            // دریافت داده‌های ذخیره شده از CRM
+            $response = $this->crmClient->request("rhs_servicecenters($serviceCenterId)", "GET", [
+                '$select' => implode(',', array_keys($sentData))
+            ]);
+            
+            if (!$response->successful()) {
+                echo "<p style='color: red;'>خطا در دریافت داده‌های CRM: " . $response->status() . "</p>";
+                return;
+            }
+            
+            $crmData = $response->json();
+            
+            echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+            echo "<tr style='background-color: #f0f0f0;'>";
+            echo "<th>فیلد</th><th>داده ارسالی</th><th>داده CRM</th><th>وضعیت</th>";
+            echo "</tr>";
+            
+            $matchCount = 0;
+            $totalCount = 0;
+            
+            foreach ($sentData as $field => $sentValue) {
+                $crmValue = $crmData[$field] ?? null;
+                $totalCount++;
+                
+                // تبدیل مقادیر null به رشته خالی برای مقایسه بهتر
+                $sentValueDisplay = $sentValue === null ? 'NULL' : (string)$sentValue;
+                $crmValueDisplay = $crmValue === null ? 'NULL' : (string)$crmValue;
+                
+                $isMatch = $sentValue == $crmValue;
+                if ($isMatch) {
+                    $matchCount++;
+                }
+                
+                $statusColor = $isMatch ? 'green' : 'red';
+                $statusText = $isMatch ? '✓ مطابق' : '✗ نامطابق';
+                
+                echo "<tr>";
+                echo "<td><strong>$field</strong></td>";
+                echo "<td>" . htmlspecialchars($sentValueDisplay) . "</td>";
+                echo "<td>" . htmlspecialchars($crmValueDisplay) . "</td>";
+                echo "<td style='color: $statusColor;'>$statusText</td>";
+                echo "</tr>";
+            }
+            
+            echo "</table>";
+            
+            $percentage = $totalCount > 0 ? round(($matchCount / $totalCount) * 100, 2) : 0;
+            echo "<p><strong>خلاصه: $matchCount از $totalCount فیلد مطابق است ($percentage%)</strong></p>";
+            
+            // نمایش فیلدهای نامطابق
+            if ($matchCount < $totalCount) {
+                echo "<h4>فیلدهای نامطابق:</h4>";
+                echo "<ul>";
+                foreach ($sentData as $field => $sentValue) {
+                    $crmValue = $crmData[$field] ?? null;
+                    if ($sentValue != $crmValue) {
+                        echo "<li><strong>$field:</strong> ارسالی='$sentValue' ← CRM='$crmValue'</li>";
+                    }
+                }
+                echo "</ul>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<p style='color: red;'>خطا در مقایسه داده‌ها: " . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
      * تست ایجاد Contact و اتصال به Service Center
      */
     private function testCreateContactAndLink($serviceCenterId, $agencyData)
@@ -401,6 +474,11 @@ class SendToCrmController extends Controller
                 $serviceCenterId = $this->extractEntityId($response4);
                 echo "<p>Service Center ID: $serviceCenterId</p>";
                 
+                // بررسی داده‌های ذخیره شده
+                echo "<hr>";
+                echo "<h3>بررسی داده‌های ذخیره شده در CRM:</h3>";
+                $this->compareDataWithCrm($serviceCenterId, $serviceCenterData4);
+                
                 // حالا تست ایجاد Contact و اتصال
                 echo "<hr>";
                 echo "<h3>تست 5: ایجاد Contact و اتصال</h3>";
@@ -409,6 +487,58 @@ class SendToCrmController extends Controller
             } else {
                 echo "<p style='color: red;'>✗ تست 4 ناموفق: " . $response4->status() . "</p>";
                 echo "<pre>" . $response4->body() . "</pre>";
+            }
+            
+            echo "<hr>";
+            
+            // تست 6: تست کامل با مقایسه داده‌ها
+            echo "<h3>تست 6: تست کامل با مقایسه داده‌ها</h3>";
+            
+            echo "<h4>داده‌های اصلی از دیتابیس:</h4>";
+            echo "<pre>";
+            print_r($firstAgency);
+            echo "</pre>";
+            
+            // آماده‌سازی داده‌ها برای ارسال (تست کامل)
+            $completeServiceCenterData = [
+                'rhs_name' => $firstAgency['name'] ?? '',
+                'rhs_fullname' => $firstAgency['firstname'] ?? '',
+                'rhs_lastname' => $firstAgency['lastname'] ?? '',
+                'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? ''),
+                'rhs_phone' => $this->cleanMobile($firstAgency['phone'] ?? ''),
+                'rhs_centercode' => $firstAgency['agency_code'] ?? '',
+                'rhs_address' => $firstAgency['address'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($firstAgency['national_id'] ?? ''),
+                'rhs_province' => $firstAgency['province'] ?? '',
+                'rhs_city' => $firstAgency['city'] ?? '',
+                'rhs_description' => $firstAgency['description'] ?? ''
+            ];
+            
+            // حذف فیلدهای خالی
+            $completeServiceCenterData = array_filter($completeServiceCenterData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+            
+            echo "<h4>داده‌های آماده برای ارسال:</h4>";
+            echo "<pre>";
+            print_r($completeServiceCenterData);
+            echo "</pre>";
+            
+            // ارسال به CRM
+            $completeResponse = $this->crmClient->request("rhs_servicecenters", "POST", $completeServiceCenterData);
+            
+            if ($completeResponse->successful()) {
+                $completeServiceCenterId = $this->extractEntityId($completeResponse);
+                echo "<p style='color: green;'>✓ Service Center کامل با موفقیت ایجاد شد</p>";
+                echo "<p><strong>Service Center ID:</strong> $completeServiceCenterId</p>";
+                
+                // مقایسه داده‌ها
+                echo "<h4>مقایسه داده‌های ارسالی با CRM:</h4>";
+                $this->compareDataWithCrm($completeServiceCenterId, $completeServiceCenterData);
+                
+            } else {
+                echo "<p style='color: red;'>✗ خطا در ایجاد Service Center کامل: " . $completeResponse->status() . "</p>";
+                echo "<pre>" . $completeResponse->body() . "</pre>";
             }
             
         } catch (\Exception $e) {
@@ -479,6 +609,77 @@ class SendToCrmController extends Controller
             
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در تست:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
+     * تست کامل ایجاد و بررسی یک Service Center
+     */
+    public function testCompleteServiceCenter()
+    {
+        try {
+            echo "<h2>تست کامل ایجاد و بررسی Service Center</h2>";
+            
+            // دریافت داده‌های واقعی
+            $agencies = $this->getAgencyData();
+            if (empty($agencies)) {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
+                return;
+            }
+            
+            $firstAgency = $agencies[0];
+            
+            echo "<h3>داده‌های اصلی از دیتابیس:</h3>";
+            echo "<pre>";
+            print_r($firstAgency);
+            echo "</pre>";
+            
+            // آماده‌سازی داده‌ها برای ارسال
+            $serviceCenterData = [
+                'rhs_name' => $firstAgency['name'] ?? '',
+                'rhs_fullname' => $firstAgency['firstname'] ?? '',
+                'rhs_lastname' => $firstAgency['lastname'] ?? '',
+                'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? ''),
+                'rhs_phone' => $this->cleanMobile($firstAgency['phone'] ?? ''),
+                'rhs_centercode' => $firstAgency['agency_code'] ?? '',
+                'rhs_address' => $firstAgency['address'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($firstAgency['national_id'] ?? ''),
+                'rhs_province' => $firstAgency['province'] ?? '',
+                'rhs_city' => $firstAgency['city'] ?? '',
+                'rhs_description' => $firstAgency['description'] ?? ''
+            ];
+            
+            // حذف فیلدهای خالی
+            $serviceCenterData = array_filter($serviceCenterData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+            
+            echo "<h3>داده‌های آماده برای ارسال:</h3>";
+            echo "<pre>";
+            print_r($serviceCenterData);
+            echo "</pre>";
+            
+            // ارسال به CRM
+            $response = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData);
+            
+            if ($response->successful()) {
+                $serviceCenterId = $this->extractEntityId($response);
+                echo "<p style='color: green;'>✓ Service Center با موفقیت ایجاد شد</p>";
+                echo "<p><strong>Service Center ID:</strong> $serviceCenterId</p>";
+                
+                // مقایسه داده‌ها
+                echo "<hr>";
+                echo "<h3>مقایسه داده‌های ارسالی با CRM:</h3>";
+                $this->compareDataWithCrm($serviceCenterId, $serviceCenterData);
+                
+            } else {
+                echo "<p style='color: red;'>✗ خطا در ایجاد Service Center: " . $response->status() . "</p>";
+                echo "<pre>" . $response->body() . "</pre>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در تست کامل:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
         }
     }
