@@ -119,6 +119,62 @@ class SendToCrmController extends Controller
     }
 
     /**
+     * تست و debug اطلاعات
+     */
+    public function debugData()
+    {
+        try {
+            $agencies = $this->getAgencyData();
+            
+            echo "<h2>Debug اطلاعات مراکز</h2>";
+            echo "<p>تعداد کل مراکز: " . count($agencies) . "</p>";
+            
+            if (count($agencies) > 0) {
+                echo "<h3>نمونه اولین مرکز:</h3>";
+                echo "<pre>";
+                print_r($agencies[0]);
+                echo "</pre>";
+                
+                // تست اتصال به CRM
+                echo "<h3>تست اتصال به CRM:</h3>";
+                try {
+                    $testResponse = $this->crmClient->request("contacts", "GET", [
+                        '$select' => 'contactid,fullname',
+                        '$top' => 1
+                    ]);
+                    
+                    if ($testResponse->successful()) {
+                        echo "<p style='color: green;'>✓ اتصال به CRM موفق</p>";
+                        echo "<pre>";
+                        print_r($testResponse->json());
+                        echo "</pre>";
+                    } else {
+                        echo "<p style='color: red;'>✗ خطا در اتصال به CRM</p>";
+                        echo "<pre>";
+                        echo $testResponse->body();
+                        echo "</pre>";
+                    }
+                } catch (\Exception $e) {
+                    echo "<p style='color: red;'>✗ Exception در اتصال به CRM: " . $e->getMessage() . "</p>";
+                }
+                
+                // تست پردازش یک مرکز
+                echo "<h3>تست پردازش اولین مرکز:</h3>";
+                $result = $this->processAgency($agencies[0]);
+                echo "<pre>";
+                print_r($result);
+                echo "</pre>";
+            } else {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد!</p>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در debug:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        }
+    }
+    /**
      * پردازش یک مرکز
      */
     private function processAgency($agency)
@@ -129,49 +185,50 @@ class SendToCrmController extends Controller
             if (!$mobile) {
                 return [
                     'agency_id' => $agency['parent_id'],
-                    'name' => $agency['name'],
+                    'name' => $agency['name'] ?? 'نامشخص',
                     'success' => false,
                     'message' => 'شماره موبایل وجود ندارد'
                 ];
             }
 
             // پیدا کردن یا ایجاد Contact
-            $contactId = $this->getOrCreateContact($agency, $mobile);
+            $contactResult = $this->getOrCreateContact($agency, $mobile);
             
-            if (!$contactId) {
+            if (!$contactResult['success']) {
                 return [
                     'agency_id' => $agency['parent_id'],
-                    'name' => $agency['name'],
+                    'name' => $agency['name'] ?? 'نامشخص',
                     'success' => false,
-                    'message' => 'خطا در ایجاد Contact'
+                    'message' => 'خطا در Contact: ' . $contactResult['message']
                 ];
             }
 
             // ایجاد Service Center
-            $serviceCenterId = $this->createServiceCenter($agency, $contactId);
+            $serviceCenterResult = $this->createServiceCenter($agency, $contactResult['contact_id']);
             
-            if ($serviceCenterId) {
+            if ($serviceCenterResult['success']) {
                 return [
                     'agency_id' => $agency['parent_id'],
-                    'name' => $agency['name'],
+                    'name' => $agency['name'] ?? 'نامشخص',
                     'success' => true,
                     'message' => 'مرکز با موفقیت ایجاد شد',
-                    'contact_id' => $contactId,
-                    'service_center_id' => $serviceCenterId
+                    'contact_id' => $contactResult['contact_id'],
+                    'service_center_id' => $serviceCenterResult['service_center_id']
                 ];
             } else {
                 return [
                     'agency_id' => $agency['parent_id'],
-                    'name' => $agency['name'],
+                    'name' => $agency['name'] ?? 'نامشخص',
                     'success' => false,
-                    'message' => 'خطا در ایجاد مرکز خدمات'
+                    'message' => 'خطا در Service Center: ' . $serviceCenterResult['message']
                 ];
             }
 
         } catch (\Exception $e) {
             Log::error("Exception processing agency", [
                 'agency_id' => $agency['parent_id'] ?? 'unknown',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return [
@@ -188,15 +245,26 @@ class SendToCrmController extends Controller
      */
     private function getOrCreateContact($agency, $mobile)
     {
-        // جستجو برای Contact موجود
-        $contactId = $this->findContactByMobile($mobile);
-        
-        if ($contactId) {
-            return $contactId;
-        }
+        try {
+            // جستجو برای Contact موجود
+            $contactId = $this->findContactByMobile($mobile);
+            
+            if ($contactId) {
+                return [
+                    'success' => true,
+                    'contact_id' => $contactId,
+                    'message' => 'Contact موجود یافت شد'
+                ];
+            }
 
-        // ایجاد Contact جدید
-        return $this->createContact($agency, $mobile);
+            // ایجاد Contact جدید
+            return $this->createContact($agency, $mobile);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'خطا در getOrCreateContact: ' . $e->getMessage()
+            ];
+        }
     }
 
     /**
@@ -233,7 +301,7 @@ class SendToCrmController extends Controller
             $contactData = [
                 'firstname' => $agency['firstname'] ?? '',
                 'lastname' => $agency['lastname'] ?? '',
-                'fullname' => $agency['name'],
+                'fullname' => $agency['name'] ?? '',
                 'mobilephone' => $mobile,
                 'telephone1' => $this->cleanMobile($agency['phone'] ?? ''),
                 'address1_line1' => $agency['address'] ?? '',
@@ -248,21 +316,33 @@ class SendToCrmController extends Controller
             $response = $this->crmClient->request("contacts", "POST", $contactData);
             
             if ($response->successful()) {
-                return $this->extractEntityId($response);
+                $contactId = $this->extractEntityId($response);
+                return [
+                    'success' => true,
+                    'contact_id' => $contactId,
+                    'message' => 'Contact جدید ایجاد شد'
+                ];
             }
 
             Log::error("Failed to create contact", [
                 'agency_id' => $agency['parent_id'],
-                'response' => $response->body()
+                'response_status' => $response->status(),
+                'response_body' => $response->body()
             ]);
 
-            return null;
+            return [
+                'success' => false,
+                'message' => 'خطا در ایجاد Contact: ' . $response->status() . ' - ' . $response->body()
+            ];
         } catch (\Exception $e) {
             Log::error("Exception creating contact", [
                 'agency_id' => $agency['parent_id'],
                 'error' => $e->getMessage()
             ]);
-            return null;
+            return [
+                'success' => false,
+                'message' => 'Exception در ایجاد Contact: ' . $e->getMessage()
+            ];
         }
     }
 
@@ -303,23 +383,35 @@ class SendToCrmController extends Controller
             $response = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData);
             
             if ($response->successful()) {
-                return $this->extractEntityId($response);
+                $serviceCenterId = $this->extractEntityId($response);
+                return [
+                    'success' => true,
+                    'service_center_id' => $serviceCenterId,
+                    'message' => 'Service Center ایجاد شد'
+                ];
             }
 
             Log::error("Failed to create service center", [
                 'agency_id' => $agency['parent_id'],
                 'contact_id' => $contactId,
-                'response' => $response->body()
+                'response_status' => $response->status(),
+                'response_body' => $response->body()
             ]);
 
-            return null;
+            return [
+                'success' => false,
+                'message' => 'خطا در ایجاد Service Center: ' . $response->status() . ' - ' . $response->body()
+            ];
         } catch (\Exception $e) {
             Log::error("Exception creating service center", [
                 'agency_id' => $agency['parent_id'],
                 'contact_id' => $contactId,
                 'error' => $e->getMessage()
             ]);
-            return null;
+            return [
+                'success' => false,
+                'message' => 'Exception در ایجاد Service Center: ' . $e->getMessage()
+            ];
         }
     }
 

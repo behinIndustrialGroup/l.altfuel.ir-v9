@@ -38,8 +38,9 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     Route::post('delete-info', [AgencyController::class, 'deleteByKey'])->name('deleteByKey');
     Route::post('code-generator', [AgencyController::class, 'codeGenerator'])->name('codeGenerator');
     
-    // CRM Route
+    // CRM Routes
     Route::get('send-to-crm', [SendToCrmController::class, 'sendToCrm'])->name('sendToCrm');
+    Route::get('debug-crm', [SendToCrmController::class, 'debugData'])->name('debugCrm');
 });
 
 Route::prefix('/bedehi')->group(function () {
