@@ -439,7 +439,7 @@ class SendToCrmController extends Controller
                 'statecode' => $this->formatEnable($agency['enable'] ?? ''),
                 'rhs_location' => $agency['location'] ?? '',
                 'createdon' => now()->toIso8601String(),
-                'rhs_contact@odata.bind' => "/contacts($contactId)"
+                'new_contact@odata.bind' => "/contacts($contactId)" // تغییر از rhs_contact به new_contact
             ];
 
             // حذف فیلدهای خالی
