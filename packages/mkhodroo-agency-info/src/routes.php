@@ -13,6 +13,7 @@ use Mkhodroo\AgencyInfo\Controllers\CreateAgencyController;
 use Mkhodroo\AgencyInfo\Controllers\DebtController;
 use Mkhodroo\AgencyInfo\Controllers\LastActionController;
 use Mkhodroo\AgencyInfo\Controllers\QueryController;
+use Mkhodroo\AgencyInfo\Controllers\SendToCrmController;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\UserRoles\Controllers\GetRoleController;
@@ -36,6 +37,9 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     Route::post('docs-edit', [AgencyDocsController::class, 'docsEdit'])->name('docsEdit');
     Route::post('delete-info', [AgencyController::class, 'deleteByKey'])->name('deleteByKey');
     Route::post('code-generator', [AgencyController::class, 'codeGenerator'])->name('codeGenerator');
+    
+    // CRM Route
+    Route::get('send-to-crm', [SendToCrmController::class, 'sendToCrm'])->name('sendToCrm');
 });
 
 Route::prefix('/bedehi')->group(function () {
