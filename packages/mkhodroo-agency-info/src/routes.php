@@ -41,6 +41,7 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     // CRM Routes
     Route::get('send-to-crm', [SendToCrmController::class, 'sendToCrm'])->name('sendToCrm');
     Route::get('debug-crm', [SendToCrmController::class, 'debugData'])->name('debugCrm');
+    Route::get('test-service-center', [SendToCrmController::class, 'testCreateServiceCenter'])->name('testServiceCenter');
 });
 
 Route::prefix('/bedehi')->group(function () {

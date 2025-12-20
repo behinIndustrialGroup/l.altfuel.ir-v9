@@ -25,12 +25,13 @@ GET /agency-info/send-to-crm
 ## فیلدهای مورد نیاز در CRM:
 
 ### Entity: `rhs_servicecenter`
+- `rhs_name` - نام کامل مرکز (name)
 - `rhs_row` - نوع مشتری (customer_type)
 - `rhs_fullname` - نام (firstname)
 - `rhs_lastname` - نام خانوادگی (lastname)
 - `rhs_yearofreceivingthecode` - سال دریافت کد (recieving_code_year)
 - `rhs_nationalcode` - کد ملی (national_id)
-- `rhs_servicecenterid` - کد نمایندگی (agency_code)
+- `rhs_agencycode` - کد نمایندگی (agency_code) - نوع Text
 - `rhs_address` - آدرس (address)
 - `rhs_guildnumber` - شماره صنفی (guild_number)
 - `rhs_mobile` - موبایل (mobile)
@@ -44,6 +45,8 @@ GET /agency-info/send-to-crm
 - `statecode` - وضعیت فعال/غیرفعال (enable) - 0=فعال, 1=غیرفعال
 - `rhs_location` - موقعیت (location)
 - `rhs_contact` - Lookup به Contact
+
+**نکته مهم:** فیلد `rhs_agencycode` باید از نوع Single Line of Text باشد، نه Guid.
 
 ### Entity: `contacts` (استاندارد)
 - `firstname` - نام
@@ -59,7 +62,7 @@ firstname → rhs_fullname
 lastname → rhs_lastname
 recieving_code_year → rhs_yearofreceivingthecode
 national_id → rhs_nationalcode
-agency_code → rhs_servicecenterid
+agency_code → rhs_agencycode
 address → rhs_address
 guild_number → rhs_guildnumber
 mobile → rhs_mobile

@@ -175,8 +175,74 @@ class SendToCrmController extends Controller
         }
     }
     /**
-     * پردازش یک مرکز
+     * تست ایجاد Service Center با فیلدهای محدود
      */
+    public function testCreateServiceCenter()
+    {
+        try {
+            // تست با یک contact موجود
+            $testResponse = $this->crmClient->request("contacts", "GET", [
+                '$select' => 'contactid,fullname',
+                '$top' => 1
+            ]);
+            
+            if (!$testResponse->successful()) {
+                echo "<p style='color: red;'>خطا در دریافت contact برای تست</p>";
+                return;
+            }
+            
+            $contacts = $testResponse->json()['value'];
+            if (empty($contacts)) {
+                echo "<p style='color: red;'>هیچ contact برای تست یافت نشد</p>";
+                return;
+            }
+            
+            $contactId = $contacts[0]['contactid'];
+            echo "<p>استفاده از Contact ID: $contactId</p>";
+            
+            // تست با داده‌های واقعی از اولین مرکز
+            $agencies = $this->getAgencyData();
+            if (empty($agencies)) {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
+                return;
+            }
+            
+            $firstAgency = $agencies[0];
+            
+            // تست با فیلدهای محدود ابتدا
+            $serviceCenterData = [
+                'rhs_name' => $firstAgency['name'] ?? 'تست نام',
+                'rhs_fullname' => $firstAgency['firstname'] ?? 'تست',
+                'rhs_lastname' => $firstAgency['lastname'] ?? 'نام خانوادگی',
+                'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? '09123456789'),
+                'rhs_agencycode' => $firstAgency['agency_code'] ?? '12003',
+                'rhs_contact@odata.bind' => "/contacts($contactId)"
+            ];
+
+            echo "<h3>ارسال داده‌های تست:</h3>";
+            echo "<pre>";
+            print_r($serviceCenterData);
+            echo "</pre>";
+
+            $response = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData);
+            
+            if ($response->successful()) {
+                echo "<p style='color: green;'>✓ Service Center تست با موفقیت ایجاد شد</p>";
+                $serviceCenterId = $this->extractEntityId($response);
+                echo "<p>Service Center ID: $serviceCenterId</p>";
+            } else {
+                echo "<p style='color: red;'>✗ خطا در ایجاد Service Center تست</p>";
+                echo "<p>Status: " . $response->status() . "</p>";
+                echo "<pre>";
+                echo $response->body();
+                echo "</pre>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در تست:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
     private function processAgency($agency)
     {
         try {
@@ -353,12 +419,13 @@ class SendToCrmController extends Controller
     {
         try {
             $serviceCenterData = [
+                'rhs_name' => $agency['name'] ?? '', // اضافه کردن فیلد rhs_name
                 'rhs_row' => $agency['customer_type'] ?? '',
                 'rhs_fullname' => $agency['firstname'] ?? '',
                 'rhs_lastname' => $agency['lastname'] ?? '',
                 'rhs_yearofreceivingthecode' => $agency['recieving_code_year'] ?? '',
                 'rhs_nationalcode' => $this->cleanMobile($agency['national_id'] ?? ''),
-                'rhs_servicecenterid' => $agency['agency_code'] ?? '',
+                'rhs_agencycode' => $agency['agency_code'] ?? '', // تغییر نام از rhs_servicecenterid به rhs_agencycode
                 'rhs_address' => $agency['address'] ?? '',
                 'rhs_guildnumber' => $agency['guild_number'] ?? '',
                 'rhs_mobile' => $this->cleanMobile($agency['mobile'] ?? ''),
