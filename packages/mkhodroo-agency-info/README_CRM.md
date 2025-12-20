@@ -67,14 +67,15 @@ address → rhs_address
 guild_number → rhs_guildnumber
 mobile → rhs_mobile
 phone → rhs_phone
-issued_date → rhs_dateofissue
-exp_date → rhs_expirydate
+issued_date → rhs_dateofissue (فرمت ISO 8601)
+exp_date → rhs_expirydate (فرمت ISO 8601)
 description → rhs_description
 province → rhs_province
 city → rhs_city
 postal_code → rhs_postalcode
 enable → statecode (0=فعال, 1=غیرفعال)
 location → rhs_location
+name → rhs_name (ترکیب firstname + lastname)
 
 ## استفاده:
 ```
