@@ -17,45 +17,104 @@ class SendToCrmController extends Controller
     }
 
     /**
-     * ارسال اطلاعات مراکز به CRM
+     * ارسال اطلاعات مراکز به CRM به صورت chunk
      */
     public function sendToCrm()
     {
         try {
+            set_time_limit(0); // بدون محدودیت زمان
+            
             $agencies = $this->getAgencyData();
-            $results = [];
-            $successCount = 0;
-            $errorCount = 0;
-
-            foreach ($agencies as $agency) {
-                $result = $this->processAgency($agency);
-                $results[] = $result;
-
-                if ($result['success']) {
-                    $successCount++;
-                } else {
-                    $errorCount++;
-                }
+            $totalCount = count($agencies);
+            
+            if ($totalCount == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هیچ مرکزی برای ارسال یافت نشد'
+                ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => "ارسال کامل شد. موفق: $successCount، خطا: $errorCount",
-                'total' => count($agencies),
-                'success_count' => $successCount,
-                'error_count' => $errorCount,
-                'results' => $results
+            $chunkSize = 10; // تعداد رکورد در هر chunk
+            $chunks = array_chunk($agencies, $chunkSize);
+            $totalChunks = count($chunks);
+            
+            $successCount = 0;
+            $errorCount = 0;
+            $processedCount = 0;
+            $allResults = [];
+
+            echo "<h2>شروع ارسال $totalCount مرکز به CRM</h2>";
+            echo "<p>تعداد chunk ها: $totalChunks</p>";
+            echo "<hr>";
+            
+            // فلاش کردن خروجی
+            if (ob_get_level()) {
+                ob_end_flush();
+            }
+            ob_start();
+
+            foreach ($chunks as $chunkIndex => $chunk) {
+                $chunkNumber = $chunkIndex + 1;
+                $chunkResults = [];
+                
+                echo "<h3>پردازش Chunk $chunkNumber از $totalChunks</h3>";
+                echo "<ul>";
+                
+                foreach ($chunk as $agency) {
+                    $processedCount++;
+                    $result = $this->processAgency($agency);
+                    $chunkResults[] = $result;
+                    $allResults[] = $result;
+
+                    if ($result['success']) {
+                        $successCount++;
+                        echo "<li style='color: green;'>✓ {$result['name']} - موفق</li>";
+                    } else {
+                        $errorCount++;
+                        echo "<li style='color: red;'>✗ {$result['name']} - خطا: {$result['message']}</li>";
+                    }
+                    
+                    // فلاش کردن خروجی برای نمایش فوری
+                    ob_flush();
+                    flush();
+                    
+                    // کمی استراحت
+                    usleep(200000); // 0.2 ثانیه
+                }
+                
+                echo "</ul>";
+                echo "<p><strong>Chunk $chunkNumber کامل شد. موفق: " . 
+                     count(array_filter($chunkResults, fn($r) => $r['success'])) . 
+                     " - خطا: " . 
+                     count(array_filter($chunkResults, fn($r) => !$r['success'])) . 
+                     "</strong></p>";
+                echo "<hr>";
+                
+                ob_flush();
+                flush();
+                
+                // استراحت بین chunk ها
+                sleep(1);
+            }
+
+            echo "<h2>نتیجه نهایی</h2>";
+            echo "<p><strong>کل: $totalCount - موفق: $successCount - خطا: $errorCount</strong></p>";
+            
+            // لاگ نهایی
+            Log::info("Agency CRM sync completed", [
+                'total' => $totalCount,
+                'success' => $successCount,
+                'error' => $errorCount
             ]);
 
         } catch (\Exception $e) {
             Log::error("Exception while sending agencies to CRM", [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'خطا در ارسال: ' . $e->getMessage()
-            ], 500);
+            echo "<h2 style='color: red;'>خطا در پردازش</h2>";
+            echo "<p>{$e->getMessage()}</p>";
         }
     }
 
