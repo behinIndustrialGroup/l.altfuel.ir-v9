@@ -892,7 +892,7 @@ class SendToCrmController extends Controller
                 'rhs_description' => $agency['description'] ?? '',
                 // فیلدهای اضافی که کاربر درخواست کرده
                 'rhs_row' => $agency['customer_type'] ?? '',
-                'rhs_yearofreceivingthecode' => $agency['recieving_code_year'] ?? '',
+                'rhs_yearofreceivingthecode' => $agency['receiving_code_year'] ?? '',
                 'rhs_guildnumber' => $agency['guild_number'] ?? '',
                 'rhs_dateofissue' => $this->formatDate($agency['issued_date'] ?? ''),
                 'rhs_expirydate' => $this->formatDate($agency['exp_date'] ?? ''),
