@@ -175,8 +175,121 @@ class SendToCrmController extends Controller
         }
     }
     /**
-     * تست ساده با حداقل فیلدها
+     * تست ایجاد Service Center بدون lookup
      */
+    public function testServiceCenterWithoutLookup()
+    {
+        try {
+            echo "<h2>تست ایجاد Service Center بدون lookup</h2>";
+            
+            // تست با داده‌های واقعی بدون lookup
+            $agencies = $this->getAgencyData();
+            if (empty($agencies)) {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
+                return;
+            }
+            
+            $firstAgency = $agencies[0];
+            
+            $serviceCenterData = [
+                'rhs_name' => $firstAgency['name'] ?? 'تست نام',
+                'rhs_fullname' => $firstAgency['firstname'] ?? 'تست',
+                'rhs_lastname' => $firstAgency['lastname'] ?? 'نام خانوادگی',
+                'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? '09123456789'),
+                'rhs_centercode' => $firstAgency['agency_code'] ?? '12003',
+                'rhs_address' => $firstAgency['address'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($firstAgency['national_id'] ?? ''),
+                'rhs_province' => $firstAgency['province'] ?? '',
+                'rhs_city' => $firstAgency['city'] ?? ''
+                // بدون lookup
+            ];
+
+            echo "<h3>ارسال داده‌های بدون lookup:</h3>";
+            echo "<pre>";
+            print_r($serviceCenterData);
+            echo "</pre>";
+
+            $response = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData);
+            
+            if ($response->successful()) {
+                echo "<p style='color: green;'>✓ Service Center بدون lookup با موفقیت ایجاد شد</p>";
+                $serviceCenterId = $this->extractEntityId($response);
+                echo "<p>Service Center ID: $serviceCenterId</p>";
+                
+                // حالا تست ایجاد Contact و اتصال
+                echo "<hr>";
+                echo "<h3>حالا تست ایجاد Contact:</h3>";
+                $this->testCreateContactAndLink($serviceCenterId, $firstAgency);
+                
+            } else {
+                echo "<p style='color: red;'>✗ خطا در ایجاد Service Center: " . $response->status() . "</p>";
+                echo "<pre>" . $response->body() . "</pre>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در تست:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
+     * تست ایجاد Contact و اتصال به Service Center
+     */
+    private function testCreateContactAndLink($serviceCenterId, $agencyData)
+    {
+        try {
+            $mobile = $this->cleanMobile($agencyData['mobile'] ?? '');
+            
+            // ایجاد Contact جدید
+            $contactData = [
+                'firstname' => $agencyData['firstname'] ?? '',
+                'lastname' => $agencyData['lastname'] ?? '',
+                'fullname' => $agencyData['name'] ?? '',
+                'mobilephone' => $mobile,
+                'telephone1' => $this->cleanMobile($agencyData['phone'] ?? ''),
+                'address1_line1' => $agencyData['address'] ?? ''
+            ];
+
+            // حذف فیلدهای خالی
+            $contactData = array_filter($contactData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+
+            echo "<p>ایجاد Contact جدید:</p>";
+            echo "<pre>";
+            print_r($contactData);
+            echo "</pre>";
+
+            $contactResponse = $this->crmClient->request("contacts", "POST", $contactData);
+            
+            if ($contactResponse->successful()) {
+                $contactId = $this->extractEntityId($contactResponse);
+                echo "<p style='color: green;'>✓ Contact جدید ایجاد شد: $contactId</p>";
+                
+                // حالا تست به‌روزرسانی Service Center با lookup
+                echo "<p>به‌روزرسانی Service Center با lookup:</p>";
+                $updateData = [
+                    'new_contact@odata.bind' => "/contacts($contactId)"
+                ];
+                
+                $updateResponse = $this->crmClient->request("rhs_servicecenters($serviceCenterId)", "PATCH", $updateData);
+                
+                if ($updateResponse->successful()) {
+                    echo "<p style='color: green;'>✓ Service Center با موفقیت به Contact متصل شد</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در اتصال: " . $updateResponse->status() . "</p>";
+                    echo "<pre>" . $updateResponse->body() . "</pre>";
+                }
+                
+            } else {
+                echo "<p style='color: red;'>✗ خطا در ایجاد Contact: " . $contactResponse->status() . "</p>";
+                echo "<pre>" . $contactResponse->body() . "</pre>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<p style='color: red;'>خطا در ایجاد Contact: " . $e->getMessage() . "</p>";
+        }
+    }
     public function testMinimalServiceCenter()
     {
         try {
@@ -248,6 +361,54 @@ class SendToCrmController extends Controller
             } else {
                 echo "<p style='color: red;'>✗ تست 3 ناموفق: " . $response3->status() . "</p>";
                 echo "<pre>" . $response3->body() . "</pre>";
+            }
+            
+            echo "<hr>";
+            
+            // تست 4: با داده‌های واقعی بدون lookup
+            echo "<h3>تست 4: با داده‌های واقعی بدون lookup</h3>";
+            
+            $agencies = $this->getAgencyData();
+            if (empty($agencies)) {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
+                return;
+            }
+            
+            $firstAgency = $agencies[0];
+            
+            $serviceCenterData4 = [
+                'rhs_name' => $firstAgency['name'] ?? 'تست نام',
+                'rhs_fullname' => $firstAgency['firstname'] ?? 'تست',
+                'rhs_lastname' => $firstAgency['lastname'] ?? 'نام خانوادگی',
+                'rhs_mobile' => $this->cleanMobile($firstAgency['mobile'] ?? '09123456789'),
+                'rhs_centercode' => $firstAgency['agency_code'] ?? '12003',
+                'rhs_address' => $firstAgency['address'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($firstAgency['national_id'] ?? ''),
+                'rhs_province' => $firstAgency['province'] ?? '',
+                'rhs_city' => $firstAgency['city'] ?? ''
+                // بدون lookup
+            ];
+
+            echo "<p>ارسال داده‌های واقعی بدون lookup:</p>";
+            echo "<pre>";
+            print_r($serviceCenterData4);
+            echo "</pre>";
+
+            $response4 = $this->crmClient->request("rhs_servicecenters", "POST", $serviceCenterData4);
+            
+            if ($response4->successful()) {
+                echo "<p style='color: green;'>✓ تست 4 موفق - Service Center بدون lookup ایجاد شد</p>";
+                $serviceCenterId = $this->extractEntityId($response4);
+                echo "<p>Service Center ID: $serviceCenterId</p>";
+                
+                // حالا تست ایجاد Contact و اتصال
+                echo "<hr>";
+                echo "<h3>تست 5: ایجاد Contact و اتصال</h3>";
+                $this->testCreateContactAndLink($serviceCenterId, $firstAgency);
+                
+            } else {
+                echo "<p style='color: red;'>✗ تست 4 ناموفق: " . $response4->status() . "</p>";
+                echo "<pre>" . $response4->body() . "</pre>";
             }
             
         } catch (\Exception $e) {
@@ -497,28 +658,23 @@ class SendToCrmController extends Controller
     {
         try {
             $serviceCenterData = [
-                'rhs_name' => $agency['name'] ?? '', // اضافه کردن فیلد rhs_name
-                'rhs_row' => $agency['customer_type'] ?? '',
+                'rhs_name' => $agency['name'] ?? '',
                 'rhs_fullname' => $agency['firstname'] ?? '',
                 'rhs_lastname' => $agency['lastname'] ?? '',
-                'rhs_yearofreceivingthecode' => $agency['recieving_code_year'] ?? '',
-                'rhs_nationalcode' => $this->cleanMobile($agency['national_id'] ?? ''),
-                'rhs_centercode' => $agency['agency_code'] ?? '', // تغییر نام از rhs_servicecenterid به rhs_centercode
-                'rhs_address' => $agency['address'] ?? '',
-                'rhs_guildnumber' => $agency['guild_number'] ?? '',
                 'rhs_mobile' => $this->cleanMobile($agency['mobile'] ?? ''),
                 'rhs_phone' => $this->cleanMobile($agency['phone'] ?? ''),
-                'rhs_dateofissue' => $this->formatDate($agency['issued_date'] ?? ''),
-                'rhs_expirydate' => $this->formatDate($agency['exp_date'] ?? ''),
-                'rhs_description' => $agency['description'] ?? '',
+                'rhs_centercode' => $agency['agency_code'] ?? '',
+                'rhs_address' => $agency['address'] ?? '',
+                'rhs_nationalcode' => $this->cleanMobile($agency['national_id'] ?? ''),
                 'rhs_province' => $agency['province'] ?? '',
                 'rhs_city' => $agency['city'] ?? '',
-                'rhs_postalcode' => $agency['postal_code'] ?? '',
-                'statecode' => $this->formatEnable($agency['enable'] ?? ''),
-                'rhs_location' => $agency['location'] ?? '',
-                'createdon' => now()->toIso8601String(),
-                'new_contact@odata.bind' => "/contacts($contactId)" // تغییر از rhs_contact به ne
+                'rhs_description' => $agency['description'] ?? ''
             ];
+            
+            // اضافه کردن lookup فقط اگر contactId وجود داشت
+            if ($contactId) {
+                $serviceCenterData['new_contact@odata.bind'] = "/contacts($contactId)";
+            }
 
             // حذف فیلدهای خالی
             $serviceCenterData = array_filter($serviceCenterData, function($value) {
