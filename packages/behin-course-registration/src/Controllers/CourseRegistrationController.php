@@ -41,7 +41,7 @@ class CourseRegistrationController extends Controller
             'birth_date' => '1374',
             'mobile' => '09376922176',
             'phone' => '09376922176',
-            'course' => config('course-registration.courses')['dorm1'],
+            // 'course' => config('course-registration.courses')['dorm1'],
         ];
 
         $course = config('course-registration.courses.dorm1' );
