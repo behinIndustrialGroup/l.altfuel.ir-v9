@@ -84,7 +84,7 @@ class WorkshopRegistrationController extends Controller
 
     public static function verify(Request $request)
     {
-        $registration = WorkshopRegistration::where('authority', $request->Authority)->firstOrFail();
+        $registration = WorkshopRegistration::where('authority', $request->trackId)->firstOrFail();
         $result = zarinPal::verify($request, $registration->price);
 
         if (!$result) {
