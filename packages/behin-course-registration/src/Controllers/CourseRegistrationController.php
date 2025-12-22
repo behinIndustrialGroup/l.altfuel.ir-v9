@@ -25,26 +25,17 @@ class CourseRegistrationController extends Controller
     {
         $courseKeys = array_keys(config('course-registration.courses', []));
 
-        // $validated = $request->validate([
-        //     'name' => 'required|string|max:255',
-        //     'national_id' => 'required|numeric|digits:10',
-        //     'birth_certificate_number' => 'required|numeric|digits_between:1,10',
-        //     'birth_date' => 'required|date',
-        //     'mobile' => 'required|numeric|digits:11',
-        //     'phone' => 'required|numeric|digits_between:8,11',
-        //     'course' => ['required', 'string', Rule::in($courseKeys)],
-        // ]);
-        $validated = [
-            'name' => 'محمد',
-            'national_id' => '2700',
-            'birth_certificate_number' => '1374',
-            'birth_date' => '1374',
-            'mobile' => '09376922176',
-            'phone' => '09376922176',
-            'course' => 'dorm1',
-        ];
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'national_id' => 'required|numeric|digits:10',
+            'birth_certificate_number' => 'required|numeric|digits_between:1,10',
+            'birth_date' => 'required|date',
+            'mobile' => 'required|numeric|digits:11',
+            'phone' => 'required|numeric|digits_between:8,11',
+            'course' => ['required', 'string', Rule::in($courseKeys)],
+        ]);
 
-        $course = config('course-registration.courses.dorm1' );
+        $course = config('course-registration.courses.' . $validated['course']);
 
         $registration = CourseRegistration::create([
             'name' => $validated['name'],
@@ -78,7 +69,7 @@ class CourseRegistrationController extends Controller
 
     public static function verify(Request $request)
     {
-        $registration = CourseRegistration::where('authority', $request->Authority)->firstOrFail();
+        $registration = CourseRegistration::where('authority', $request->trackId)->firstOrFail();
         $result = zibal::verify($request, $registration->price);
         if (!$result) {
             $registration->update([
