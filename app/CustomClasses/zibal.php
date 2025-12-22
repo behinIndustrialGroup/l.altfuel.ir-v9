@@ -11,7 +11,7 @@ class zibal
     protected static $merchantId = "693d3b04666ab9002003d5dd";
 
     protected $callbackUrl;
-    
+
 
     public static function postToZibal($path, $parameters)
     {
@@ -27,13 +27,13 @@ class zibal
         return json_decode($response);
     }
 
-    public static function getAuthority($amount, $mobile, $callbackUrl)
+    public static function getAuthority($amount, $mobile, $callbackUrl, $description = null)
     {
         $parameters = array(
             "merchant" => self::$merchantId, //required
             "callbackUrl" => $callbackUrl, //required
             "amount" => $amount, //required
-
+            "description" => $description,
             "orderId" => time(), //optional
             "mobile" => $mobile, //optional for mpg
         );
@@ -52,7 +52,7 @@ class zibal
 
     public static function pay($request)
     {
-        $trackId = self::getAuthority($request->amount, $request->mobile, $request->callbackUrl);
+        $trackId = self::getAuthority($request->amount, $request->mobile, $request->callbackUrl, $request->description);
         $startGateWayUrl = "https://gateway.zibal.ir/start/" . $trackId;
         return redirect($startGateWayUrl);
     }

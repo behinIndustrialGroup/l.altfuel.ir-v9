@@ -58,7 +58,7 @@ class CourseRegistrationController extends Controller
             $registration->national_id
         );
 
-        $authorityCode = zibal::getAuthority($course['price'], $registration->mobile, $callbackUrl);
+        $authorityCode = zibal::getAuthority($course['price'], $registration->mobile, $callbackUrl, $description);
         $registration->update([
             'authority' => $authorityCode,
             'status' => 'pending',
