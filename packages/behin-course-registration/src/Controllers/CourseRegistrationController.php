@@ -70,8 +70,8 @@ class CourseRegistrationController extends Controller
     public static function verify(Request $request)
     {
         $registration = CourseRegistration::where('authority', $request->Authority)->firstOrFail();
-        $result = zarinPal::verify($request, $registration->price);
-
+        $result = zibal::verify($request, $registration->price);
+        return $result;
         if ($result === 0 || $result === 1) {
             $registration->update([
                 'status' => 'failed',
