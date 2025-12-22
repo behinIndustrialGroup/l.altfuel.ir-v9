@@ -25,15 +25,15 @@ class CourseRegistrationController extends Controller
     {
         $courseKeys = array_keys(config('course-registration.courses', []));
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'national_id' => 'required|numeric|digits:10',
-            'birth_certificate_number' => 'required|numeric|digits_between:1,10',
-            'birth_date' => 'required|date',
-            'mobile' => 'required|numeric|digits:11',
-            'phone' => 'required|numeric|digits_between:8,11',
-            'course' => ['required', 'string', Rule::in($courseKeys)],
-        ]);
+        // $validated = $request->validate([
+        //     'name' => 'required|string|max:255',
+        //     'national_id' => 'required|numeric|digits:10',
+        //     'birth_certificate_number' => 'required|numeric|digits_between:1,10',
+        //     'birth_date' => 'required|date',
+        //     'mobile' => 'required|numeric|digits:11',
+        //     'phone' => 'required|numeric|digits_between:8,11',
+        //     'course' => ['required', 'string', Rule::in($courseKeys)],
+        // ]);
         $validated = [
             'name' => 'محمد',
             'national_id' => '2700',
