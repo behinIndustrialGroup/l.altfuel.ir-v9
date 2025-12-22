@@ -47,7 +47,7 @@ class RegisterUserController extends Controller
 
     public function verify(Request $request){
 
-        $registerUser = RegisterUser::where('authority', $request->Authority)->first();
+        $registerUser = RegisterUser::where('authority', $request->trackId)->first();
         $result = zibal::verify($request, $registerUser->price);
 
         if(!$result){
