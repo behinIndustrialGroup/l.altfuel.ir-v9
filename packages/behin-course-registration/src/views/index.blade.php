@@ -34,37 +34,37 @@
                 @csrf
                 <div class="mb-3">
                     <label for="name" class="form-label">نام و نام خانوادگی:</label>
-                    <input type="text" class="form-control" name="name" id="name" value="{{ old('name') }}" required>
+                    <input type="text" class="form-control" name="name" id="name" value="{{ old('name') }}" >
                 </div>
 
                 <div class="mb-3">
                     <label for="national_id" class="form-label">کد ملی:</label>
-                    <input type="text" class="form-control" name="national_id" id="national_id" value="{{ old('national_id') }}" required>
+                    <input type="text" class="form-control" name="national_id" id="national_id" value="{{ old('national_id') }}" >
                 </div>
 
                 <div class="mb-3">
                     <label for="birth_certificate_number" class="form-label">شماره شناسنامه:</label>
-                    <input type="text" class="form-control" name="birth_certificate_number" id="birth_certificate_number" value="{{ old('birth_certificate_number') }}" required>
+                    <input type="text" class="form-control" name="birth_certificate_number" id="birth_certificate_number" value="{{ old('birth_certificate_number') }}" >
                 </div>
 
                 <div class="mb-3">
                     <label for="birth_date" class="form-label">تاریخ تولد:</label>
-                    <input type="text" data-jdp class="form-control" name="birth_date" id="birth_date" value="{{ old('birth_date') }}" required>
+                    <input type="text" data-jdp class="form-control" name="birth_date" id="birth_date" value="{{ old('birth_date') }}" >
                 </div>
 
                 <div class="mb-3">
                     <label for="mobile" class="form-label">شماره موبایل:</label>
-                    <input type="text" class="form-control" name="mobile" id="mobile" value="{{ old('mobile') }}" required>
+                    <input type="text" class="form-control" name="mobile" id="mobile" value="{{ old('mobile') }}" >
                 </div>
 
                 <div class="mb-3">
                     <label for="phone" class="form-label">تلفن:</label>
-                    <input type="text" class="form-control" name="phone" id="phone" value="{{ old('phone') }}" required>
+                    <input type="text" class="form-control" name="phone" id="phone" value="{{ old('phone') }}" >
                 </div>
 
                 <div class="mb-4">
                     <label for="course" class="form-label">انتخاب دوره:</label>
-                    <select name="course" id="course" class="form-select select2" required>
+                    <select name="course" id="course" class="form-select select2" >
                         <option value="" disabled {{ old('course') ? '' : 'selected' }}>لطفا یک دوره را انتخاب کنید</option>
                         @foreach ($courses as $key => $course)
                             <option value="{{ $key }}" {{ old('course') === $key ? 'selected' : '' }}>
