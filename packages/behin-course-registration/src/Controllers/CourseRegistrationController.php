@@ -80,8 +80,7 @@ class CourseRegistrationController extends Controller
     {
         $registration = CourseRegistration::where('authority', $request->Authority)->firstOrFail();
         $result = zibal::verify($request, $registration->price);
-        return $result;
-        if ($result === 0 || $result === 1) {
+        if (!$result) {
             $registration->update([
                 'status' => 'failed',
             ]);
