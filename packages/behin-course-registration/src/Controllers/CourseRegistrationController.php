@@ -34,6 +34,15 @@ class CourseRegistrationController extends Controller
             'phone' => 'required|numeric|digits_between:8,11',
             'course' => ['required', 'string', Rule::in($courseKeys)],
         ]);
+        $validated = [
+            'name' => 'محمد',
+            'national_id' => '2700',
+            'birth_certificate_number' => '1374',
+            'birth_date' => '1374',
+            'mobile' => '09376922176',
+            'phone' => '09376922176',
+            'course' => config('course-registration.courses')['dorm1'],
+        ];
 
         $course = config('course-registration.courses.' . $validated['course']);
 
