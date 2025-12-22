@@ -8,7 +8,7 @@ use SoapClient;
 
 class zibal
 {
-    protected  $merchantId;
+    protected static  $merchantId;
     protected $callbackUrl;
     public function __construct()
     {
