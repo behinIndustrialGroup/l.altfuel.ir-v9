@@ -68,7 +68,7 @@
                         <option value="" disabled {{ old('course') ? '' : 'selected' }}>لطفا یک دوره را انتخاب کنید</option>
                         @foreach ($courses as $key => $course)
                             <option value="{{ $key }}" {{ old('course') === $key ? 'selected' : '' }}>
-                                {{ $course['title'] }} - {{ number_format($course['price']) }} تومان
+                                {{ $course['title'] }} - {{ number_format($course['price']) }} ریال
                             </option>
                         @endforeach
                     </select>
