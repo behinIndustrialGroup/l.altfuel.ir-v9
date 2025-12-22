@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'pay_url' => 'config/zarinpal.php',
+    'pay_url' => "https://gateway.zibal.ir/start/" ,
 ];
