@@ -24,10 +24,6 @@
     @endif
 
     <div class="container d-flex justify-content-center align-items-center min-vh-100">
-        <div class="alert alert-danger">
-            در حال حاضر درگاه پرداخت اتحادیه غیر فعال میباشد. 
-            لطفا ساعاتی بعد جهت ثبت نام اقدام فرمایید.
-        </div>
         <div class="card shadow-sm p-4" style="max-width: 420px; width: 100%;">
             <h2 class="text-center mb-4">فرم ثبت‌نام دوره آموزشی</h2>
             <form action="{{ route('course-registration.submit') }}" method="POST">
