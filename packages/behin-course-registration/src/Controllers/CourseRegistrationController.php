@@ -3,6 +3,7 @@
 namespace CourseRegistration\Controllers;
 
 use App\CustomClasses\zarinPal;
+use App\CustomClasses\zibal;
 use App\Http\Controllers\Controller;
 use CourseRegistration\Jobs\SendCourseRegistrationSmsJob;
 use CourseRegistration\Models\CourseRegistration;
@@ -57,14 +58,14 @@ class CourseRegistrationController extends Controller
             $registration->national_id
         );
 
-        $authorityCode = zarinPal::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
+        $authorityCode = zibal::getAuthority($course['price'], $registration->mobile, $callbackUrl);
 
         $registration->update([
             'authority' => $authorityCode,
             'status' => 'pending',
         ]);
 
-        return redirect(config('zarinpal.pay_url') . $authorityCode);
+        return redirect("https://gateway.zibal.ir/start/"  . $authorityCode);
     }
 
     public static function verify(Request $request)
