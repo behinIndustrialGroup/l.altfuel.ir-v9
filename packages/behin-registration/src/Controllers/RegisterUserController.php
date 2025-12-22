@@ -36,19 +36,19 @@ class RegisterUserController extends Controller
 
         $callbackUrl = route('registration.verify');
         $des = "پرداخت هزینه آزمون: $price تومانی $registerUser->name با کدملی: $registerUser->national_id";
-        $authorityCode = zibal::getAuthority($price, $registerUser->mobile, $callbackUrl, $des);
+        $authorityCode = zarinPal::getAuthority($price, $des, $registerUser->mobile, $callbackUrl);
         $registerUser->update([
             'authority' => $authorityCode,
             'status' => 'pending'
         ]);
 
-        return redirect(config('zibal.pay_url') . $authorityCode);
+        return redirect(config('zarinpal.pay_url') . $authorityCode);
     }
 
     public function verify(Request $request){
 
-        $registerUser = RegisterUser::where('authority', $request->trackId)->first();
-        $result = zibal::verify($request, $registerUser->price);
+        $registerUser = RegisterUser::where('authority', $request->Authority)->first();
+        $result = zarinPal::verify($request, $registerUser->price);
 
         if(!$result){
             $registerUser->update([
