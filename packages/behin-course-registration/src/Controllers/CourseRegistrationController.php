@@ -64,7 +64,7 @@ class CourseRegistrationController extends Controller
             'status' => 'pending',
         ]);
 
-        return redirect("https://gateway.zibal.ir/start/"  . $authorityCode);
+        return redirect(config('zibal.pay_url') . $authorityCode);
     }
 
     public static function verify(Request $request)

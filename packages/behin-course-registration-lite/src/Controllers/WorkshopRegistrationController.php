@@ -3,6 +3,7 @@
 namespace CourseRegistrationLite\Controllers;
 
 use App\CustomClasses\zarinPal;
+use App\CustomClasses\zibal;
 use App\Http\Controllers\Controller;
 use CourseRegistrationLite\Jobs\SendWorkshopRegistrationSmsJob;
 use CourseRegistrationLite\Models\WorkshopRegistration;
@@ -71,14 +72,14 @@ class WorkshopRegistrationController extends Controller
             $registration->national_id
         );
 
-        $authorityCode = zarinPal::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
+        $authorityCode = zibal::getAuthority($course['price'], $registration->mobile, $callbackUrl, $description);
 
         $registration->update([
             'authority' => $authorityCode,
             'status' => 'pending',
         ]);
 
-        return redirect(config('zarinpal.pay_url') . $authorityCode);
+        return redirect(config('zibal.pay_url') . $authorityCode);
     }
 
     public static function verify(Request $request)
@@ -86,7 +87,7 @@ class WorkshopRegistrationController extends Controller
         $registration = WorkshopRegistration::where('authority', $request->Authority)->firstOrFail();
         $result = zarinPal::verify($request, $registration->price);
 
-        if ($result === 0 || $result === 1) {
+        if (!$result) {
             $registration->update([
                 'status' => 'failed',
             ]);
