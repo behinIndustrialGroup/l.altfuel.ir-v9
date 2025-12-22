@@ -23,7 +23,6 @@ class zibal
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($parameters));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response  = curl_exec($ch);
-        $response = curl_error($ch);
         curl_close($ch);
         return json_decode($response);
     }
@@ -40,7 +39,6 @@ class zibal
         );
 
         $response = self::postToZibal('request', $parameters);
-        return $response;
         var_dump($response);
         if ($response->result == 100) {
             return $response->trackId;
