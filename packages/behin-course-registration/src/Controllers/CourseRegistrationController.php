@@ -44,7 +44,7 @@ class CourseRegistrationController extends Controller
             'course' => config('course-registration.courses')['dorm1'],
         ];
 
-        $course = config('course-registration.courses.' . 'dorm1');
+        $course = config('course-registration.courses')['dorm1'];
 
         $registration = CourseRegistration::create([
             'name' => $validated['name'],
