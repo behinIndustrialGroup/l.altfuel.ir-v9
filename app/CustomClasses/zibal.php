@@ -27,7 +27,7 @@ class zibal
         return json_decode($response);
     }
 
-    public static function getAuthority($amount, $mobile, $callbackUrl, $description = null)
+    public static function getAuthority($amount,$description , $mobile, $callbackUrl)
     {
         $parameters = array(
             "merchant" => self::$merchantId, //required

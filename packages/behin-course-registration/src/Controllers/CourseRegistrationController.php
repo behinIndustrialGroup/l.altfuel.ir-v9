@@ -58,18 +58,19 @@ class CourseRegistrationController extends Controller
             $registration->national_id
         );
 
-        $authorityCode = zarinPal::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
+        $authorityCode = zibal::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
         $registration->update([
             'authority' => $authorityCode,
             'status' => 'pending',
         ]);
 
-        return redirect(config('zarinpal.pay_url') . $authorityCode);
+        return redirect(config('zibal.pay_url') . $authorityCode);
     }
 
     public static function verify(Request $request)
     {
-        $registration = CourseRegistration::where('authority', $request->Authority)->firstOrFail();
+        $authority = isset($request->Authority) ? $request->Authority : $request->trackId;
+        $registration = CourseRegistration::where('authority', $authority)->firstOrFail();
         $result = zibal::verify($request, $registration->price);
         if (!$result) {
             $registration->update([
