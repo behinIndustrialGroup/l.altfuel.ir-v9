@@ -53,6 +53,9 @@
                     <a href="{{ route('password.request') }}" class="text-center">فراموشی رمز</a>
                 </div>
             </div>
+            <div class="card-body">
+<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=415037&Code=Ca929c8Fd94e346DE7ac52fb4D3ed935'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=415037&Code=Ca929c8Fd94e346DE7ac52fb4D3ed935' alt='' style='cursor:pointer' code='Ca929c8Fd94e346DE7ac52fb4D3ed935'></a>
+            </div>
 
         </div>
     </div>
