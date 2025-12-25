@@ -1,24 +1,43 @@
 # ارسال مراکز به CRM
 
-## روت:
+## روت‌های موجود:
+
+### 1. ارسال مراکز به CRM
 ```
 GET /agency-info/send-to-crm
 ```
 
-## عملکرد:
+### 2. آمار مراکز در CRM
+```
+GET /agency-info/crm-stats
+```
+
+### 3. تست و Debug
+```
+GET /agency-info/debug-crm
+GET /agency-info/test-minimal
+```
+
+## عملکرد ارسال:
 1. خواندن اطلاعات مراکز از جدول `agency_info`
-2. تقسیم داده‌ها به chunk های 10 تایی
-3. برای هر chunk:
-   - پردازش هر مرکز
+2. **بررسی مراکز موجود**: چک کردن اینکه آیا مرکز قبلاً در CRM ایجاد شده است
+3. **رد کردن مراکز تکراری**: مراکزی که CRM ID دارند رد می‌شوند
+4. تقسیم داده‌های جدید به chunk های 10 تایی
+5. برای هر chunk:
+   - پردازش هر مرکز جدید
    - جستجوی Contact بر اساس شماره موبایل
    - ایجاد Contact جدید اگر وجود نداشت
    - ایجاد Service Center با lookup به Contact
+   - **ذخیره CRM Service Center ID در دیتابیس** (key: `crm_service_center_id`)
    - نمایش پیشرفت به صورت زنده
 
 ## ویژگی‌های پردازش:
+- **Duplicate Prevention**: جلوگیری از ایجاد مراکز تکراری در CRM
 - **Chunk Processing**: داده‌ها 10 تا 10 تا پردازش می‌شوند
 - **Live Progress**: پیشرفت به صورت زنده نمایش داده می‌شود
 - **Error Handling**: خطاها نمایش داده می‌شوند اما پردازش متوقف نمی‌شود
+- **CRM ID Storage**: آیدی Service Center در CRM به دیتابیس محلی ذخیره می‌شود
+- **Statistics**: نمایش آمار کامل (موفق، رد شده، خطا)
 - **Delay**: بین هر رکورد 0.2 ثانیه و بین هر chunk 1 ثانیه استراحت
 - **Logging**: تمام فعالیت‌ها در لاگ ثبت می‌شوند
 
@@ -43,6 +62,7 @@ GET /agency-info/send-to-crm
 - `rhs_city` - شهر (city)
 - `rhs_postalcode` - کد پستی (postal_code)
 - `statecode` - وضعیت فعال/غیرفعال (enable) - 0=فعال, 1=غیرفعال
+- `statuscode` - وضعیت مالی (fin_green) - 1=ok, 2=not ok
 - `rhs_location` - موقعیت (location)
 - `rhs_contact` - Lookup به Contact
 
@@ -74,13 +94,43 @@ province → rhs_province
 city → rhs_city
 postal_code → rhs_postalcode
 enable → statecode (0=فعال, 1=غیرفعال)
+fin_green → statuscode (1=ok, 2=not ok)
 location → rhs_location
 name → rhs_name (ترکیب firstname + lastname)
 
+## ذخیره CRM Service Center ID:
+پس از ایجاد موفق هر Service Center در CRM، آیدی آن (`rhs_servicecenterid`) در جدول `agency_info` ذخیره می‌شود:
+
+```sql
+INSERT INTO agency_info (parent_id, key, value, created_at, updated_at) 
+VALUES (parent_id, 'crm_service_center_id', 'service_center_guid', NOW(), NOW())
+```
+
+- **Key**: `crm_service_center_id`
+- **Value**: GUID آیدی Service Center در CRM
+- **Parent ID**: آیدی مرکز در سیستم محلی
+
+اگر رکورد قبلاً وجود داشته باشد، به‌روزرسانی می‌شود.
+
 ## استفاده:
+
+### بررسی آمار مراکز:
+```
+https://your-domain.com/agency-info/crm-stats
+```
+نمایش آمار کامل از مراکز موجود و غیرموجود در CRM
+
+### ارسال مراکز جدید:
 ```
 https://your-domain.com/agency-info/send-to-crm
 ```
+ارسال فقط مراکزی که قبلاً در CRM ایجاد نشده‌اند
+
+### تست عملکرد:
+```
+https://your-domain.com/agency-info/test-minimal
+```
+تست کامل ایجاد و بررسی یک Service Center
 
 ## پاسخ نمونه:
 ```json

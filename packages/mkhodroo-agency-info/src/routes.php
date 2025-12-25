@@ -40,6 +40,7 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     
     // CRM Routes
     Route::get('send-to-crm', [SendToCrmController::class, 'sendToCrm'])->name('sendToCrm');
+    Route::get('crm-stats', [SendToCrmController::class, 'getCrmStats'])->name('crmStats');
     Route::get('debug-crm', [SendToCrmController::class, 'debugData'])->name('debugCrm');
     Route::get('test-service-center', [SendToCrmController::class, 'testCreateServiceCenter'])->name('testServiceCenter');
     Route::get('test-minimal', [SendToCrmController::class, 'testMinimalServiceCenter'])->name('testMinimal');
