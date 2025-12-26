@@ -14,6 +14,7 @@ use Mkhodroo\AgencyInfo\Controllers\DebtController;
 use Mkhodroo\AgencyInfo\Controllers\LastActionController;
 use Mkhodroo\AgencyInfo\Controllers\QueryController;
 use Mkhodroo\AgencyInfo\Controllers\SendToCrmController;
+use Mkhodroo\AgencyInfo\Controllers\SendFinancialToCrmController;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\UserRoles\Controllers\GetRoleController;
@@ -44,6 +45,10 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     Route::get('debug-crm', [SendToCrmController::class, 'debugData'])->name('debugCrm');
     Route::get('test-service-center', [SendToCrmController::class, 'testCreateServiceCenter'])->name('testServiceCenter');
     Route::get('test-minimal', [SendToCrmController::class, 'testMinimalServiceCenter'])->name('testMinimal');
+    
+    // Financial CRM Routes
+    Route::get('send-financial-to-crm', [SendFinancialToCrmController::class, 'sendFinancialDataToCrm'])->name('sendFinancialToCrm');
+    Route::get('test-financial-crm', [SendFinancialToCrmController::class, 'testFinancialData'])->name('testFinancialCrm');
 });
 
 Route::prefix('/bedehi')->group(function () {

@@ -7,16 +7,40 @@
 GET /agency-info/send-to-crm
 ```
 
-### 2. آمار مراکز در CRM
+### 2. ارسال اطلاعات مالی به CRM
+```
+GET /agency-info/send-financial-to-crm
+```
+
+### 3. آمار مراکز در CRM
 ```
 GET /agency-info/crm-stats
 ```
 
-### 3. تست و Debug
+### 4. تست و Debug
 ```
 GET /agency-info/debug-crm
 GET /agency-info/test-minimal
 ```
+
+## عملکرد ارسال اطلاعات مالی:
+1. خواندن مراکزی که در CRM موجود هستند (دارای CRM Service Center ID)
+2. برای هر مرکز:
+   - دریافت اطلاعات مالی (membership، irngv، debt، plate_reader و...)
+   - ایجاد رکورد جداگانه برای هر پرداخت در جدول `rhs_financialinformationcenter`
+   - اتصال به Service Center از طریق lookup
+3. نمایش پیشرفت و آمار کامل
+
+## فیلدهای مالی پشتیبانی شده:
+- **Memberships**: membership_96 تا membership_04
+- **IRNGV**: irngv، irngv_fee
+- **Debts**: debt1، debt2
+- **Fees**: lock_fee، plate_reader
+
+هر پرداخت شامل 3 فیلد است:
+- مبلغ (amount)
+- تاریخ پرداخت (pay_date)
+- کد پیگیری (ref_id)
 
 ## عملکرد ارسال:
 1. خواندن اطلاعات مراکز از جدول `agency_info`
