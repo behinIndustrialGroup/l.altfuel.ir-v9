@@ -29,6 +29,7 @@ class SendFinancialToCrmController extends Controller
             
             if ($totalCount == 0) {
                 echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
+                echo "<p style='color: orange;'>⚠ ابتدا از روت /agency-info/send-to-crm برای ایجاد مراکز در CRM استفاده کنید.</p>";
                 return;
             }
 
@@ -112,30 +113,59 @@ class SendFinancialToCrmController extends Controller
             }
             
             // تست دسترسی به جدول مالی
-            echo "<h3>2. تست دسترسی به جدول rhs_financialinformationcenters:</h3>";
-            try {
-                $financialTestResponse = $this->crmClient->request("rhs_financialinformationcenters", "GET", [
-                    '$select' => 'rhs_financialinformationcenterid,rhs_name',
-                    '$top' => 1
-                ]);
-                
-                if ($financialTestResponse->successful()) {
-                    echo "<p style='color: green;'>✓ دسترسی به جدول مالی موفق</p>";
-                    $financialData = $financialTestResponse->json();
-                    echo "<p>تعداد رکوردهای موجود: " . count($financialData['value'] ?? []) . "</p>";
-                } else {
-                    echo "<p style='color: red;'>✗ خطا در دسترسی به جدول مالی: " . $financialTestResponse->status() . "</p>";
-                    echo "<pre>" . $financialTestResponse->body() . "</pre>";
+            echo "<h3>2. تست دسترسی به جداول مالی مختلف:</h3>";
+            
+            $possibleTableNames = [
+                'rhs_financialinformationcenters',
+                'rhs_financialinformationcenter', 
+                'new_financialinformation',
+                'rhs_paymentinfo',
+                'rhs_payment'
+            ];
+            
+            $workingTable = null;
+            
+            foreach ($possibleTableNames as $tableName) {
+                try {
+                    echo "<h4>تست جدول: $tableName</h4>";
+                    $financialTestResponse = $this->crmClient->request($tableName, "GET", [
+                        '$select' => 'createdon',
+                        '$top' => 1
+                    ]);
                     
-                    if ($financialTestResponse->status() == 404) {
-                        echo "<p style='color: orange;'>⚠ احتمالاً جدول rhs_financialinformationcenters در CRM وجود ندارد یا نام آن متفاوت است</p>";
+                    if ($financialTestResponse->successful()) {
+                        echo "<p style='color: green;'>✓ دسترسی به جدول $tableName موفق</p>";
+                        $financialData = $financialTestResponse->json();
+                        echo "<p>تعداد رکوردهای موجود: " . count($financialData['value'] ?? []) . "</p>";
+                        
+                        // اگر رکوردی وجود داشت، فیلدهای آن را نمایش بده
+                        if (!empty($financialData['value'])) {
+                            echo "<h5>فیلدهای موجود در اولین رکورد:</h5>";
+                            echo "<pre>";
+                            print_r(array_keys($financialData['value'][0]));
+                            echo "</pre>";
+                        }
+                        
+                        $workingTable = $tableName;
+                        break; // اولین جدول کاری را پیدا کردیم
+                        
+                    } else {
+                        echo "<p style='color: red;'>✗ خطا در دسترسی به جدول $tableName: " . $financialTestResponse->status() . "</p>";
+                        if ($financialTestResponse->status() != 404) {
+                            echo "<pre>" . substr($financialTestResponse->body(), 0, 200) . "...</pre>";
+                        }
                     }
-                    return;
+                } catch (\Exception $e) {
+                    echo "<p style='color: red;'>✗ Exception در دسترسی به جدول $tableName: " . $e->getMessage() . "</p>";
                 }
-            } catch (\Exception $e) {
-                echo "<p style='color: red;'>✗ Exception در دسترسی به جدول مالی: " . $e->getMessage() . "</p>";
+            }
+            
+            if (!$workingTable) {
+                echo "<p style='color: red;'>⚠ هیچ جدول مالی قابل دسترسی یافت نشد</p>";
                 return;
             }
+            
+            echo "<p style='color: blue;'><strong>جدول کاری انتخاب شده: $workingTable</strong></p>";
             
             // بررسی مراکز با CRM ID
             echo "<h3>3. بررسی مراکز با CRM ID:</h3>";
@@ -206,8 +236,7 @@ class SendFinancialToCrmController extends Controller
             // نمایش داده‌های آماده برای ارسال
             $testData = [
                 'rhs_name' => $firstFinancial['name'],
-                'rhs_amount' => floatval($firstFinancial['amount']),
-                'rhs_servicecenter@odata.bind' => "/rhs_servicecenters({$firstAgency['crm_service_center_id']})"
+                'rhs_amount' => floatval($firstFinancial['amount'])
             ];
             
             if ($firstFinancial['pay_date']) {
@@ -226,6 +255,8 @@ class SendFinancialToCrmController extends Controller
             echo "<pre>";
             print_r($testData);
             echo "</pre>";
+            
+            echo "<p><strong>استفاده از جدول: $workingTable</strong></p>";
             
             $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
             
@@ -374,72 +405,144 @@ class SendFinancialToCrmController extends Controller
     private function createFinancialRecord($financial, $serviceCenterId)
     {
         try {
-            $financialData = [
-                'rhs_name' => $financial['name'],
-                'rhs_amount' => floatval($financial['amount']),
-                'rhs_servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+            // تست با نام‌های مختلف جدول مالی
+            $possibleTableNames = [
+                'rhs_financialinformationcenters',
+                'rhs_financialinformationcenter', 
+                'new_financialinformation',
+                'rhs_paymentinfo',
+                'rhs_payment'
             ];
-
-            // اضافه کردن تاریخ پرداخت اگر وجود داشت
-            if ($financial['pay_date']) {
-                $financialData['rhs_paymentdate'] = $this->formatDate($financial['pay_date']);
-            }
-
-            // اضافه کردن کد پیگیری اگر وجود داشت
-            if ($financial['ref_id']) {
-                $financialData['rhs_trackingcode'] = $financial['ref_id'];
-            }
-
-            // اضافه کردن سال اگر وجود داشت
-            if ($financial['year']) {
-                $financialData['rhs_year'] = $financial['year'];
-            }
-
-            // حذف فیلدهای خالی
-            $financialData = array_filter($financialData, function($value) {
-                return $value !== '' && $value !== null;
-            });
-
-            echo "<h4>درحال ارسال به CRM:</h4>";
-            echo "<pre>";
-            print_r($financialData);
-            echo "</pre>";
-
-            $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
             
-            echo "<h4>پاسخ CRM:</h4>";
-            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
-            echo "<p><strong>Response Body:</strong></p>";
-            echo "<pre>" . $response->body() . "</pre>";
+            // تست با نام‌های مختلف فیلد lookup
+            $possibleLookupFields = [
+                'rhs_servicecenter@odata.bind',
+                'new_servicecenter@odata.bind', 
+                'rhs_servicecenterlookup@odata.bind',
+                'rhs_servicecenterid@odata.bind',
+                '_rhs_servicecenter_value@odata.bind'
+            ];
             
-            if ($response->successful()) {
-                echo "<p style='color: green;'>✓ درخواست موفق بود</p>";
-                return [
-                    'success' => true,
-                    'message' => 'رکورد مالی ایجاد شد'
+            echo "<h4>تست نام‌های مختلف جدول و فیلد lookup:</h4>";
+            
+            foreach ($possibleTableNames as $tableName) {
+                echo "<h5>تست جدول: $tableName</h5>";
+                
+                // ابتدا تست دسترسی به جدول
+                $testTableResponse = $this->crmClient->request($tableName, "GET", ['$top' => 1]);
+                
+                if (!$testTableResponse->successful()) {
+                    echo "<p style='color: gray;'>- جدول $tableName در دسترس نیست (Status: " . $testTableResponse->status() . ")</p>";
+                    continue;
+                }
+                
+                echo "<p style='color: green;'>✓ جدول $tableName در دسترس است</p>";
+                
+                // تست با فیلدهای lookup مختلف
+                foreach ($possibleLookupFields as $lookupField) {
+                    echo "<h6>تست با فیلد lookup: $lookupField</h6>";
+                    
+                    $financialData = [
+                        'rhs_name' => $financial['name'],
+                        'rhs_amount' => floatval($financial['amount']),
+                        $lookupField => "/rhs_servicecenters($serviceCenterId)"
+                    ];
+
+                    // اضافه کردن تاریخ پرداخت اگر وجود داشت
+                    if ($financial['pay_date']) {
+                        $financialData['rhs_paymentdate'] = $this->formatDate($financial['pay_date']);
+                    }
+
+                    // اضافه کردن کد پیگیری اگر وجود داشت
+                    if ($financial['ref_id']) {
+                        $financialData['rhs_trackingcode'] = $financial['ref_id'];
+                    }
+
+                    // اضافه کردن سال اگر وجود داشت
+                    if ($financial['year']) {
+                        $financialData['rhs_year'] = $financial['year'];
+                    }
+
+                    // حذف فیلدهای خالی
+                    $financialData = array_filter($financialData, function($value) {
+                        return $value !== '' && $value !== null;
+                    });
+
+                    echo "<p>درحال ارسال به $tableName با فیلد $lookupField:</p>";
+                    echo "<pre>";
+                    print_r($financialData);
+                    echo "</pre>";
+
+                    $response = $this->crmClient->request($tableName, "POST", $financialData);
+                    
+                    echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+                    
+                    if ($response->successful()) {
+                        echo "<p style='color: green;'>✓ موفق با جدول $tableName و فیلد: $lookupField</p>";
+                        return [
+                            'success' => true,
+                            'message' => "رکورد مالی با جدول $tableName و فیلد $lookupField ایجاد شد"
+                        ];
+                    } else {
+                        echo "<p style='color: red;'>✗ ناموفق با فیلد: $lookupField</p>";
+                        echo "<p><strong>خطا:</strong> " . substr($response->body(), 0, 200) . "...</p>";
+                    }
+                    
+                    echo "<hr>";
+                }
+                
+                // اگر هیچ lookup کار نکرد، تست بدون lookup برای این جدول
+                echo "<h6>تست بدون فیلد lookup برای جدول $tableName:</h6>";
+                
+                $financialDataWithoutLookup = [
+                    'rhs_name' => $financial['name'],
+                    'rhs_amount' => floatval($financial['amount'])
                 ];
+
+                // اضافه کردن سایر فیلدها
+                if ($financial['pay_date']) {
+                    $financialDataWithoutLookup['rhs_paymentdate'] = $this->formatDate($financial['pay_date']);
+                }
+
+                if ($financial['ref_id']) {
+                    $financialDataWithoutLookup['rhs_trackingcode'] = $financial['ref_id'];
+                }
+
+                if ($financial['year']) {
+                    $financialDataWithoutLookup['rhs_year'] = $financial['year'];
+                }
+
+                echo "<p>درحال ارسال به $tableName بدون lookup:</p>";
+                echo "<pre>";
+                print_r($financialDataWithoutLookup);
+                echo "</pre>";
+
+                $response = $this->crmClient->request($tableName, "POST", $financialDataWithoutLookup);
+                
+                echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+                
+                if ($response->successful()) {
+                    echo "<p style='color: green;'>✓ موفق با جدول $tableName بدون lookup</p>";
+                    return [
+                        'success' => true,
+                        'message' => "رکورد مالی با جدول $tableName بدون lookup ایجاد شد"
+                    ];
+                } else {
+                    echo "<p style='color: red;'>✗ ناموفق با جدول $tableName بدون lookup</p>";
+                    echo "<p><strong>خطا:</strong> " . substr($response->body(), 0, 200) . "...</p>";
+                }
+                
+                echo "<hr>";
             }
 
             // تحلیل خطاهای رایج
-            $errorBody = $response->body();
-            $statusCode = $response->status();
-            
-            $errorMessage = "خطا در ایجاد رکورد مالی - Status: $statusCode";
-            
-            if ($statusCode == 400) {
-                $errorMessage .= " (Bad Request - احتمالاً فیلد اجباری خالی است یا فرمت داده اشتباه است)";
-            } elseif ($statusCode == 404) {
-                $errorMessage .= " (Not Found - احتمالاً Service Center ID اشتباه است)";
-            } elseif ($statusCode == 401) {
-                $errorMessage .= " (Unauthorized - مشکل احراز هویت)";
-            } elseif ($statusCode == 403) {
-                $errorMessage .= " (Forbidden - عدم دسترسی)";
-            }
+            $errorMessage = "خطا در ایجاد رکورد مالی - هیچ ترکیب جدول/فیلدی کار نکرد";
 
-            Log::error("Failed to create financial record", [
-                'financial_data' => $financialData,
-                'response_status' => $response->status(),
-                'response_body' => $response->body()
+            Log::error("Failed to create financial record with all combinations", [
+                'financial_data' => $financial,
+                'service_center_id' => $serviceCenterId,
+                'tested_tables' => $possibleTableNames,
+                'tested_lookup_fields' => $possibleLookupFields
             ]);
 
             return [
@@ -480,5 +583,17 @@ class SendFinancialToCrmController extends Controller
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * فرمت کردن fin_green برای statuscode
+     */
+    private function formatFinGreen($finGreen)
+    {
+        return match (strtolower(trim($finGreen ?? ''))) {
+            '1', 1, 'true', true, 'ok' => 1, // فعال = 1 در CRM
+            '0', 0, 'false', false, 'not ok', 'notok', 'not_ok' => 2, // غیرفعال = 2 در CRM
+            default => 1 // پیش‌فرض فعال
+        };
     }
 }
