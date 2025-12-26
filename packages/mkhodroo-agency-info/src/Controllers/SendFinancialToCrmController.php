@@ -207,7 +207,7 @@ class SendFinancialToCrmController extends Controller
             $testData = [
                 'rhs_name' => $firstFinancial['name'],
                 'rhs_amount' => floatval($firstFinancial['amount']),
-                'rhs_servicecenter@odata.bind' => "/rhs_servicecenters({$firstAgency['crm_service_center_id']})"
+                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters({$firstAgency['crm_service_center_id']})"
             ];
             
             if ($firstFinancial['pay_date']) {
@@ -377,7 +377,7 @@ class SendFinancialToCrmController extends Controller
             $financialData = [
                 'rhs_name' => $financial['name'],
                 'rhs_amount' => floatval($financial['amount']),
-                'rhs_servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
