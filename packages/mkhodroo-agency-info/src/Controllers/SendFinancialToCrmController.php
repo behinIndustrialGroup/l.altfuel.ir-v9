@@ -219,7 +219,7 @@ class SendFinancialToCrmController extends Controller
             }
             
             if ($firstFinancial['year']) {
-                $testData['rhs_year'] = $firstFinancial['year'];
+                $testData['rhs_year'] = (string)$firstFinancial['year'];
             }
             
             echo "<h4>داده‌های آماده برای ارسال:</h4>";
@@ -392,7 +392,7 @@ class SendFinancialToCrmController extends Controller
 
             // اضافه کردن سال اگر وجود داشت
             if ($financial['year']) {
-                $financialData['rhs_year'] = $financial['year'];
+                $financialData['rhs_year'] = (string)$financial['year'];
             }
 
             // حذف فیلدهای خالی
