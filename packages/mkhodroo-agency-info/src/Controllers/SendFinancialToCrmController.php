@@ -111,8 +111,34 @@ class SendFinancialToCrmController extends Controller
                 return;
             }
             
+            // تست دسترسی به جدول مالی
+            echo "<h3>2. تست دسترسی به جدول rhs_financialinformationcenters:</h3>";
+            try {
+                $financialTestResponse = $this->crmClient->request("rhs_financialinformationcenters", "GET", [
+                    '$select' => 'rhs_financialinformationcenterid,rhs_name',
+                    '$top' => 1
+                ]);
+                
+                if ($financialTestResponse->successful()) {
+                    echo "<p style='color: green;'>✓ دسترسی به جدول مالی موفق</p>";
+                    $financialData = $financialTestResponse->json();
+                    echo "<p>تعداد رکوردهای موجود: " . count($financialData['value'] ?? []) . "</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در دسترسی به جدول مالی: " . $financialTestResponse->status() . "</p>";
+                    echo "<pre>" . $financialTestResponse->body() . "</pre>";
+                    
+                    if ($financialTestResponse->status() == 404) {
+                        echo "<p style='color: orange;'>⚠ احتمالاً جدول rhs_financialinformationcenters در CRM وجود ندارد یا نام آن متفاوت است</p>";
+                    }
+                    return;
+                }
+            } catch (\Exception $e) {
+                echo "<p style='color: red;'>✗ Exception در دسترسی به جدول مالی: " . $e->getMessage() . "</p>";
+                return;
+            }
+            
             // بررسی مراکز با CRM ID
-            echo "<h3>2. بررسی مراکز با CRM ID:</h3>";
+            echo "<h3>3. بررسی مراکز با CRM ID:</h3>";
             $agencies = $this->getAgenciesWithCrmId();
             echo "<p>تعداد مراکز با CRM ID: " . count($agencies) . "</p>";
             
@@ -133,7 +159,7 @@ class SendFinancialToCrmController extends Controller
             
             $firstAgency = $agencies[0];
             
-            echo "<h3>3. اطلاعات اولین مرکز:</h3>";
+            echo "<h3>4. اطلاعات اولین مرکز:</h3>";
             echo "<pre>";
             print_r([
                 'parent_id' => $firstAgency['parent_id'],
@@ -143,7 +169,7 @@ class SendFinancialToCrmController extends Controller
             echo "</pre>";
             
             // بررسی اطلاعات مالی
-            echo "<h3>4. بررسی اطلاعات مالی:</h3>";
+            echo "<h3>5. بررسی اطلاعات مالی:</h3>";
             $financialData = $this->getFinancialDataForAgency($firstAgency['parent_id']);
             echo "<p>تعداد اطلاعات مالی یافت شده: " . count($financialData) . "</p>";
             
@@ -168,14 +194,14 @@ class SendFinancialToCrmController extends Controller
                 return;
             }
             
-            echo "<h3>5. اطلاعات مالی یافت شده:</h3>";
+            echo "<h3>6. اطلاعات مالی یافت شده:</h3>";
             echo "<pre>";
             print_r($financialData);
             echo "</pre>";
             
             // تست ایجاد اولین رکورد مالی
             $firstFinancial = $financialData[0];
-            echo "<h3>6. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
+            echo "<h3>7. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
             
             // نمایش داده‌های آماده برای ارسال
             $testData = [
@@ -374,13 +400,40 @@ class SendFinancialToCrmController extends Controller
                 return $value !== '' && $value !== null;
             });
 
+            echo "<h4>درحال ارسال به CRM:</h4>";
+            echo "<pre>";
+            print_r($financialData);
+            echo "</pre>";
+
             $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
             
+            echo "<h4>پاسخ CRM:</h4>";
+            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+            echo "<p><strong>Response Body:</strong></p>";
+            echo "<pre>" . $response->body() . "</pre>";
+            
             if ($response->successful()) {
+                echo "<p style='color: green;'>✓ درخواست موفق بود</p>";
                 return [
                     'success' => true,
                     'message' => 'رکورد مالی ایجاد شد'
                 ];
+            }
+
+            // تحلیل خطاهای رایج
+            $errorBody = $response->body();
+            $statusCode = $response->status();
+            
+            $errorMessage = "خطا در ایجاد رکورد مالی - Status: $statusCode";
+            
+            if ($statusCode == 400) {
+                $errorMessage .= " (Bad Request - احتمالاً فیلد اجباری خالی است یا فرمت داده اشتباه است)";
+            } elseif ($statusCode == 404) {
+                $errorMessage .= " (Not Found - احتمالاً Service Center ID اشتباه است)";
+            } elseif ($statusCode == 401) {
+                $errorMessage .= " (Unauthorized - مشکل احراز هویت)";
+            } elseif ($statusCode == 403) {
+                $errorMessage .= " (Forbidden - عدم دسترسی)";
             }
 
             Log::error("Failed to create financial record", [
@@ -391,14 +444,21 @@ class SendFinancialToCrmController extends Controller
 
             return [
                 'success' => false,
-                'message' => 'خطا در ایجاد رکورد مالی: ' . $response->status()
+                'message' => $errorMessage
             ];
 
         } catch (\Exception $e) {
+            echo "<h4 style='color: red;'>Exception رخ داد:</h4>";
+            echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
+            echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
+            echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+            
             Log::error("Exception creating financial record", [
                 'financial' => $financial,
                 'service_center_id' => $serviceCenterId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return [
