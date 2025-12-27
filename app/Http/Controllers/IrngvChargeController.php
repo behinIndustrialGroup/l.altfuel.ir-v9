@@ -69,12 +69,21 @@ class IrngvChargeController extends Controller
                 'ref_id' => $result,
                 'status' => 'success',
             ]);
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'message' => 'شارژ موفقیت آمیز بود',
+                'ref_id' => $result,
+            ]);
         }else{
             $irngvCharge->update([
                 'status' => 'failed',
             ]);
+            return response()->json([
+                'code' => 400,
+                'status' => 'failed',
+                'message' => 'شارژ با شکست مواجه شد',
+            ]);
         }
-        $irngvCharge->refresh();
-        return $irngvCharge->status;
     }
 }
