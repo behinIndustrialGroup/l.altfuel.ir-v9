@@ -27,7 +27,7 @@ class zibal
         return json_decode($response);
     }
 
-    public static function getAuthority($amount,$description , $mobile, $callbackUrl)
+    public static function getAuthority($amount, $description, $mobile, $callbackUrl)
     {
         $parameters = array(
             "merchant" => self::$merchantId, //required
@@ -84,6 +84,29 @@ class zibal
         } else {
             return 0;
             echo "پرداخت با شکست مواجه شد.";
+        }
+    }
+
+    public static function verify2($orderId, $trackId, $price)
+    {
+        //start verfication
+        $parameters = array(
+            "merchant" => self::$merchantId, //required
+            "trackId" => $trackId, //required
+
+        );
+
+        $response = self::postToZibal('verify', $parameters);
+
+        if ($response->result == 100) {
+            return $response->refNumber;
+            echo "<pre>"; //for pretty view :)
+            var_dump($response);
+            //update database or something else
+        } else {
+            return 0;
+            echo "result: " . $response->result . "<br>";
+            echo "message: " . $response->message;
         }
     }
 }
