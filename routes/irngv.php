@@ -12,5 +12,5 @@ Route::prefix('irngv')->group(function(){
 
     //شارژ
     Route::get('charge', [IrngvChargeController::class, 'index']);
-    Route::post('charge/verify', [IrngvChargeController::class, 'verify']);
+    Route::any('charge/verify', [IrngvChargeController::class, 'verify']);
 });
