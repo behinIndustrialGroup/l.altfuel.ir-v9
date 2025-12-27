@@ -73,7 +73,12 @@ class IrngvChargeController extends Controller
                 'code' => 200,
                 'status' => 'success',
                 'message' => 'شارژ موفقیت آمیز بود',
-                'ref_id' => $result,
+                'data' => [
+                    'ref_id' => $result,
+                    'amount' => $irngvCharge->amount,
+                    'description' => $irngvCharge->description,
+                    'mobile' => $irngvCharge->mobile,
+                ],
             ]);
         }else{
             $irngvCharge->update([
