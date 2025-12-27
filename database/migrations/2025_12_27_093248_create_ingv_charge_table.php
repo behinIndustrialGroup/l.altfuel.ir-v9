@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('mobile');
             $table->string('callback_url');
             $table->string('authority');
+            $table->string('ref_id');
             $table->string('status');
             $table->timestamps();
         });

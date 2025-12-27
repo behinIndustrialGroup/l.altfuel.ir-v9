@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
 
 class IrngvChargeController extends Controller
 {
-    
+
     public function index(Request $request)
     {
         $orderId = $request->get('order_id') ?? time();
@@ -24,7 +24,7 @@ class IrngvChargeController extends Controller
         $mobile = $request->get('mobile') ?? '09376922176';
         $irngvCallbackUrl = $request->get('callback_url') ?? url('');
         $callbackUrl = url('irngv/charge/verify');
-        $authority = zibal::getAuthority($amount,$description,$mobile,$callbackUrl);
+        $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
         $status = 'pending';
 
         IrngvCharge::create([
@@ -38,5 +38,24 @@ class IrngvChargeController extends Controller
         ]);
 
         return redirect(config('zibal.pay_url') . $authority);
+    }
+
+    public function verify(Request $request)
+    {
+        $authority = isset($request->Authority) ? $request->Authority : $request->trackId;
+        $irngvCharge = IrngvCharge::where('authority', $authority)->firstOrFail();
+        $result = zibal::verify($request, $irngvCharge->amount);
+        if (!$result) {
+            $irngvCharge->update([
+                'status' => 'failed',
+            ]);
+        } else {
+            $irngvCharge->update([
+                'ref_id' => $result,
+                'status' => 'success',
+            ]);
+        }
+
+        return redirect($irngvCharge->callback_url);
     }
 }
