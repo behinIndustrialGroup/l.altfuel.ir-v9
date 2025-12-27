@@ -58,4 +58,23 @@ class IrngvChargeController extends Controller
 
         return redirect($irngvCharge->callback_url);
     }
+
+    public function status(Request $request)
+    {
+        $orderId = $request->get('order_id');
+        $irngvCharge = IrngvCharge::where('order_id', $orderId)->first();
+        $result = zibal::verify2($orderId, $irngvCharge->authority, $irngvCharge->amount);
+        if($result){
+            $irngvCharge->update([
+                'ref_id' => $result,
+                'status' => 'success',
+            ]);
+        }else{
+            $irngvCharge->update([
+                'status' => 'failed',
+            ]);
+        }
+        $irngvCharge->refresh();
+        return $irngvCharge->status;
+    }
 }
