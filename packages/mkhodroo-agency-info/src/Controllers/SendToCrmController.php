@@ -17,6 +17,284 @@ class SendToCrmController extends Controller
     }
 
     /**
+     * ارسال اطلاعات مالی مراکز به CRM
+     */
+    public function sendFinancialDataToCrm()
+    {
+        try {
+            set_time_limit(0);
+            
+            $agencies = $this->getAgencyData();
+            $totalCount = count($agencies);
+            
+            if ($totalCount == 0) {
+                echo "<p style='color: red;'>هیچ مرکزی برای ارسال یافت نشد</p>";
+                return;
+            }
+
+            echo "<h2>شروع ارسال اطلاعات مالی $totalCount مرکز به CRM</h2>";
+            echo "<hr>";
+            
+            $successCount = 0;
+            $errorCount = 0;
+            $skippedCount = 0;
+            $totalFinancialRecords = 0;
+
+            foreach ($agencies as $agency) {
+                // بررسی وجود CRM Service Center ID
+                $serviceCenterId = $this->getCrmServiceCenterId($agency['parent_id']);
+                
+                if (!$serviceCenterId) {
+                    echo "<p style='color: orange;'>⚠ {$agency['name']} - مرکز در CRM وجود ندارد، رد شد</p>";
+                    $skippedCount++;
+                    continue;
+                }
+
+                echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
+                echo "<ul>";
+
+                // دریافت اطلاعات مالی این مرکز
+                $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
+                
+                foreach ($financialData as $financial) {
+                    $result = $this->createFinancialRecord($financial, $serviceCenterId);
+                    $totalFinancialRecords++;
+                    
+                    if ($result['success']) {
+                        $successCount++;
+                        echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+                    } else {
+                        $errorCount++;
+                        echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+                    }
+                }
+
+                echo "</ul>";
+                echo "<hr>";
+                
+                // استراحت کوتاه
+                usleep(500000); // 0.5 ثانیه
+            }
+
+            echo "<h2>نتیجه نهایی</h2>";
+            echo "<p><strong>مراکز پردازش شده: $totalCount</strong></p>";
+            echo "<p><strong>رکوردهای مالی: $totalFinancialRecords</strong></p>";
+            echo "<p><strong>موفق: $successCount - خطا: $errorCount - رد شده: $skippedCount</strong></p>";
+
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در پردازش:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
+     * دریافت اطلاعات مالی یک مرکز
+     */
+    private function getFinancialDataForAgency($parentId)
+    {
+        $financialKeys = [
+            'membership_96' => ['membership_96', 'membership_96_pay_date', 'membership_96_ref_id'],
+            'membership_97' => ['membership_97', 'membership_97_pay_date', 'membership_97_ref_id'],
+            'membership_98' => ['membership_98', 'membership_98_pay_date', 'membership_98_ref_id'],
+            'membership_99' => ['membership_99', 'membership_99_pay_date', 'membership_99_ref_id'],
+            'membership_00' => ['membership_00', 'membership_00_pay_date', 'membership_00_ref_id'],
+            'membership_01' => ['membership_01', 'membership_01_pay_date', 'membership_01_ref_id'],
+            'membership_02' => ['membership_02', 'membership_02_pay_date', 'membership_02_ref_id'],
+            'membership_03' => ['membership_03', 'membership_03_pay_date', 'membership_03_ref_id'],
+            'membership_04' => ['membership_04', 'membership_04_pay_date', 'membership_04_ref_id'],
+            'irngv' => ['irngv', 'irngv_pay_date', 'irngv_ref_id'],
+            'irngv_fee' => ['irngv_fee', 'irngv_fee_pay_date', 'irngv_fee_ref_id'],
+            'lock_fee' => ['lock_fee', 'lock_fee_pay_date', 'lock_fee_ref_id'],
+            'debt1' => ['debt1', 'debt1_pay_date', 'debt1_ref_id'],
+            'debt2' => ['debt2', 'debt2_pay_date', 'debt2_ref_id'],
+            'plate_reader' => ['plate_reader', 'plate_reader_pay_date', 'plate_reader_ref_id']
+        ];
+
+        $financialRecords = [];
+
+        foreach ($financialKeys as $name => $keys) {
+            $amountKey = $keys[0];
+            $dateKey = $keys[1];
+            $refKey = $keys[2];
+
+            // دریافت مقادیر از دیتابیس
+            $records = DB::table('agency_info')
+                ->where('parent_id', $parentId)
+                ->whereIn('key', $keys)
+                ->get()
+                ->keyBy('key');
+
+            $amount = $records[$amountKey]->value ?? null;
+            $payDate = $records[$dateKey]->value ?? null;
+            $refId = $records[$refKey]->value ?? null;
+
+            // اگر حداقل مبلغ وجود داشت، رکورد را اضافه کن
+            if ($amount && $amount !== '' && $amount !== '0') {
+                $financialRecords[] = [
+                    'name' => $name,
+                    'amount' => $amount,
+                    'pay_date' => $payDate,
+                    'ref_id' => $refId,
+                    'year' => $this->extractYearFromName($name)
+                ];
+            }
+        }
+
+        return $financialRecords;
+    }
+
+    /**
+     * استخراج سال از نام پرداخت
+     */
+    private function extractYearFromName($name)
+    {
+        if (preg_match('/membership_(\d{2})/', $name, $matches)) {
+            $year = intval($matches[1]);
+            return $year >= 96 ? 1300 + $year : 1400 + $year; // تبدیل به سال شمسی کامل
+        }
+        
+        return null; // برای سایر موارد مثل irngv، debt
+    }
+
+    /**
+     * ایجاد رکورد مالی در CRM
+     */
+    private function createFinancialRecord($financial, $serviceCenterId)
+    {
+        try {
+            $financialData = [
+                'rhs_name' => $financial['name'],
+                'rhs_amount' => floatval($financial['amount']),
+                'rhs_servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+            ];
+
+            // اضافه کردن تاریخ پرداخت اگر وجود داشت
+            if ($financial['pay_date']) {
+                $financialData['rhs_paymentdate'] = $this->formatDate($financial['pay_date']);
+            }
+
+            // اضافه کردن کد پیگیری اگر وجود داشت
+            if ($financial['ref_id']) {
+                $financialData['rhs_trackingcode'] = $financial['ref_id'];
+            }
+
+            // اضافه کردن سال اگر وجود داشت
+            if ($financial['year']) {
+                $financialData['rhs_year'] = $financial['year'];
+            }
+
+            // حذف فیلدهای خالی
+            $financialData = array_filter($financialData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+
+            $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
+            
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'message' => 'رکورد مالی ایجاد شد'
+                ];
+            }
+
+            Log::error("Failed to create financial record", [
+                'financial_data' => $financialData,
+                'response_status' => $response->status(),
+                'response_body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'خطا در ایجاد رکورد مالی: ' . $response->status()
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("Exception creating financial record", [
+                'financial' => $financial,
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Exception در ایجاد رکورد مالی: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * دریافت آمار مراکز موجود در CRM
+     */
+    public function getCrmStats()
+    {
+        try {
+            echo "<h2>آمار مراکز در CRM</h2>";
+            
+            $agencies = $this->getAgencyData();
+            $totalCount = count($agencies);
+            
+            if ($totalCount == 0) {
+                echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
+                return;
+            }
+            
+            $existingInCrm = 0;
+            $notInCrm = 0;
+            $existingIds = [];
+            
+            echo "<h3>بررسی وضعیت مراکز:</h3>";
+            echo "<ul>";
+            
+            foreach ($agencies as $agency) {
+                $crmId = $this->getCrmServiceCenterId($agency['parent_id']);
+                
+                if ($crmId) {
+                    $existingInCrm++;
+                    $existingIds[] = [
+                        'parent_id' => $agency['parent_id'],
+                        'name' => $agency['name'],
+                        'crm_id' => $crmId
+                    ];
+                    echo "<li style='color: blue;'>✓ {$agency['name']} - موجود در CRM (ID: $crmId)</li>";
+                } else {
+                    $notInCrm++;
+                    echo "<li style='color: orange;'>⚠ {$agency['name']} - موجود نیست در CRM</li>";
+                }
+            }
+            
+            echo "</ul>";
+            
+            echo "<div style='margin: 20px 0; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9;'>";
+            echo "<h3>خلاصه آمار:</h3>";
+            echo "<ul>";
+            echo "<li><strong>کل مراکز:</strong> $totalCount</li>";
+            echo "<li><strong>موجود در CRM:</strong> <span style='color: blue;'>$existingInCrm</span></li>";
+            echo "<li><strong>موجود نیست در CRM:</strong> <span style='color: orange;'>$notInCrm</span></li>";
+            echo "<li><strong>درصد پوشش CRM:</strong> <span style='color: " . ($existingInCrm > $notInCrm ? 'green' : 'red') . ";'>" . round(($existingInCrm / $totalCount) * 100, 2) . "%</span></li>";
+            echo "</ul>";
+            echo "</div>";
+            
+            if ($notInCrm > 0) {
+                echo "<div style='margin: 10px 0; padding: 10px; border: 1px solid orange; background-color: #fff3cd;'>";
+                echo "<h4>⚠ توجه:</h4>";
+                echo "<p>$notInCrm مرکز هنوز در CRM ایجاد نشده‌اند. می‌توانید از روت <code>/agency-info/send-to-crm</code> برای ارسال آن‌ها استفاده کنید.</p>";
+                echo "</div>";
+            }
+            
+            if ($existingInCrm > 0) {
+                echo "<div style='margin: 10px 0; padding: 10px; border: 1px solid blue; background-color: #d1ecf1;'>";
+                echo "<h4>ℹ اطلاعات:</h4>";
+                echo "<p>$existingInCrm مرکز قبلاً در CRM ایجاد شده‌اند و در ارسال بعدی رد خواهند شد.</p>";
+                echo "</div>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در دریافت آمار:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
      * ارسال اطلاعات مراکز به CRM به صورت chunk
      */
     public function sendToCrm()
@@ -40,6 +318,7 @@ class SendToCrmController extends Controller
             
             $successCount = 0;
             $errorCount = 0;
+            $skippedCount = 0;
             $processedCount = 0;
             $allResults = [];
 
@@ -67,8 +346,13 @@ class SendToCrmController extends Controller
                     $allResults[] = $result;
 
                     if ($result['success']) {
-                        $successCount++;
-                        echo "<li style='color: green;'>✓ {$result['name']} - موفق</li>";
+                        if (isset($result['skipped']) && $result['skipped']) {
+                            $skippedCount++;
+                            echo "<li style='color: blue;'>⏭ {$result['name']} - رد شد: {$result['message']}</li>";
+                        } else {
+                            $successCount++;
+                            echo "<li style='color: green;'>✓ {$result['name']} - موفق</li>";
+                        }
                     } else {
                         $errorCount++;
                         echo "<li style='color: red;'>✗ {$result['name']} - خطا: {$result['message']}</li>";
@@ -83,11 +367,11 @@ class SendToCrmController extends Controller
                 }
                 
                 echo "</ul>";
-                echo "<p><strong>Chunk $chunkNumber کامل شد. موفق: " . 
-                     count(array_filter($chunkResults, fn($r) => $r['success'])) . 
-                     " - خطا: " . 
-                     count(array_filter($chunkResults, fn($r) => !$r['success'])) . 
-                     "</strong></p>";
+                $chunkSuccess = count(array_filter($chunkResults, fn($r) => $r['success'] && !isset($r['skipped'])));
+                $chunkSkipped = count(array_filter($chunkResults, fn($r) => isset($r['skipped']) && $r['skipped']));
+                $chunkError = count(array_filter($chunkResults, fn($r) => !$r['success']));
+                
+                echo "<p><strong>Chunk $chunkNumber کامل شد. موفق: $chunkSuccess - رد شده: $chunkSkipped - خطا: $chunkError</strong></p>";
                 echo "<hr>";
                 
                 ob_flush();
@@ -98,12 +382,13 @@ class SendToCrmController extends Controller
             }
 
             echo "<h2>نتیجه نهایی</h2>";
-            echo "<p><strong>کل: $totalCount - موفق: $successCount - خطا: $errorCount</strong></p>";
+            echo "<p><strong>کل: $totalCount - موفق: $successCount - رد شده: $skippedCount - خطا: $errorCount</strong></p>";
             
             // لاگ نهایی
             Log::info("Agency CRM sync completed", [
                 'total' => $totalCount,
                 'success' => $successCount,
+                'skipped' => $skippedCount,
                 'error' => $errorCount
             ]);
 
@@ -244,7 +529,7 @@ class SendToCrmController extends Controller
                 'rhs_centercode', 'rhs_address', 'rhs_nationalcode', 'rhs_province', 
                 'rhs_city', 'rhs_description', 'rhs_row', 'rhs_yearofreceivingthecode', 
                 'rhs_guildnumber', 'rhs_postalcode', 'rhs_location', 'rhs_dateofissue', 
-                'rhs_expirydate', 'statecode'
+                'rhs_expirydate', 'statecode', 'statuscode'
             ];
             
             // دریافت داده‌های ذخیره شده از CRM
@@ -462,7 +747,8 @@ class SendToCrmController extends Controller
                 'rhs_location' => $firstAgency['location'] ?? '',
                 'rhs_dateofissue' => $this->formatDate($firstAgency['issued_date'] ?? ''),
                 'rhs_expirydate' => $this->formatDate($firstAgency['exp_date'] ?? ''),
-                'statecode' => $this->formatEnable($firstAgency['enable'] ?? 1)
+                'statecode' => $this->formatEnable($firstAgency['enable'] ?? 1),
+                'statuscode' => $this->formatFinGreen($firstAgency['fin_green'] ?? '')
             ];
             
             echo "<h3>تست 1: ارسال تمام فیلدها (بدون حذف خالی‌ها)</h3>";
@@ -478,6 +764,14 @@ class SendToCrmController extends Controller
                 $serviceCenterId = $this->extractEntityId($response);
                 echo "<p style='color: green;'>✓ Service Center با تمام فیلدها با موفقیت ایجاد شد</p>";
                 echo "<p><strong>Service Center ID:</strong> $serviceCenterId</p>";
+                
+                // ذخیره CRM Service Center ID در دیتابیس
+                $saveResult = $this->saveCrmServiceCenterId($firstAgency['parent_id'], $serviceCenterId);
+                if ($saveResult) {
+                    echo "<p style='color: green;'>✓ CRM Service Center ID در دیتابیس ذخیره شد</p>";
+                } else {
+                    echo "<p style='color: orange;'>⚠ خطا در ذخیره CRM Service Center ID در دیتابیس</p>";
+                }
                 
                 // مقایسه داده‌ها
                 echo "<hr>";
@@ -547,6 +841,14 @@ class SendToCrmController extends Controller
                 $serviceCenterId = $this->extractEntityId($response);
                 echo "<p style='color: green;'>✓ Service Center با فیلدهای اساسی با موفقیت ایجاد شد</p>";
                 echo "<p><strong>Service Center ID:</strong> $serviceCenterId</p>";
+                
+                // ذخیره CRM Service Center ID در دیتابیس
+                $saveResult = $this->saveCrmServiceCenterId($agency['parent_id'], $serviceCenterId);
+                if ($saveResult) {
+                    echo "<p style='color: green;'>✓ CRM Service Center ID در دیتابیس ذخیره شد</p>";
+                } else {
+                    echo "<p style='color: orange;'>⚠ خطا در ذخیره CRM Service Center ID در دیتابیس</p>";
+                }
                 
                 // مقایسه داده‌ها
                 echo "<h4>مقایسه داده‌های اساسی با CRM:</h4>";
@@ -706,6 +1008,20 @@ class SendToCrmController extends Controller
     private function processAgency($agency)
     {
         try {
+            // بررسی اینکه آیا این مرکز قبلاً در CRM ایجاد شده است
+            $existingCrmId = $this->getCrmServiceCenterId($agency['parent_id']);
+            
+            if ($existingCrmId) {
+                return [
+                    'agency_id' => $agency['parent_id'],
+                    'name' => $agency['name'] ?? 'نامشخص',
+                    'success' => true,
+                    'message' => 'مرکز قبلاً در CRM موجود است',
+                    'service_center_id' => $existingCrmId,
+                    'skipped' => true
+                ];
+            }
+            
             $mobile = $this->cleanMobile($agency['mobile'] ?? '');
             
             if (!$mobile) {
@@ -733,6 +1049,9 @@ class SendToCrmController extends Controller
             $serviceCenterResult = $this->createServiceCenter($agency, $contactResult['contact_id']);
             
             if ($serviceCenterResult['success']) {
+                // ذخیره CRM Service Center ID در دیتابیس
+                $this->saveCrmServiceCenterId($agency['parent_id'], $serviceCenterResult['service_center_id']);
+                
                 return [
                     'agency_id' => $agency['parent_id'],
                     'name' => $agency['name'] ?? 'نامشخص',
@@ -898,7 +1217,8 @@ class SendToCrmController extends Controller
                 'rhs_expirydate' => $this->formatDate($agency['exp_date'] ?? ''),
                 'rhs_postalcode' => $agency['postal_code'] ?? '',
                 'rhs_location' => $agency['location'] ?? '',
-                'statecode' => $this->formatEnable($agency['enable'] ?? 1)
+                'statecode' => $this->formatEnable($agency['enable'] ?? 1),
+                'statuscode' => $this->formatFinGreen($agency['fin_green'] ?? '')
             ];
             
             // اضافه کردن lookup فقط اگر contactId وجود داشت
@@ -947,6 +1267,80 @@ class SendToCrmController extends Controller
     }
 
     /**
+     * ذخیره CRM Service Center ID در دیتابیس
+     */
+    private function saveCrmServiceCenterId($parentId, $serviceCenterId)
+    {
+        try {
+            // بررسی اینکه آیا رکورد با key 'crm_service_center_id' وجود دارد یا نه
+            $existingRecord = DB::table('agency_info')
+                ->where('parent_id', $parentId)
+                ->where('key', 'crm_service_center_id')
+                ->first();
+
+            if ($existingRecord) {
+                // به‌روزرسانی رکورد موجود
+                DB::table('agency_info')
+                    ->where('parent_id', $parentId)
+                    ->where('key', 'crm_service_center_id')
+                    ->update([
+                        'value' => $serviceCenterId,
+                        'updated_at' => now()
+                    ]);
+                
+                Log::info("Updated CRM Service Center ID", [
+                    'parent_id' => $parentId,
+                    'service_center_id' => $serviceCenterId
+                ]);
+            } else {
+                // ایجاد رکورد جدید
+                DB::table('agency_info')->insert([
+                    'parent_id' => $parentId,
+                    'key' => 'crm_service_center_id',
+                    'value' => $serviceCenterId,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                Log::info("Created new CRM Service Center ID record", [
+                    'parent_id' => $parentId,
+                    'service_center_id' => $serviceCenterId
+                ]);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Failed to save CRM Service Center ID", [
+                'parent_id' => $parentId,
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * دریافت CRM Service Center ID از دیتابیس
+     */
+    private function getCrmServiceCenterId($parentId)
+    {
+        try {
+            $record = DB::table('agency_info')
+                ->where('parent_id', $parentId)
+                ->where('key', 'crm_service_center_id')
+                ->first();
+
+            return $record ? $record->value : null;
+        } catch (\Exception $e) {
+            Log::error("Failed to get CRM Service Center ID", [
+                'parent_id' => $parentId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
      * دریافت اطلاعات مراکز
      */
     private function getAgencyData()
@@ -969,7 +1363,8 @@ class SendToCrmController extends Controller
             'city',
             'postal_code',
             'enable',
-            'location'
+            'location',
+            'fin_green'
         ];
 
         // گرفتن اطلاعات شهرها و استان‌ها
@@ -1050,6 +1445,18 @@ class SendToCrmController extends Controller
             '1', 1, 'true', true => 0, // فعال = 0 در CRM
             '0', 0, 'false', false => 1, // غیرفعال = 1 در CRM
             default => 0
+        };
+    }
+
+    /**
+     * فرمت کردن fin_green برای statuscode
+     */
+    private function formatFinGreen($finGreen)
+    {
+        return match (strtolower(trim($finGreen ?? ''))) {
+            'ok' => 1, // فعال = 1 در CRM
+            'not ok', 'notok', 'not_ok' => 2, // غیرفعال = 2 در CRM
+            default => 1 // پیش‌فرض فعال
         };
     }
 
