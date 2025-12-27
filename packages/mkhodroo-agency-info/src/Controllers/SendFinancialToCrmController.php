@@ -47,20 +47,38 @@ class SendFinancialToCrmController extends Controller
                 // دریافت اطلاعات مالی این مرکز
                 $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
                 
-                if (empty($financialData)) {
-                    echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یافت نشد</li>";
+                // دریافت اطلاعات بدهی این مرکز
+                $debtData = $this->getDebtDataForAgency($agency['parent_id']);
+                
+                if (empty($financialData) && empty($debtData)) {
+                    echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یا بدهی یافت نشد</li>";
                     $skippedCount++;
                 } else {
+                    // پردازش اطلاعات مالی
                     foreach ($financialData as $financial) {
                         $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
                         $totalFinancialRecords++;
                         
                         if ($result['success']) {
                             $successCount++;
-                            echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+                            echo "<li style='color: green;'>✓ {$financial['name']} - موفق (مالی)</li>";
                         } else {
                             $errorCount++;
                             echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+                        }
+                    }
+                    
+                    // پردازش اطلاعات بدهی
+                    foreach ($debtData as $debt) {
+                        $result = $this->createDebtRecord($debt, $agency['crm_service_center_id']);
+                        $totalFinancialRecords++;
+                        
+                        if ($result['success']) {
+                            $successCount++;
+                            echo "<li style='color: blue;'>✓ {$debt['name']} - موفق (بدهی)</li>";
+                        } else {
+                            $errorCount++;
+                            echo "<li style='color: red;'>✗ {$debt['name']} - خطا: {$result['message']}</li>";
                         }
                     }
                 }
@@ -137,8 +155,32 @@ class SendFinancialToCrmController extends Controller
                 return;
             }
             
+            // تست دسترسی به جدول بدهی
+            echo "<h3>3. تست دسترسی به جدول rhs_debtinformation:</h3>";
+            try {
+                $debtTestResponse = $this->crmClient->request("rhs_debtinformation", "GET", [
+                    '$select' => 'rhs_debtinformationid,rhs_name',
+                    '$top' => 1
+                ]);
+                
+                if ($debtTestResponse->successful()) {
+                    echo "<p style='color: green;'>✓ دسترسی به جدول بدهی موفق</p>";
+                    $debtData = $debtTestResponse->json();
+                    echo "<p>تعداد رکوردهای بدهی موجود: " . count($debtData['value'] ?? []) . "</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در دسترسی به جدول بدهی: " . $debtTestResponse->status() . "</p>";
+                    echo "<pre>" . $debtTestResponse->body() . "</pre>";
+                    
+                    if ($debtTestResponse->status() == 404) {
+                        echo "<p style='color: orange;'>⚠ احتمالاً جدول rhs_debtinformation در CRM وجود ندارد یا نام آن متفاوت است</p>";
+                    }
+                }
+            } catch (\Exception $e) {
+                echo "<p style='color: red;'>✗ Exception در دسترسی به جدول بدهی: " . $e->getMessage() . "</p>";
+            }
+            
             // بررسی مراکز با CRM ID
-            echo "<h3>3. بررسی مراکز با CRM ID:</h3>";
+            echo "<h3>4. بررسی مراکز با CRM ID:</h3>";
             $agencies = $this->getAgenciesWithCrmId();
             echo "<p>تعداد مراکز با CRM ID: " . count($agencies) . "</p>";
             
@@ -159,7 +201,7 @@ class SendFinancialToCrmController extends Controller
             
             $firstAgency = $agencies[0];
             
-            echo "<h3>4. اطلاعات اولین مرکز:</h3>";
+            echo "<h3>5. اطلاعات اولین مرکز:</h3>";
             echo "<pre>";
             print_r([
                 'parent_id' => $firstAgency['parent_id'],
@@ -169,19 +211,31 @@ class SendFinancialToCrmController extends Controller
             echo "</pre>";
             
             // بررسی اطلاعات مالی
-            echo "<h3>5. بررسی اطلاعات مالی:</h3>";
+            echo "<h3>6. بررسی اطلاعات مالی:</h3>";
             $financialData = $this->getFinancialDataForAgency($firstAgency['parent_id']);
             echo "<p>تعداد اطلاعات مالی یافت شده: " . count($financialData) . "</p>";
             
-            if (empty($financialData)) {
-                echo "<p style='color: orange;'>این مرکز اطلاعات مالی ندارد</p>";
+            // بررسی اطلاعات بدهی
+            echo "<h3>7. بررسی اطلاعات بدهی:</h3>";
+            $debtData = $this->getDebtDataForAgency($firstAgency['parent_id']);
+            echo "<p>تعداد اطلاعات بدهی یافت شده: " . count($debtData) . "</p>";
+            
+            if (empty($financialData) && empty($debtData)) {
+                echo "<p style='color: orange;'>این مرکز اطلاعات مالی یا بدهی ندارد</p>";
                 
                 // بررسی اینکه آیا اصلاً رکوردهای مالی وجود دارند
                 $financialCount = DB::table('agency_info')
                     ->where('parent_id', $firstAgency['parent_id'])
-                    ->whereIn('key', ['membership_96', 'debt1', 'irngv'])
+                    ->whereIn('key', ['membership_96', 'irngv'])
                     ->count();
                 echo "<p>تعداد رکوردهای مالی در دیتابیس برای این مرکز: $financialCount</p>";
+                
+                // بررسی اینکه آیا اصلاً رکوردهای بدهی وجود دارند
+                $debtCount = DB::table('agency_info')
+                    ->where('parent_id', $firstAgency['parent_id'])
+                    ->whereIn('key', ['debt1', 'debt2'])
+                    ->count();
+                echo "<p>تعداد رکوردهای بدهی در دیتابیس برای این مرکز: $debtCount</p>";
                 
                 // نمایش تمام کلیدهای موجود برای این مرکز
                 $allKeys = DB::table('agency_info')
@@ -194,45 +248,42 @@ class SendFinancialToCrmController extends Controller
                 return;
             }
             
-            echo "<h3>6. اطلاعات مالی یافت شده:</h3>";
-            echo "<pre>";
-            print_r($financialData);
-            echo "</pre>";
-            
-            // تست ایجاد اولین رکورد مالی
-            $firstFinancial = $financialData[0];
-            echo "<h3>7. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
-            
-            // نمایش داده‌های آماده برای ارسال
-            $testData = [
-                'rhs_name' => $firstFinancial['name'],
-                'rhs_amount' => floatval($firstFinancial['amount']),
-                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters({$firstAgency['crm_service_center_id']})"
-            ];
-            
-            if ($firstFinancial['pay_date']) {
-                $testData['rhs_paymentdate'] = $this->formatDate($firstFinancial['pay_date']);
+            if (!empty($financialData)) {
+                echo "<h3>8. اطلاعات مالی یافت شده:</h3>";
+                echo "<pre>";
+                print_r($financialData);
+                echo "</pre>";
+                
+                // تست ایجاد اولین رکورد مالی
+                $firstFinancial = $financialData[0];
+                echo "<h3>9. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
+                
+                $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
+                
+                if ($result['success']) {
+                    echo "<p style='color: green;'>✓ رکورد مالی با موفقیت ایجاد شد</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در ایجاد رکورد مالی: {$result['message']}</p>";
+                }
             }
             
-            if ($firstFinancial['ref_id']) {
-                $testData['rhs_trackingcode'] = $firstFinancial['ref_id'];
-            }
-            
-            if ($firstFinancial['year']) {
-                $testData['rhs_year'] = (string)$firstFinancial['year'];
-            }
-            
-            echo "<h4>داده‌های آماده برای ارسال:</h4>";
-            echo "<pre>";
-            print_r($testData);
-            echo "</pre>";
-            
-            $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
-            
-            if ($result['success']) {
-                echo "<p style='color: green;'>✓ رکورد مالی با موفقیت ایجاد شد</p>";
-            } else {
-                echo "<p style='color: red;'>✗ خطا در ایجاد رکورد مالی: {$result['message']}</p>";
+            if (!empty($debtData)) {
+                echo "<h3>10. اطلاعات بدهی یافت شده:</h3>";
+                echo "<pre>";
+                print_r($debtData);
+                echo "</pre>";
+                
+                // تست ایجاد اولین رکورد بدهی
+                $firstDebt = $debtData[0];
+                echo "<h3>11. تست ایجاد رکورد بدهی: {$firstDebt['name']}</h3>";
+                
+                $result = $this->createDebtRecord($firstDebt, $firstAgency['crm_service_center_id']);
+                
+                if ($result['success']) {
+                    echo "<p style='color: green;'>✓ رکورد بدهی با موفقیت ایجاد شد</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در ایجاد رکورد بدهی: {$result['message']}</p>";
+                }
             }
             
         } catch (\Exception $e) {
@@ -292,7 +343,7 @@ class SendFinancialToCrmController extends Controller
     }
 
     /**
-     * دریافت اطلاعات مالی یک مرکز
+     * دریافت اطلاعات مالی یک مرکز (بدون debt1 و debt2)
      */
     private function getFinancialDataForAgency($parentId)
     {
@@ -310,8 +361,6 @@ class SendFinancialToCrmController extends Controller
                 'irngv' => ['irngv', 'irngv_pay_date', 'irngv_ref_id'],
                 'irngv_fee' => ['irngv_fee', 'irngv_fee_pay_date', 'irngv_fee_ref_id'],
                 'lock_fee' => ['lock_fee', 'lock_fee_pay_date', 'lock_fee_ref_id'],
-                'debt1' => ['debt1', 'debt1_pay_date', 'debt1_ref_id'],
-                'debt2' => ['debt2', 'debt2_pay_date', 'debt2_ref_id'],
                 'plate_reader' => ['plate_reader', 'plate_reader_pay_date', 'plate_reader_ref_id']
             ];
 
@@ -356,6 +405,82 @@ class SendFinancialToCrmController extends Controller
     }
 
     /**
+     * دریافت اطلاعات بدهی یک مرکز (فقط debt1 و debt2)
+     */
+    private function getDebtDataForAgency($parentId)
+    {
+        try {
+            $debtKeys = [
+                'debt1' => ['debt1', 'debt1_pay_date', 'debt1_ref_id'],
+                'debt2' => ['debt2', 'debt2_pay_date', 'debt2_ref_id']
+            ];
+
+            $debtRecords = [];
+
+            foreach ($debtKeys as $name => $keys) {
+                $amountKey = $keys[0];
+                $dateKey = $keys[1];
+                $refKey = $keys[2];
+
+                // دریافت مقادیر از دیتابیس
+                $records = DB::table('agency_info')
+                    ->where('parent_id', $parentId)
+                    ->whereIn('key', $keys)
+                    ->get()
+                    ->keyBy('key');
+
+                $amount = isset($records[$amountKey]) ? $records[$amountKey]->value : null;
+                $payDate = isset($records[$dateKey]) ? $records[$dateKey]->value : null;
+                $refId = isset($records[$refKey]) ? $records[$refKey]->value : null;
+
+                // اگر حداقل مبلغ وجود داشت، رکورد را اضافه کن
+                if ($amount && $amount !== '' && $amount !== '0') {
+                    $debtRecords[] = [
+                        'name' => $name,
+                        'amount' => $amount,
+                        'pay_date' => $payDate,
+                        'ref_id' => $refId,
+                        'year' => null // بدهی‌ها سال ندارند
+                    ];
+                }
+            }
+
+            return $debtRecords;
+        } catch (\Exception $e) {
+            Log::error("Error getting debt data for agency", [
+                'parent_id' => $parentId,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * تبدیل نام انگلیسی به نام فارسی برای نمایش در CRM
+     */
+    private function convertToPersianName($englishName)
+    {
+        // تبدیل نام‌های مختلف به فارسی
+        if ($englishName === 'irngv') {
+            return 'irngv';
+        } elseif ($englishName === 'plate_reader') {
+            return 'پلاک خوان';
+        } elseif ($englishName === 'lock_fee') {
+            return 'هزینه قفل';
+        } elseif ($englishName === 'irngv_fee') {
+            return 'هزینه irngv';
+        } elseif (in_array($englishName, ['debt1', 'debt2'])) {
+            return 'بدهی';
+        } elseif (preg_match('/membership_(\d{2})/', $englishName, $matches)) {
+            $year = $matches[1];
+            return "حق عضویت سال $year";
+        }
+        
+        // اگر نام شناخته شده نبود، همان نام انگلیسی را برگردان
+        return $englishName;
+    }
+
+    /**
      * استخراج سال از نام پرداخت
      */
     private function extractYearFromName($name)
@@ -374,8 +499,10 @@ class SendFinancialToCrmController extends Controller
     private function createFinancialRecord($financial, $serviceCenterId)
     {
         try {
+            $persianName = $this->convertToPersianName($financial['name']);
+            
             $financialData = [
-                'rhs_name' => $financial['name'],
+                'rhs_name' => $persianName,
                 'rhs_amount' => floatval($financial['amount']),
                 'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
@@ -401,6 +528,8 @@ class SendFinancialToCrmController extends Controller
             });
 
             echo "<h4>درحال ارسال به CRM:</h4>";
+            echo "<p><strong>نام انگلیسی:</strong> {$financial['name']}</p>";
+            echo "<p><strong>نام فارسی:</strong> $persianName</p>";
             echo "<pre>";
             print_r($financialData);
             echo "</pre>";
@@ -464,6 +593,105 @@ class SendFinancialToCrmController extends Controller
             return [
                 'success' => false,
                 'message' => 'Exception در ایجاد رکورد مالی: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * ایجاد رکورد بدهی در CRM
+     */
+    private function createDebtRecord($debt, $serviceCenterId)
+    {
+        try {
+            $persianName = $this->convertToPersianName($debt['name']);
+            
+            $debtData = [
+                'rhs_name' => $persianName,
+                'rhs_amount' => floatval($debt['amount']),
+                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+            ];
+
+            // اضافه کردن تاریخ پرداخت اگر وجود داشت
+            if ($debt['pay_date']) {
+                $debtData['rhs_paymentdate'] = $this->formatDate($debt['pay_date']);
+            }
+
+            // اضافه کردن کد پیگیری اگر وجود داشت
+            if ($debt['ref_id']) {
+                $debtData['rhs_trackingcode'] = $debt['ref_id'];
+            }
+
+            // حذف فیلدهای خالی
+            $debtData = array_filter($debtData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+
+            echo "<h4>درحال ارسال بدهی به CRM:</h4>";
+            echo "<p><strong>نام انگلیسی:</strong> {$debt['name']}</p>";
+            echo "<p><strong>نام فارسی:</strong> $persianName</p>";
+            echo "<pre>";
+            print_r($debtData);
+            echo "</pre>";
+
+            $response = $this->crmClient->request("rhs_debtinformation", "POST", $debtData);
+            
+            echo "<h4>پاسخ CRM برای بدهی:</h4>";
+            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+            echo "<p><strong>Response Body:</strong></p>";
+            echo "<pre>" . $response->body() . "</pre>";
+            
+            if ($response->successful()) {
+                echo "<p style='color: green;'>✓ درخواست بدهی موفق بود</p>";
+                return [
+                    'success' => true,
+                    'message' => 'رکورد بدهی ایجاد شد'
+                ];
+            }
+
+            // تحلیل خطاهای رایج
+            $errorBody = $response->body();
+            $statusCode = $response->status();
+            
+            $errorMessage = "خطا در ایجاد رکورد بدهی - Status: $statusCode";
+            
+            if ($statusCode == 400) {
+                $errorMessage .= " (Bad Request - احتمالاً فیلد اجباری خالی است یا فرمت داده اشتباه است)";
+            } elseif ($statusCode == 404) {
+                $errorMessage .= " (Not Found - احتمالاً Service Center ID اشتباه است یا جدول rhs_debtinformation وجود ندارد)";
+            } elseif ($statusCode == 401) {
+                $errorMessage .= " (Unauthorized - مشکل احراز هویت)";
+            } elseif ($statusCode == 403) {
+                $errorMessage .= " (Forbidden - عدم دسترسی)";
+            }
+
+            Log::error("Failed to create debt record", [
+                'debt_data' => $debtData,
+                'response_status' => $response->status(),
+                'response_body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorMessage
+            ];
+
+        } catch (\Exception $e) {
+            echo "<h4 style='color: red;'>Exception در ایجاد بدهی رخ داد:</h4>";
+            echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
+            echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
+            echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+            
+            Log::error("Exception creating debt record", [
+                'debt' => $debt,
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Exception در ایجاد رکورد بدهی: ' . $e->getMessage()
             ];
         }
     }
