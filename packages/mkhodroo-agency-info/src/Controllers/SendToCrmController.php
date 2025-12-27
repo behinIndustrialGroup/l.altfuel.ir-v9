@@ -529,7 +529,7 @@ class SendToCrmController extends Controller
                 'rhs_centercode', 'rhs_address', 'rhs_nationalcode', 'rhs_province', 
                 'rhs_city', 'rhs_description', 'rhs_row', 'rhs_yearofreceivingthecode', 
                 'rhs_guildnumber', 'rhs_postalcode', 'rhs_location', 'rhs_dateofissue', 
-                'rhs_expirydate', 'rhs_DebtDescription', 'statecode', 'statuscode'
+                'rhs_expirydate', 'rhs_debtdescription', 'statecode', 'statuscode'
             ];
             
             // دریافت داده‌های ذخیره شده از CRM
@@ -747,7 +747,7 @@ class SendToCrmController extends Controller
                 'rhs_location' => $firstAgency['location'] ?? '',
                 'rhs_dateofissue' => $this->formatDate($firstAgency['issued_date'] ?? ''),
                 'rhs_expirydate' => $this->formatDate($firstAgency['exp_date'] ?? ''),
-                'rhs_DebtDescription' => $firstAgency['fin_details'] ?? '',
+                'rhs_debtdescription' => $firstAgency['fin_details'] ?? '',
                 'statecode' => $this->formatEnable($firstAgency['enable'] ?? 1),
                 'statuscode' => $this->formatFinGreen($firstAgency['fin_green'] ?? '')
             ];
@@ -971,7 +971,7 @@ class SendToCrmController extends Controller
                 'rhs_province' => $firstAgency['province'] ?? '',
                 'rhs_city' => $firstAgency['city'] ?? '',
                 'rhs_description' => $firstAgency['description'] ?? '',
-                'rhs_DebtDescription' => $firstAgency['fin_details'] ?? ''
+                'rhs_debtdescription' => $firstAgency['fin_details'] ?? ''
             ];
             
             // حذف فیلدهای خالی
@@ -1219,7 +1219,7 @@ class SendToCrmController extends Controller
                 'rhs_expirydate' => $this->formatDate($agency['exp_date'] ?? ''),
                 'rhs_postalcode' => $agency['postal_code'] ?? '',
                 'rhs_location' => $agency['location'] ?? '',
-                'rhs_DebtDescription' => $agency['fin_details'] ?? '',
+                'rhs_debtdescription' => $agency['fin_details'] ?? '',
                 'statecode' => $this->formatEnable($agency['enable'] ?? 1),
                 'statuscode' => $this->formatFinGreen($agency['fin_green'] ?? '')
             ];
