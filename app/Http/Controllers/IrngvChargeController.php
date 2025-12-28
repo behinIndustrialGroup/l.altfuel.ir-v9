@@ -37,8 +37,7 @@ class IrngvChargeController extends Controller
             $mobile = $data['mobile'];
             $irngvCallbackUrl = $request->get('callback_url') ?? url('');
             $callbackUrl = url('irngv/charge/verify');
-            return view('irngv.charge', compact('orderId','amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
-
+            return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
         } else {
             $error = $response->body();
             return $error;
@@ -81,6 +80,28 @@ class IrngvChargeController extends Controller
                 'ref_id' => $result,
                 'status' => 'success',
             ]);
+            $response = Http::asMultipart()->post(
+                'https://irngv.mimt.gov.ir/api/PaymentServices/PaymentInfo',
+                [
+                    [
+                        'name'     => 'orderCode',
+                        'contents' => $irngvCharge->order_id,
+                    ],
+                    [
+                        'name' => 'amount',
+                        'contents' => $irngvCharge->amount,
+                    ],
+                    [
+                        'name' => 'order_id',
+                        'contents' => $irngvCharge->ref_id,
+                    ],
+                    [
+                        'name' => 'payment_status',
+                        'contents' => 200,
+                    ]
+                ]
+            );
+            return $response->json();
         }
 
         return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
