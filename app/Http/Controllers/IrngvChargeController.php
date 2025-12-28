@@ -45,7 +45,7 @@ class IrngvChargeController extends Controller
         }
     }
 
-    public static function charge(Request $request)
+    public static function pay(Request $request)
     {
         $orderId = $request->orderId;
         $amount = $request->amount;
