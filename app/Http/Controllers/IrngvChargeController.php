@@ -70,7 +70,7 @@ class IrngvChargeController extends Controller
     {
         $authority = isset($request->Authority) ? $request->Authority : $request->trackId;
         $irngvCharge = IrngvCharge::where('authority', $authority)->firstOrFail();
-        $result = zibal::verify($request, $irngvCharge->amount);
+        $result = zibal::verify2($authority);
         if (!$result) {
             $irngvCharge->update([
                 'status' => 'failed',
@@ -113,7 +113,7 @@ class IrngvChargeController extends Controller
     {
         $orderId = $request->order_id;
         $irngvCharge = IrngvCharge::where('order_id', $orderId)->first();
-        $result = zibal::verify2($orderId, $irngvCharge->authority, $irngvCharge->amount);
+        $result = zibal::verify2($irngvCharge->authority);
         if ($result) {
             $irngvCharge->update([
                 'ref_id' => $result,

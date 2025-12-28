@@ -87,7 +87,7 @@ class zibal
         }
     }
 
-    public static function verify2($orderId, $trackId, $price)
+    public static function verify2($trackId)
     {
         //start verfication
         $parameters = array(
