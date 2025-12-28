@@ -101,6 +101,7 @@ class IrngvChargeController extends Controller
                     ]
                 ]
             );
+            return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
             return $response->json();
         }
 
