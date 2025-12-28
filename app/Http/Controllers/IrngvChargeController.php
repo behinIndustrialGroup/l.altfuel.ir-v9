@@ -32,39 +32,28 @@ class IrngvChargeController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
-            return $data;
+            $amount = $data->amount;
+            $description = 'تست';
+            $mobile = $data->mobile;
+            $irngvCallbackUrl = $request->get('callback_url') ?? url('');
+            $callbackUrl = url('irngv/charge/verify');
+            $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
+            $status = 'pending';
+            IrngvCharge::create([
+                'order_id' => $orderId,
+                'amount' => $amount,
+                'description' => $description,
+                'mobile' => $mobile,
+                'callback_url' => $irngvCallbackUrl,
+                'authority' => $authority,
+                'status' => $status,
+            ]);
+
+            return redirect(config('zibal.pay_url') . $authority);
         } else {
             $error = $response->body();
+            return $error;
         }
-        $amount = $request->get('amount') ?? 10000;
-        $description = $request->get('description') ?? 'شارژ اولیه';
-        $mobile = $request->get('mobile') ?? '09376922176';
-        $irngvCallbackUrl = $request->get('callback_url') ?? url('');
-        $callbackUrl = url('irngv/charge/verify');
-        $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
-        $status = 'pending';
-
-        return [
-            'order_id' => $orderId,
-            'amount' => $amount,
-            'description' => $description,
-            'mobile' => $mobile,
-            'callback_url' => $irngvCallbackUrl,
-            'authority' => $authority,
-            'status' => $status,
-        ];
-
-        IrngvCharge::create([
-            'order_id' => $orderId,
-            'amount' => $amount,
-            'description' => $description,
-            'mobile' => $mobile,
-            'callback_url' => $irngvCallbackUrl,
-            'authority' => $authority,
-            'status' => $status,
-        ]);
-
-        return redirect(config('zibal.pay_url') . $authority);
     }
 
     public function verify(Request $request)
