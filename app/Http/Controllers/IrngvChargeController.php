@@ -30,6 +30,7 @@ class IrngvChargeController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
+            echo "response:<br>";
             return $data;
         } else {
             $error = $response->body();
