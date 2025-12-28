@@ -20,7 +20,6 @@ class IrngvChargeController extends Controller
     public function index(Request $request)
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
-        echo $orderId . '<br>';
         $response = Http::post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
@@ -30,7 +29,6 @@ class IrngvChargeController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
-            echo "response:<br>";
             return $data;
         } else {
             $error = $response->body();
