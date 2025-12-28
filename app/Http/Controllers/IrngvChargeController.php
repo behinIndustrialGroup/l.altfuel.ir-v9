@@ -18,14 +18,24 @@ class IrngvChargeController extends Controller
 
     public function index(Request $request)
     {
-        $orderId = $request->get('order_id') ?? time();
+        $orderId = $request->get('order_id');
         $amount = $request->get('amount') ?? 10000;
         $description = $request->get('description') ?? 'شارژ اولیه';
         $mobile = $request->get('mobile') ?? '09376922176';
-        $irngvCallbackUrl = $request->get('callback_url') ?? url('');
+        $irngvCallbackUrl = $request->get('callback_url') ?? url(''); 
         $callbackUrl = url('irngv/charge/verify');
         $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
         $status = 'pending';
+
+        return [
+            'order_id' => $orderId,
+            'amount' => $amount,
+            'description' => $description,
+            'mobile' => $mobile,
+            'callback_url' => $irngvCallbackUrl,
+            'authority' => $authority,
+            'status' => $status,
+        ];
 
         IrngvCharge::create([
             'order_id' => $orderId,
@@ -61,7 +71,7 @@ class IrngvChargeController extends Controller
 
     public function status(Request $request)
     {
-        $orderId = $request->get('order_id');
+        $orderId = $request->order_id;
         $irngvCharge = IrngvCharge::where('order_id', $orderId)->first();
         $result = zibal::verify2($orderId, $irngvCharge->authority, $irngvCharge->amount);
         if($result){
