@@ -20,6 +20,7 @@ class IrngvChargeController extends Controller
     public function index(Request $request)
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
+        echo $orderId . '<br>';
         $response = Http::post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
