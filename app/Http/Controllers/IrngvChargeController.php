@@ -32,9 +32,9 @@ class IrngvChargeController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
-            $amount = $data->amount;
+            $amount = $data['amount'];
             $description = 'تست';
-            $mobile = $data->mobile;
+            $mobile = $data['mobile'];
             $irngvCallbackUrl = $request->get('callback_url') ?? url('');
             $callbackUrl = url('irngv/charge/verify');
             $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
