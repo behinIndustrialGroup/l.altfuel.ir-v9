@@ -37,23 +37,34 @@ class IrngvChargeController extends Controller
             $mobile = $data['mobile'];
             $irngvCallbackUrl = $request->get('callback_url') ?? url('');
             $callbackUrl = url('irngv/charge/verify');
-            $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
-            $status = 'pending';
-            IrngvCharge::create([
-                'order_id' => $orderId,
-                'amount' => $amount,
-                'description' => $description,
-                'mobile' => $mobile,
-                'callback_url' => $irngvCallbackUrl,
-                'authority' => $authority,
-                'status' => $status,
-            ]);
+            return view('irngv.charge', compact('orderId','amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
 
-            return redirect(config('zibal.pay_url') . $authority);
         } else {
             $error = $response->body();
             return $error;
         }
+    }
+
+    public static function charge(Request $request)
+    {
+        $orderId = $request->orderId;
+        $amount = $request->amount;
+        $description = $request->description;
+        $mobile = $request->mobile;
+        $callbackUrl = route('irngv.charge.verify');
+        $irngvCallbackUrl = $request->irngvCallbackUrl ?? url('');
+        $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
+        $status = 'pending';
+        IrngvCharge::create([
+            'order_id' => $orderId,
+            'amount' => $amount,
+            'description' => $description,
+            'mobile' => $mobile,
+            'callback_url' => $irngvCallbackUrl,
+            'authority' => $authority,
+            'status' => $status,
+        ]);
+        return redirect(config('zibal.pay_url') . $authority);
     }
 
     public function verify(Request $request)
