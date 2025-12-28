@@ -18,7 +18,8 @@ class IrngvChargeController extends Controller
 
     public function index(Request $request)
     {
-        $orderId = $request->get('order_id');
+        $rawQuery = $request->getQueryString(); // 23187723q3wkg
+        $orderId = $rawQuery;
         $amount = $request->get('amount') ?? 10000;
         $description = $request->get('description') ?? 'شارژ اولیه';
         $mobile = $request->get('mobile') ?? '09376922176';
