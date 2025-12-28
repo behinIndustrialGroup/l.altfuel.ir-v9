@@ -12,6 +12,7 @@ use App\Models\IrngvPollAnswer;
 use App\Models\IrngvUsersInfo;
 use Hekmatinasser\Verta\Facades\Verta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class IrngvChargeController extends Controller
 {
@@ -19,10 +20,23 @@ class IrngvChargeController extends Controller
     public function index(Request $request)
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
+        $response = Http::post(
+            'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
+            [
+                'orderCode' => $orderId,
+            ]
+        );
+
+        if ($response->successful()) {
+            $data = $response->json();
+            return $data;
+        } else {
+            $error = $response->body();
+        }
         $amount = $request->get('amount') ?? 10000;
         $description = $request->get('description') ?? 'شارژ اولیه';
         $mobile = $request->get('mobile') ?? '09376922176';
-        $irngvCallbackUrl = $request->get('callback_url') ?? url(''); 
+        $irngvCallbackUrl = $request->get('callback_url') ?? url('');
         $callbackUrl = url('irngv/charge/verify');
         $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
         $status = 'pending';
@@ -74,7 +88,7 @@ class IrngvChargeController extends Controller
         $orderId = $request->order_id;
         $irngvCharge = IrngvCharge::where('order_id', $orderId)->first();
         $result = zibal::verify2($orderId, $irngvCharge->authority, $irngvCharge->amount);
-        if($result){
+        if ($result) {
             $irngvCharge->update([
                 'ref_id' => $result,
                 'status' => 'success',
@@ -90,7 +104,7 @@ class IrngvChargeController extends Controller
                     'mobile' => $irngvCharge->mobile,
                 ],
             ]);
-        }else{
+        } else {
             $irngvCharge->update([
                 'status' => 'failed',
             ]);
