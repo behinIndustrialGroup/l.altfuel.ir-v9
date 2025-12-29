@@ -34,8 +34,9 @@ class IrngvChargeController extends Controller
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
                 $amount = $data['amount'];
-                $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
-                $mobile = $data['mobile'];
+                $description = $data['description'] ?? 'شارژ پنل irngv';
+                // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
+                $mobile = $data['mobile'] ?? '09376922176';
                 $irngvCallbackUrl = $request->get('callback_url') ?? url('');
                 $callbackUrl = url('irngv/charge/verify');
                 return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
