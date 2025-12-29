@@ -13,6 +13,7 @@ use App\Models\IrngvUsersInfo;
 use Hekmatinasser\Verta\Facades\Verta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class IrngvChargeController extends Controller
 {
@@ -31,9 +32,10 @@ class IrngvChargeController extends Controller
         );
 
         if ($response->successful()) {
+            Log::info(json_encode($response->json()));
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
-                $amount = $data['amount'];
+                $amount = $data['amount'] ?? '10000';
                 $description = $data['description'] ?? 'شارژ پنل irngv';
                 // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
                 $mobile = $data['mobile'] ?? '09376922176';
