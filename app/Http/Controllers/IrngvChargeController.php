@@ -125,7 +125,7 @@ class IrngvChargeController extends Controller
                     ]
                 ]
             );
-            return redirect($irngvCharge->irngv_callback_url);
+            return redirect("https://irngv.mimt.gov.ir/blog/paid/". $irngvCharge->order_id);
             return $response->json();
         }
 
