@@ -87,7 +87,7 @@ class zibal
         }
     }
 
-    public static function verify2($orderId, $trackId, $price)
+    public static function verify2($trackId)
     {
         //start verfication
         $parameters = array(
@@ -98,8 +98,8 @@ class zibal
 
         $response = self::postToZibal('verify', $parameters);
 
-        if ($response->result == 100) {
-            return $response->refNumber;
+        if ($response->result == 100 or $response->result == 201) {
+            return $response->refNumber ?? 1;
             echo "<pre>"; //for pretty view :)
             var_dump($response);
             //update database or something else
