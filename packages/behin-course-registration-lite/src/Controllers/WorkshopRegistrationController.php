@@ -4,6 +4,7 @@ namespace CourseRegistrationLite\Controllers;
 
 use App\CustomClasses\zarinPal;
 use App\CustomClasses\zibal;
+use App\CustomClasses\zibal2;
 use App\Http\Controllers\Controller;
 use CourseRegistrationLite\Jobs\SendWorkshopRegistrationSmsJob;
 use CourseRegistrationLite\Models\WorkshopRegistration;
@@ -72,7 +73,7 @@ class WorkshopRegistrationController extends Controller
             $registration->national_id
         );
 
-        $authorityCode = zibal::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
+        $authorityCode = zibal2::getAuthority($course['price'], $description, $registration->mobile, $callbackUrl);
 
         $registration->update([
             'authority' => $authorityCode,
@@ -86,7 +87,7 @@ class WorkshopRegistrationController extends Controller
     {
         $authority = isset($request->Authority) ? $request->Authority : $request->trackId;
         $registration = WorkshopRegistration::where('authority', $authority)->firstOrFail();
-        $result = zibal::verify($request, $registration->price);
+        $result = zibal2::verify($request, $registration->price);
 
         if (!$result) {
             $registration->update([
