@@ -15,6 +15,7 @@ use Mkhodroo\AgencyInfo\Controllers\LastActionController;
 use Mkhodroo\AgencyInfo\Controllers\QueryController;
 use Mkhodroo\AgencyInfo\Controllers\SendToCrmController;
 use Mkhodroo\AgencyInfo\Controllers\SendFinancialToCrmController;
+use Mkhodroo\AgencyInfo\Controllers\SendDebtToCrmController;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\UserRoles\Controllers\GetRoleController;
@@ -49,6 +50,10 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     // Financial CRM Routes
     Route::get('send-financial-to-crm', [SendFinancialToCrmController::class, 'sendFinancialDataToCrm'])->name('sendFinancialToCrm');
     Route::get('test-financial-crm', [SendFinancialToCrmController::class, 'testFinancialData'])->name('testFinancialCrm');
+    
+    // Debt CRM Routes
+    Route::get('send-debt-to-crm', [SendDebtToCrmController::class, 'sendDebtDataToCrm'])->name('sendDebtToCrm');
+    Route::get('test-debt-crm', [SendDebtToCrmController::class, 'testDebtData'])->name('testDebtCrm');
 });
 
 Route::prefix('/bedehi')->group(function () {
