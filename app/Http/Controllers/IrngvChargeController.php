@@ -21,7 +21,7 @@ class IrngvChargeController extends Controller
     public function index(Request $request)
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
-        $referer = $request->fullUrl();
+        $referer = $request->headers->get('referer');
         $response = Http::asMultipart()->post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
@@ -52,7 +52,7 @@ class IrngvChargeController extends Controller
             // }
         } else {
             $error = $response->body();
-            return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
+            return redirect($referer);
             return $error;
         }
     }
@@ -115,13 +115,11 @@ class IrngvChargeController extends Controller
                     ]
                 ]
             );
-            return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
+            return redirect($irngvCharge->irngv_callback_url);
             return $response->json();
         }
 
-        return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
-
-        return redirect($irngvCharge->callback_url);
+        return redirect($irngvCharge->irngv_callback_url);
     }
 
     public function status(Request $request)
