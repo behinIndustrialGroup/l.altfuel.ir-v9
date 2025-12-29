@@ -113,9 +113,9 @@ class SendDebtToCrmController extends Controller
             }
             
             // تست دسترسی به جدول بدهی
-            echo "<h3>2. تست دسترسی به جدول rhs_debtinformation:</h3>";
+            echo "<h3>2. تست دسترسی به جدول rhs_debtinformations:</h3>";
             try {
-                $debtTestResponse = $this->crmClient->request("rhs_debtinformation", "GET", [
+                $debtTestResponse = $this->crmClient->request("rhs_debtinformations", "GET", [
                     '$select' => 'rhs_debtinformationid,rhs_name',
                     '$top' => 1
                 ]);
@@ -328,18 +328,18 @@ class SendDebtToCrmController extends Controller
         try {
             $debtData = [
                 'rhs_name' => $debt['display_name'],
-                'rhs_amount' => floatval($debt['amount']),
-                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+                'rhs_amountowed' => floatval($debt['amount']),
+                'rhs_ServiceCenterCode@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
             if ($debt['pay_date']) {
-                $debtData['rhs_paymentdate'] = $this->formatDate($debt['pay_date']);
+                $debtData['rhs_debtpaymentdate'] = $this->formatDate($debt['pay_date']);
             }
 
             // اضافه کردن کد پیگیری اگر وجود داشت
             if ($debt['ref_id']) {
-                $debtData['rhs_trackingcode'] = $debt['ref_id'];
+                $debtData['rhs_paymentid'] = $debt['ref_id'];
             }
 
             // حذف فیلدهای خالی
@@ -354,7 +354,7 @@ class SendDebtToCrmController extends Controller
             print_r($debtData);
             echo "</pre>";
 
-            $response = $this->crmClient->request("rhs_debtinformation", "POST", $debtData);
+            $response = $this->crmClient->request("rhs_debtinformations", "POST", $debtData);
             
             echo "<h4>پاسخ CRM برای بدهی:</h4>";
             echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";

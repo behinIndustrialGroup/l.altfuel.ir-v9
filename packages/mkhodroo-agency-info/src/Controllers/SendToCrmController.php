@@ -728,6 +728,8 @@ class SendToCrmController extends Controller
             echo "</pre>";
             
             // آماده‌سازی تمام فیلدهای مورد نظر برای ارسال
+            $statecode = $this->formatEnable($firstAgency['enable'] ?? 1);
+            $statuscode = $statecode === 0 ? 1 : 2;
             $allServiceCenterData = [
                 'rhs_name' => $firstAgency['name'] ?? '',
                 'rhs_fullname' => $firstAgency['firstname'] ?? '',
@@ -748,8 +750,8 @@ class SendToCrmController extends Controller
                 'rhs_dateofissue' => $this->formatDate($firstAgency['issued_date'] ?? ''),
                 'rhs_expirydate' => $this->formatDate($firstAgency['exp_date'] ?? ''),
                 'rhs_debtdescription' => $firstAgency['fin_details'] ?? '',
-                'statecode' => $this->formatEnable($firstAgency['enable'] ?? 1),
-                'statuscode' => $this->formatFinGreen($firstAgency['fin_green'] ?? '')
+                'statecode' => $statecode,
+                'statuscode' => $statuscode
             ];
             
             echo "<h3>تست 1: ارسال تمام فیلدها (بدون حذف خالی‌ها)</h3>";
@@ -1199,6 +1201,8 @@ class SendToCrmController extends Controller
     private function createServiceCenter($agency, $contactId)
     {
         try {
+            $statecode = $this->formatEnable($agency['enable'] ?? 1);
+            $statuscode = $statecode === 0 ? 1 : 2;
             $serviceCenterData = [
                 'rhs_name' => $agency['name'] ?? '',
                 'rhs_fullname' => $agency['firstname'] ?? '',
@@ -1220,8 +1224,8 @@ class SendToCrmController extends Controller
                 'rhs_postalcode' => $agency['postal_code'] ?? '',
                 'rhs_location' => $agency['location'] ?? '',
                 'rhs_debtdescription' => $agency['fin_details'] ?? '',
-                'statecode' => $this->formatEnable($agency['enable'] ?? 1),
-                'statuscode' => $this->formatFinGreen($agency['fin_green'] ?? '')
+                'statecode' => $statecode,
+                'statuscode' => $statuscode
             ];
             
             // اضافه کردن lookup فقط اگر contactId وجود داشت
