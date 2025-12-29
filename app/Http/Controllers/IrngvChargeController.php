@@ -22,6 +22,16 @@ class IrngvChargeController extends Controller
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
         $referer = $request->headers->get('referer');
+        $info = [
+            'full_url'      => $request->fullUrl(),        // آدرس فعلی
+            'previous_url'  => url()->previous(),
+            'referer'       => $request->headers->get('referer'),
+            'ip'            => $request->ip(),
+            'user_agent'    => $request->userAgent(),
+        ];
+
+        Log::info($info);
+
         $response = Http::asMultipart()->post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
@@ -36,13 +46,13 @@ class IrngvChargeController extends Controller
             Log::info(json_encode($response->json()));
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
-                $amount = $data['amount'] ?? '10000';
-                $description = $data['desc'] ?? 'شارژ پنل irngv';
-                // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
-                $mobile = $data['mobile'] ?? '09376922176';
-                $irngvCallbackUrl = $referer;
-                $callbackUrl = url('irngv/charge/verify');
-                return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
+            $amount = $data['amount'] ?? '10000';
+            $description = $data['desc'] ?? 'شارژ پنل irngv';
+            // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
+            $mobile = $data['mobile'] ?? '09376922176';
+            $irngvCallbackUrl = $referer;
+            $callbackUrl = url('irngv/charge/verify');
+            return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
             // } else {
             //     // return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
             //     return response()->json([
