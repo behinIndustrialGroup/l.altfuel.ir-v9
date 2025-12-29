@@ -329,7 +329,7 @@ class SendDebtToCrmController extends Controller
             $debtData = [
                 'rhs_name' => $debt['display_name'],
                 'rhs_amountowed' => floatval($debt['amount']),
-                'rhs_servicecentercode@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+                'rhs_ServiceCenterCode@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
