@@ -36,7 +36,7 @@ class IrngvChargeController extends Controller
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
                 $amount = $data['amount'] ?? '10000';
-                $description = $data['description'] ?? 'شارژ پنل irngv';
+                $description = $data['desc'] ?? 'شارژ پنل irngv';
                 // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
                 $mobile = $data['mobile'] ?? '09376922176';
                 $irngvCallbackUrl = $request->get('callback_url') ?? url('');
