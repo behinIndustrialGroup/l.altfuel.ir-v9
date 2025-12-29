@@ -32,14 +32,19 @@ class IrngvChargeController extends Controller
 
         if ($response->successful()) {
             $data = $response->json();
-            $amount = $data['amount'];
-            $description = 'تست';
-            $mobile = $data['mobile'];
-            $irngvCallbackUrl = $request->get('callback_url') ?? url('');
-            $callbackUrl = url('irngv/charge/verify');
-            return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
+            if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
+                $amount = $data['amount'];
+                $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
+                $mobile = $data['mobile'];
+                $irngvCallbackUrl = $request->get('callback_url') ?? url('');
+                $callbackUrl = url('irngv/charge/verify');
+                return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
+            } else {
+                return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
+            }
         } else {
             $error = $response->body();
+            return redirect('https://irngv.mimt.gov.ir/dashboard/Recharge');
             return $error;
         }
     }
