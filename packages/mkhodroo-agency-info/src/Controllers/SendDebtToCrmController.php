@@ -328,18 +328,18 @@ class SendDebtToCrmController extends Controller
         try {
             $debtData = [
                 'rhs_name' => $debt['display_name'],
-                'rhs_amount' => floatval($debt['amount']),
-                'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
+                'rhs_amountowed' => floatval($debt['amount']),
+                'rhs_servicecentercode' => $serviceCenterId
             ];
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
             if ($debt['pay_date']) {
-                $debtData['rhs_paymentdate'] = $this->formatDate($debt['pay_date']);
+                $debtData['rhs_debtpaymentdate'] = $this->formatDate($debt['pay_date']);
             }
 
             // اضافه کردن کد پیگیری اگر وجود داشت
             if ($debt['ref_id']) {
-                $debtData['rhs_trackingcode'] = $debt['ref_id'];
+                $debtData['rhs_paymentid'] = $debt['ref_id'];
             }
 
             // حذف فیلدهای خالی
