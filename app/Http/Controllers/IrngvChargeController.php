@@ -21,6 +21,7 @@ class IrngvChargeController extends Controller
     public function index(Request $request)
     {
         $orderId = preg_replace('/=$/', '', $request->getQueryString());
+        $referer = $request->headers->get('referer');
         $response = Http::asMultipart()->post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
@@ -39,7 +40,7 @@ class IrngvChargeController extends Controller
                 $description = $data['desc'] ?? 'شارژ پنل irngv';
                 // $description = 'شارژ پنل irngv : ' . $data['name'] . ' | به مبلغ: ' . $data['amount'];
                 $mobile = $data['mobile'] ?? '09376922176';
-                $irngvCallbackUrl = $request->get('callback_url') ?? url('');
+                $irngvCallbackUrl = $referer;
                 $callbackUrl = url('irngv/charge/verify');
                 return view('irngv.charge', compact('orderId', 'amount', 'description', 'mobile', 'callbackUrl', 'irngvCallbackUrl'));
             // } else {
@@ -63,7 +64,7 @@ class IrngvChargeController extends Controller
         $description = $request->description;
         $mobile = $request->mobile;
         $callbackUrl = route('irngv.charge.verify');
-        $irngvCallbackUrl = $request->irngvCallbackUrl ?? url('');
+        $irngvCallbackUrl = $request->irngvCallbackUrl;
         $authority = zibal::getAuthority($amount, $description, $mobile, $callbackUrl);
         $status = 'pending';
         IrngvCharge::create([
@@ -71,7 +72,8 @@ class IrngvChargeController extends Controller
             'amount' => $amount,
             'description' => $description,
             'mobile' => $mobile,
-            'callback_url' => $irngvCallbackUrl,
+            'callback_url' => $callbackUrl,
+            'irngv_callback_url' => $irngvCallbackUrl,
             'authority' => $authority,
             'status' => $status,
         ]);
