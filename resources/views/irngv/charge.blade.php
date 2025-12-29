@@ -29,6 +29,12 @@
     <input type="hidden" name="mobile" value="{{ $mobile }}">
     <input type="hidden" name="callbackUrl" value="{{ $callbackUrl }}">
     <input type="hidden" name="irngvCallbackUrl" value="{{ $irngvCallbackUrl }}">
+    <noscript>
+        <p style="color:red">
+            جاوااسکریپت غیرفعال است. لطفاً برای ادامه پرداخت روی دکمه زیر کلیک کنید.
+        </p>
+        <button type="submit">ادامه پرداخت</button>
+    </noscript>
 </form>
 
 <script>
