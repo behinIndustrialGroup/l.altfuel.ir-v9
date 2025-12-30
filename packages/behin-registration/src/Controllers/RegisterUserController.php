@@ -4,6 +4,7 @@ namespace Registration\Controllers;
 
 use App\CustomClasses\zarinPal;
 use App\CustomClasses\zibal;
+use App\CustomClasses\zibal2;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Registration\Jobs\SendVerifyRegisterSmsJob;
@@ -36,7 +37,7 @@ class RegisterUserController extends Controller
 
         $callbackUrl = route('registration.verify');
         $des = "پرداخت هزینه آزمون: $price تومانی $registerUser->name با کدملی: $registerUser->national_id";
-        $authorityCode = zibal::getAuthority($price, $des, $registerUser->mobile, $callbackUrl);
+        $authorityCode = zibal2::getAuthority($price, $des, $registerUser->mobile, $callbackUrl);
         $registerUser->update([
             'authority' => $authorityCode,
             'status' => 'pending'
@@ -48,7 +49,7 @@ class RegisterUserController extends Controller
     public function verify(Request $request){
         $authority = isset($request->Authority) ? $request->Authority : $request->trackId;
         $registerUser = RegisterUser::where('authority', $authority)->first();
-        $result = zibal::verify($request, $registerUser->price);
+        $result = zibal2::verify($request, $registerUser->price);
 
         if(!$result){
             $registerUser->update([
