@@ -53,11 +53,8 @@ class CreateCrmTicketController extends Controller
                 return response()->json(['error' => 'خطا در پیدا کردن دسته‌بندی در CRM'], 500);
             }
 
-            // بررسی وجود تیکت در CRM و تولید ID یکتا
-            do {
-                $ticketId = $this->generateTicketId();
-                $existingTicket = $this->checkTicketExists($ticketId);
-            } while ($existingTicket); // تا زمانی که ID یکتا پیدا نشه ادامه بده
+            // تولید شناسه sequential برای تیکت
+            $ticketId = $this->generateSequentialTicketId();
 
             // ایجاد تیکت در CRM
             $ticketData = [
@@ -547,13 +544,35 @@ class CreateCrmTicketController extends Controller
     }
 
     /**
-     * تولید شناسه یکتا برای تیکت (عددی)
+     * تولید شناسه sequential برای تیکت
      */
-    private function generateTicketId()
+    private function generateSequentialTicketId()
     {
-        // تولید شناسه عددی یکتا در محدوده Int32
-        // استفاده از عدد تصادفی بزرگ
-        return rand(100000000, 2147483647); // محدوده Int32
+        try {
+            // دریافت آخرین تیکت بر اساس شناسه عددی
+            $response = $this->crmClient->request("new_tickets", "GET", [
+                '$select' => 'new_ticket_id',
+                '$orderby' => 'new_ticket_id desc',
+                '$top' => 1
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                if (!empty($body['value']) && isset($body['value'][0]['new_ticket_id'])) {
+                    $lastTicketId = (int) $body['value'][0]['new_ticket_id'];
+                    return $lastTicketId + 1;
+                }
+            }
+
+            // اگر هیچ تیکتی وجود نداشت، از 1000 شروع کن
+            return 1000;
+        } catch (\Exception $e) {
+            Log::error("Exception while generating sequential ticket ID", [
+                'error' => $e->getMessage()
+            ]);
+            // در صورت خطا، از timestamp استفاده کن تا ID یکتا باشه
+            return (int) (time() % 1000000) + 1000;
+        }
     }
 
     /**
