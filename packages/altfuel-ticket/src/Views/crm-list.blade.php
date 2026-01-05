@@ -10,35 +10,39 @@
             </a>
         </div>
         <div class="card-body">
-            <!-- فرم جستجو بر اساس Contact ID - فقط برای کارشناسان -->
+            <!-- فرم جستجو بر اساس دسته‌بندی - فقط برای کارشناسان -->
             @if(auth()->user()->access('Ticket-Actors'))
                 <form method="GET" action="{{ route('ATRoutes.crm.list') }}" class="mb-4">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="contact_id">شناسه مخاطب (Contact ID)</label>
-                                <input type="text" name="contact_id" id="contact_id" class="form-control" 
-                                       value="{{ $contactId ?? '' }}" placeholder="مثال: 12345678-1234-1234-1234-123456789012">
+                                <label for="category">دسته‌بندی</label>
+                                <select name="category" id="category" class="form-control">
+                                    <option value="">همه دسته‌بندی‌ها</option>
+                                    @if(isset($categories))
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category['value'] }}" 
+                                                {{ (request('category') == $category['value']) ? 'selected' : '' }}>
+                                                {{ $category['label'] }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">جستجو</button>
+                            <button type="submit" class="btn btn-primary">فیلتر</button>
+                            <a href="{{ route('ATRoutes.crm.list') }}" class="btn btn-secondary mr-2">پاک کردن فیلتر</a>
                         </div>
                     </div>
                 </form>
             @else
-                @if($contactId)
-                    <div class="alert alert-info mb-3">
-                        در حال نمایش تیکت‌های شما
-                    </div>
-                @else
-                    <div class="alert alert-warning mb-3">
-                        شناسه مخاطب CRM برای حساب کاربری شما ثبت نشده است.
-                    </div>
-                @endif
+                <div class="alert alert-info mb-3">
+                    در حال نمایش تیکت‌های شما
+                </div>
             @endif
 
-            @if($contactId && count($tickets) > 0)
+            @if(count($tickets) > 0)
                 <!-- جدول تیکت‌ها -->
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -46,6 +50,7 @@
                             <tr>
                                 <th>شناسه</th>
                                 <th>عنوان</th>
+                                <th>دسته‌بندی</th>
                                 <th>وضعیت</th>
                                 <th>تاریخ ایجاد</th>
                                 <th>آخرین بروزرسانی</th>
@@ -57,6 +62,11 @@
                                 <tr>
                                     <td>{{ $ticket['new_ticket_id'] ?? $ticket['new_ticketid'] }}</td>
                                     <td>{{ $ticket['new_title'] ?? 'بدون عنوان' }}</td>
+                                    <td>
+                                        <span class="badge badge-secondary">
+                                            {{ $ticket['new_category'] ?? 'بدون دسته‌بندی' }}
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="badge badge-info">
                                             {{ $ticket['new_status'] ?? 'نامشخص' }}
@@ -74,13 +84,9 @@
                         </tbody>
                     </table>
                 </div>
-            @elseif($contactId)
+            @else
                 <div class="alert alert-warning">
-                    هیچ تیکتی برای این مخاطب یافت نشد.
-                </div>
-            @elseif(auth()->user()->access('Ticket-Actors'))
-                <div class="alert alert-info">
-                    لطفاً شناسه مخاطب را وارد کنید.
+                    هیچ تیکتی یافت نشد.
                 </div>
             @endif
         </div>
