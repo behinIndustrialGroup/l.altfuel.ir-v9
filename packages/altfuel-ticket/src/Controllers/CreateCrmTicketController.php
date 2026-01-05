@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class CreateCrmTicketController extends Controller
 {
@@ -34,21 +35,8 @@ class CreateCrmTicketController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'category_id' => 'required|string',
-            'title' => 'required|string|max:255',
-            'text' => 'required|string|min:10',
-            'conversion_type' => 'nullable|in:یارانه‌ای,آزاد',
-            'files.*' => 'file|max:' . config('ATConfig.max-attach-file-size'),
-        ], [
-            'category_id.required' => 'انتخاب دسته‌بندی الزامی است',
-            'title.required' => 'وارد کردن عنوان الزامی است',
-            'title.max' => 'عنوان نباید بیش از 255 کاراکتر باشد',
-            'text.required' => 'وارد کردن متن پیام الزامی است',
-            'text.min' => 'متن پیام باید حداقل 10 کاراکتر باشد',
-            'conversion_type.in' => 'نوع تبدیل باید یارانه‌ای یا آزاد باشد',
-            'files.*.max' => 'حجم فایل نباید بیش از حد مجاز باشد',
-        ]);
+        // اعتبارسنجی مشابه TicketRequest
+        $this->validateRequest($request);
 
         try {
             // ایجاد یا دریافت contact در CRM
@@ -58,6 +46,21 @@ class CreateCrmTicketController extends Controller
                 return response()->json(['error' => 'خطا در ایجاد مخاطب در CRM'], 500);
             }
 
+            // دریافت یا ایجاد دسته‌بندی در CRM
+            $categoryCrmId = $this->getOrCreateCategoryInCrm($request->input('category_id'));
+            
+            if (!$categoryCrmId) {
+                return response()->json(['error' => 'خطا در پیدا کردن دسته‌بندی در CRM'], 500);
+            }
+
+            // بررسی وجود تیکت در CRM
+            $ticketId = $this->generateTicketId();
+            $existingTicket = $this->checkTicketExists($ticketId);
+            
+            if ($existingTicket) {
+                return response()->json(['error' => 'تیکت قبلاً ایجاد شده است'], 400);
+            }
+
             // ایجاد تیکت در CRM
             $ticketData = [
                 'new_title' => $request->input('title'),
@@ -65,9 +68,9 @@ class CreateCrmTicketController extends Controller
                 'new_status_option' => 100000000, // جدید
                 'new_created_at' => now()->toIso8601String(),
                 'new_updated_at' => now()->toIso8601String(),
-                'new_ticket_id' => $this->generateTicketId(),
+                'new_ticket_id' => $ticketId,
                 'new_contact@odata.bind' => "/contacts($contactId)",
-                'new_cat_id@odata.bind' => "/new_ticketcategories(" . $request->input('category_id') . ")",
+                'new_cat_id@odata.bind' => "/new_ticketcategories($categoryCrmId)",
             ];
 
             // افزودن نوع تبدیل اگر ارسال شده باشد
@@ -86,20 +89,20 @@ class CreateCrmTicketController extends Controller
             }
 
             // دریافت ID تیکت ایجاد شده
-            $ticketId = $this->extractEntityId($ticketResponse);
+            $crmTicketId = $this->extractEntityId($ticketResponse);
             
-            if (!$ticketId) {
+            if (!$crmTicketId) {
                 return response()->json(['error' => 'خطا در دریافت شناسه تیکت'], 500);
             }
 
             // افزودن کامنت اولیه
-            $this->addInitialComment($ticketId, $contactId, $request->input('text'));
+            $this->addInitialComment($crmTicketId, $contactId, $request->input('text'));
 
             // آپلود فایل‌ها اگر وجود داشته باشند
             if ($request->hasFile('files')) {
                 foreach ($request->file('files') as $file) {
                     if ($file->isValid()) {
-                        $this->uploadAttachmentToCrm($ticketId, $file);
+                        $this->uploadAttachmentToCrm($crmTicketId, $file);
                     }
                 }
             }
@@ -107,7 +110,8 @@ class CreateCrmTicketController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'تیکت با موفقیت ایجاد شد',
-                'ticket_id' => $ticketId
+                'ticket_id' => $ticketId,
+                'crm_ticket_id' => $crmTicketId
             ]);
 
         } catch (\Exception $e) {
@@ -117,6 +121,60 @@ class CreateCrmTicketController extends Controller
             ]);
             return response()->json(['error' => 'خطا در ایجاد تیکت'], 500);
         }
+    }
+
+    /**
+     * اعتبارسنجی درخواست مشابه TicketRequest
+     */
+    private function validateRequest(Request $request)
+    {
+        // بررسی فایل‌ها
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                if ($file && $file->getSize() >= config('ATConfig.max-attach-file-size') * 1024) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        validator([], [])->errors()->add('files', 'حجم فایل بیش از مقدار مجاز است. مقدار مجاز: ' . config('ATConfig.max-attach-file-size') . 'KB')
+                    );
+                }
+                
+                if ($file && !in_array($file->getClientMimeType(), config('ATConfig.attachment-file-types'))) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        validator([], [])->errors()->add('files', 'فایل پشتیبانی نمیشود. فایل های مجاز: ' . implode(' یا ', config('ATConfig.attachment-file-types-translate')))
+                    );
+                }
+            }
+        }
+
+        // بررسی متن یا صدا
+        if (!$request->input('text') && !$request->hasFile('payload')) {
+            throw new \Illuminate\Validation\ValidationException(
+                validator([], [])->errors()->add('text', 'متن یا صدا را تکمیل کنید')
+            );
+        }
+
+        // اعتبارسنجی اصلی
+        $rules = [
+            'category_id' => 'required|string',
+            'title' => 'required|string|max:255',
+            'text' => 'required|string|min:10',
+        ];
+
+        // بررسی نوع تبدیل
+        $conversionTypes = array_values(config('ATConfig.conversion_types', []));
+        if (!empty($conversionTypes)) {
+            $rules['conversion_type'] = 'nullable|in:' . implode(',', $conversionTypes);
+        }
+
+        $messages = [
+            'category_id.required' => 'لطفا دسته بندی را انتخاب کنید',
+            'title.required' => 'لطفا عنوان را وارد کنید',
+            'title.max' => 'عنوان نباید بیش از 255 کاراکتر باشد',
+            'text.required' => 'وارد کردن متن پیام الزامی است',
+            'text.min' => 'متن پیام باید حداقل 10 کاراکتر باشد',
+            'conversion_type.in' => 'نوع تبدیل انتخاب شده معتبر نیست',
+        ];
+
+        $request->validate($rules, $messages);
     }
 
     /**
@@ -222,7 +280,8 @@ class CreateCrmTicketController extends Controller
 
             if ($parentResponse->successful()) {
                 $parentCategory = $parentResponse->json();
-                // افزودن دسته‌بندی والد به ابتدای لیست
+                // افزودن دسته‌بندی والد به ابتدای لیست با علامت مشخص
+                $parentCategory['new_name'] = $parentCategory['new_name'] . ' (دسته اصلی)';
                 array_unshift($childCategories, $parentCategory);
             }
 
@@ -233,6 +292,66 @@ class CreateCrmTicketController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'خطا در دریافت زیردسته‌ها'], 500);
+        }
+    }
+
+    /**
+     * دریافت یا ایجاد دسته‌بندی در CRM بر اساس نام
+     */
+    private function getOrCreateCategoryInCrm($categoryId)
+    {
+        try {
+            // اگر categoryId یک GUID است، مستقیماً استفاده کن
+            if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $categoryId)) {
+                return str_replace(['{', '}', ' '], '', $categoryId);
+            }
+
+            // در غیر این صورت، فرض کن که نام دسته‌بندی است
+            $response = $this->crmClient->request("new_ticketcategories", "GET", [
+                '$select' => 'new_name,new_ticketcategoryid',
+                '$filter' => "new_name eq '$categoryId'"
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                if (!empty($body['value'])) {
+                    return $body['value'][0]['new_ticketcategoryid'];
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error("Exception while getting category from CRM", [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * بررسی وجود تیکت در CRM
+     */
+    private function checkTicketExists($ticketId)
+    {
+        try {
+            $response = $this->crmClient->request("new_tickets", "GET", [
+                '$select' => 'new_ticketid,new_title,new_ticket_id',
+                '$filter' => "new_ticket_id eq '$ticketId'"
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                return !empty($body['value']);
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Exception while checking ticket existence", [
+                'ticket_id' => $ticketId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 
@@ -399,11 +518,26 @@ class CreateCrmTicketController extends Controller
     }
 
     /**
-     * تولید شناسه یکتا برای تیکت
+     * تولید شناسه یکتا برای تیکت (مشابه منطق اصلی)
      */
     private function generateTicketId()
     {
-        return 'CRM-' . time() . '-' . rand(1000, 9999);
+        // استفاده از منطق مشابه RandomStringController::Generate(20)
+        return 'CRM-' . time() . '-' . substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 8);
+    }
+
+    /**
+     * نگاشت وضعیت به OptionSet (مشابه منطق اصلی)
+     */
+    private function mapStatusToOptionSet($status)
+    {
+        return match ($status) {
+            'جدید', 'new' => 100000000,
+            'درحال بررسی', 'in_progress' => 100000001,
+            'پاسخ داده شده', 'answered' => 100000002,
+            'بسته شده', 'closed' => 100000003,
+            default => 100000000,
+        };
     }
 
     /**
