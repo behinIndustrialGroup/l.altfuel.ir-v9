@@ -10,35 +10,39 @@
             </a>
         </div>
         <div class="card-body">
-            <!-- فرم جستجو بر اساس دسته‌بندی - فقط برای کارشناسان -->
-            @if(auth()->user()->access('Ticket-Actors'))
-                <form method="GET" action="{{ route('ATRoutes.crm.list') }}" class="mb-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="category">دسته‌بندی</label>
-                                <select name="category" id="category" class="form-control">
-                                    <option value="">همه دسته‌بندی‌ها</option>
-                                    @if(isset($categories))
-                                        @foreach($categories as $category)
-                                            <option value="{{ $category['value'] }}" 
-                                                {{ (request('category') == $category['value']) ? 'selected' : '' }}>
-                                                {{ $category['label'] }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">فیلتر</button>
-                            <a href="{{ route('ATRoutes.crm.list') }}" class="btn btn-secondary mr-2">پاک کردن فیلتر</a>
+            <!-- فرم جستجو بر اساس دسته‌بندی -->
+            <form method="GET" action="{{ route('ATRoutes.crm.list') }}" class="mb-4">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="category">دسته‌بندی</label>
+                            <select name="category" id="category" class="form-control">
+                                <option value="">همه دسته‌بندی‌ها</option>
+                                @if(isset($categories))
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category['value'] }}" 
+                                            {{ (request('category') == $category['value']) ? 'selected' : '' }}>
+                                            {{ $category['label'] }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
                         </div>
                     </div>
-                </form>
-            @else
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">فیلتر</button>
+                        <a href="{{ route('ATRoutes.crm.list') }}" class="btn btn-secondary mr-2">پاک کردن فیلتر</a>
+                    </div>
+                </div>
+            </form>
+
+            @if($contactId)
                 <div class="alert alert-info mb-3">
                     در حال نمایش تیکت‌های شما
+                </div>
+            @else
+                <div class="alert alert-warning mb-3">
+                    شناسه مخاطب CRM برای حساب کاربری شما ثبت نشده است.
                 </div>
             @endif
 

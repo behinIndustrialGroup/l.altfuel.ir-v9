@@ -18,31 +18,25 @@ class ShowCrmTicketController extends Controller
     }
 
     /**
-     * نمایش لیست تیکت‌های CRM بر اساس دسته‌بندی یا Contact ID
+     * نمایش لیست تیکت‌های CRM بر اساس دسته‌بندی و Contact ID کاربر
      */
     function list(Request $request): View
     {
         $category = $request->input('category');
-        $contactId = null;
+        $contactId = auth()->user()->crm_contact_id;
         $tickets = [];
         $categories = [];
 
         // دریافت لیست دسته‌بندی‌ها
         $categories = $this->getTicketCategories();
 
-        // اگر کاربر کارشناس باشد
-        if (auth()->user()->access('Ticket-Actors')) {
-            // اگر دسته‌بندی انتخاب شده باشد
+        // همه کاربران فقط تیکت‌های مربوط به کانتکت خودشان را می‌بینند
+        if ($contactId) {
             if ($category) {
-                $tickets = $this->getTicketsByCategory($category);
+                // فیلتر بر اساس دسته‌بندی و کانتکت
+                $tickets = $this->getTicketsByContactAndCategory($contactId, $category);
             } else {
-                // نمایش همه تیکت‌ها
-                $tickets = $this->getAllTickets();
-            }
-        } else {
-            // برای کاربران عادی، فقط تیکت‌های خودشان
-            $contactId = auth()->user()->crm_contact_id;
-            if ($contactId) {
+                // همه تیکت‌های کاربر
                 $tickets = $this->getTicketsByContactId($contactId);
             }
         }
@@ -126,6 +120,51 @@ class ShowCrmTicketController extends Controller
     }
 
     /**
+     * دریافت تیکت‌ها از CRM بر اساس Contact ID و دسته‌بندی
+     */
+    private function getTicketsByContactAndCategory($contactId, $categoryId)
+    {
+        try {
+            $response = $this->crmClient->request("new_tickets", "GET", [
+                '$select' => 'new_ticketid,new_title,new_status,new_status_option,new_created_at,new_updated_at,new_ticket_id',
+                '$filter' => "_new_contact_value eq $contactId and _new_cat_id_value eq $categoryId",
+                '$expand' => 'new_cat_id($select=new_ticketcategoryid,new_name)',
+                '$orderby' => 'new_created_at desc'
+            ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                $tickets = $body['value'] ?? [];
+                
+                // تبدیل status_option به متن فارسی و اضافه کردن دسته‌بندی
+                foreach ($tickets as &$ticket) {
+                    if (isset($ticket['new_status_option'])) {
+                        $ticket['new_status'] = self::mapOptionSetToStatus($ticket['new_status_option']);
+                    }
+                    
+                    // اضافه کردن نام دسته‌بندی
+                    $ticket['new_category'] = $ticket['new_cat_id']['new_name'] ?? 'بدون دسته‌بندی';
+                }
+                
+                return $tickets;
+            }
+
+            Log::error("Failed to get tickets by contact and category from CRM", [
+                'contact_id' => $contactId,
+                'category_id' => $categoryId,
+                'response' => $response->body()
+            ]);
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error("Exception while getting tickets by contact and category from CRM", [
+                'contact_id' => $contactId,
+                'category_id' => $categoryId,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }  /**
      * دریافت همه تیکت‌ها از CRM
      */
     private function getAllTickets()
