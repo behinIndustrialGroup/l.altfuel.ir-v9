@@ -38,6 +38,7 @@ class CreateCrmTicketController extends Controller
             'category_id' => 'required|string',
             'title' => 'required|string|max:255',
             'text' => 'required|string|min:10',
+            'conversion_type' => 'nullable|in:یارانه‌ای,آزاد',
             'files.*' => 'file|max:' . config('ATConfig.max-attach-file-size'),
         ], [
             'category_id.required' => 'انتخاب دسته‌بندی الزامی است',
@@ -45,6 +46,7 @@ class CreateCrmTicketController extends Controller
             'title.max' => 'عنوان نباید بیش از 255 کاراکتر باشد',
             'text.required' => 'وارد کردن متن پیام الزامی است',
             'text.min' => 'متن پیام باید حداقل 10 کاراکتر باشد',
+            'conversion_type.in' => 'نوع تبدیل باید یارانه‌ای یا آزاد باشد',
             'files.*.max' => 'حجم فایل نباید بیش از حد مجاز باشد',
         ]);
 
@@ -67,6 +69,11 @@ class CreateCrmTicketController extends Controller
                 'new_contact@odata.bind' => "/contacts($contactId)",
                 'new_cat_id@odata.bind' => "/new_ticketcategories(" . $request->input('category_id') . ")",
             ];
+
+            // افزودن نوع تبدیل اگر ارسال شده باشد
+            if ($request->filled('conversion_type')) {
+                $ticketData['new_conversion_type'] = $request->input('conversion_type');
+            }
 
             $ticketResponse = $this->crmClient->request("new_tickets", "POST", $ticketData);
 
@@ -119,7 +126,7 @@ class CreateCrmTicketController extends Controller
     {
         try {
             $response = $this->crmClient->request("new_ticketcategories", "GET", [
-                '$select' => 'new_ticketcategoryid,new_name,_new_parent_id_value',
+                '$select' => 'new_ticketcategoryid,new_name,_new_parent_id_value,new_conversion_type_enabled',
                 '$orderby' => 'new_name asc',
                 '$top' => 100
             ]);
@@ -146,6 +153,41 @@ class CreateCrmTicketController extends Controller
     }
 
     /**
+     * بررسی فعال بودن نوع تبدیل برای دسته‌بندی
+     */
+    public function checkConversionTypeEnabled(Request $request)
+    {
+        $categoryId = $request->input('category_id');
+        
+        if (!$categoryId) {
+            return response()->json(['enabled' => false]);
+        }
+
+        try {
+            $cleanCategoryId = str_replace(['{', '}', ' '], '', $categoryId);
+            
+            $response = $this->crmClient->request("new_ticketcategories($cleanCategoryId)", "GET", [
+                '$select' => 'new_conversion_type_enabled'
+            ]);
+
+            if ($response->successful()) {
+                $category = $response->json();
+                $enabled = isset($category['new_conversion_type_enabled']) && $category['new_conversion_type_enabled'] === true;
+                
+                return response()->json(['enabled' => $enabled]);
+            }
+
+            return response()->json(['enabled' => false]);
+        } catch (\Exception $e) {
+            Log::error("Exception while checking conversion type enabled", [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['enabled' => false]);
+        }
+    }
+
+    /**
      * دریافت زیردسته‌ها بر اساس والد
      */
     public function getChildCategories(Request $request)
@@ -159,18 +201,32 @@ class CreateCrmTicketController extends Controller
         try {
             $cleanParentId = str_replace(['{', '}', ' '], '', $parentId);
             
+            // دریافت زیردسته‌ها
             $response = $this->crmClient->request("new_ticketcategories", "GET", [
-                '$select' => 'new_ticketcategoryid,new_name',
+                '$select' => 'new_ticketcategoryid,new_name,new_conversion_type_enabled',
                 '$filter' => "_new_parent_id_value eq $cleanParentId",
                 '$orderby' => 'new_name asc'
             ]);
 
+            $childCategories = [];
+            
             if ($response->successful()) {
                 $body = $response->json();
-                return response()->json($body['value'] ?? []);
+                $childCategories = $body['value'] ?? [];
             }
 
-            return response()->json([]);
+            // دریافت اطلاعات دسته‌بندی والد
+            $parentResponse = $this->crmClient->request("new_ticketcategories($cleanParentId)", "GET", [
+                '$select' => 'new_ticketcategoryid,new_name,new_conversion_type_enabled'
+            ]);
+
+            if ($parentResponse->successful()) {
+                $parentCategory = $parentResponse->json();
+                // افزودن دسته‌بندی والد به ابتدای لیست
+                array_unshift($childCategories, $parentCategory);
+            }
+
+            return response()->json($childCategories);
         } catch (\Exception $e) {
             Log::error("Exception while getting child categories from CRM", [
                 'parent_id' => $parentId,
