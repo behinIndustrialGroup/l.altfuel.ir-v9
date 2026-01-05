@@ -53,13 +53,11 @@ class CreateCrmTicketController extends Controller
                 return response()->json(['error' => 'خطا در پیدا کردن دسته‌بندی در CRM'], 500);
             }
 
-            // بررسی وجود تیکت در CRM
-            $ticketId = $this->generateTicketId();
-            $existingTicket = $this->checkTicketExists($ticketId);
-            
-            if ($existingTicket) {
-                return response()->json(['error' => 'تیکت قبلاً ایجاد شده است'], 400);
-            }
+            // بررسی وجود تیکت در CRM و تولید ID یکتا
+            do {
+                $ticketId = $this->generateTicketId();
+                $existingTicket = $this->checkTicketExists($ticketId);
+            } while ($existingTicket); // تا زمانی که ID یکتا پیدا نشه ادامه بده
 
             // ایجاد تیکت در CRM
             $ticketData = [
@@ -522,8 +520,9 @@ class CreateCrmTicketController extends Controller
      */
     private function generateTicketId()
     {
-        // تولید شناسه عددی یکتا برای CRM
-        return (int) (time() . rand(100, 999));
+        // تولید شناسه عددی یکتا در محدوده Int32
+        // استفاده از عدد تصادفی بزرگ
+        return rand(100000000, 2147483647); // محدوده Int32
     }
 
     /**
