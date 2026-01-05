@@ -68,7 +68,7 @@ class CreateCrmTicketController extends Controller
                 'new_status_option' => 100000000, // جدید
                 'new_created_at' => now()->toIso8601String(),
                 'new_updated_at' => now()->toIso8601String(),
-                'new_ticket_id' => $ticketId,
+                'new_ticket_id' => $ticketId, // شناسه عددی
                 'new_contact@odata.bind' => "/contacts($contactId)",
                 'new_cat_id@odata.bind' => "/new_ticketcategories($categoryCrmId)",
             ];
@@ -518,12 +518,12 @@ class CreateCrmTicketController extends Controller
     }
 
     /**
-     * تولید شناسه یکتا برای تیکت (مشابه منطق اصلی)
+     * تولید شناسه یکتا برای تیکت (عددی)
      */
     private function generateTicketId()
     {
-        // استفاده از منطق مشابه RandomStringController::Generate(20)
-        return 'CRM-' . time() . '-' . substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 8);
+        // تولید شناسه عددی یکتا برای CRM
+        return (int) (time() . rand(100, 999));
     }
 
     /**
