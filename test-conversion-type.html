@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>تست فیلد نوع تبدیل</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input { width: 300px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        #conversion_type_field { background-color: #f0f8ff; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>تست فیلد نوع تبدیل</h2>
+    
+    <div class="form-group">
+        <label>دسته‌بندی تست:</label>
+        <select id="child_category">
+            <option value="">انتخاب کنید...</option>
+            <option value="cat1" data-conversion-enabled="false">دسته عادی</option>
+            <option value="cat2" data-conversion-enabled="true">دسته با نوع تبدیل</option>
+        </select>
+    </div>
+    
+    <div class="form-group" id="conversion_type_field" style="display: none;">
+        <label for="conversion_type">نوع تبدیل</label>
+        <select name="conversion_type" id="conversion_type" class="form-control">
+            <option value="">انتخاب کنید...</option>
+            <option value="yaraneh">یارانه‌ای</option>
+            <option value="azad">آزاد</option>
+        </select>
+    </div>
+    
+    <script>
+        $(document).ready(function() {
+            // رویداد تغییر دسته‌بندی فرعی برای نمایش/مخفی کردن فیلد نوع تبدیل
+            $('#child_category').change(function() {
+                const selectedOption = $(this).find('option:selected');
+                const conversionEnabled = selectedOption.data('conversion-enabled');
+                const conversionField = $('#conversion_type_field');
+                
+                console.log('Selected category:', $(this).val());
+                console.log('Conversion enabled:', conversionEnabled);
+                
+                if (conversionEnabled === true) {
+                    conversionField.show();
+                    $('#conversion_type').prop('required', true);
+                    console.log('Showing conversion field');
+                } else {
+                    conversionField.hide();
+                    $('#conversion_type').prop('required', false).val('');
+                    console.log('Hiding conversion field');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -71,8 +71,8 @@ class CreateCrmTicketController extends Controller
                 'new_cat_id@odata.bind' => "/new_ticketcategories($categoryCrmId)",
             ];
 
-            // افزودن نوع تبدیل اگر ارسال شده باشد
-            if ($request->filled('conversion_type')) {
+            // افزودن نوع تبدیل اگر ارسال شده باشد و دسته‌بندی آن را پشتیبانی کند
+            if ($request->filled('conversion_type') && $this->isCategoryConversionEnabled($request->input('category_id'))) {
                 $ticketData['new_conversion_type'] = $request->input('conversion_type');
             }
 
@@ -157,10 +157,13 @@ class CreateCrmTicketController extends Controller
             'text' => 'required|string|min:10',
         ];
 
-        // بررسی نوع تبدیل
-        $conversionTypes = array_values(config('ATConfig.conversion_types', []));
-        if (!empty($conversionTypes)) {
-            $rules['conversion_type'] = 'nullable|in:' . implode(',', $conversionTypes);
+        // بررسی نوع تبدیل - فقط اگر دسته‌بندی آن را فعال کرده باشد
+        $categoryId = $request->input('category_id');
+        if ($categoryId && $this->isCategoryConversionEnabled($categoryId)) {
+            $conversionTypes = array_keys(config('ATConfig.conversion_types', []));
+            if (!empty($conversionTypes)) {
+                $rules['conversion_type'] = 'required|in:' . implode(',', $conversionTypes);
+            }
         }
 
         $messages = [
@@ -169,6 +172,7 @@ class CreateCrmTicketController extends Controller
             'title.max' => 'عنوان نباید بیش از 255 کاراکتر باشد',
             'text.required' => 'وارد کردن متن پیام الزامی است',
             'text.min' => 'متن پیام باید حداقل 10 کاراکتر باشد',
+            'conversion_type.required' => 'انتخاب نوع تبدیل الزامی است',
             'conversion_type.in' => 'نوع تبدیل انتخاب شده معتبر نیست',
         ];
 
@@ -205,6 +209,33 @@ class CreateCrmTicketController extends Controller
                 'error' => $e->getMessage()
             ]);
             return [];
+        }
+    }
+
+    /**
+     * بررسی فعال بودن نوع تبدیل برای دسته‌بندی
+     */
+    private function isCategoryConversionEnabled($categoryId)
+    {
+        try {
+            $cleanCategoryId = str_replace(['{', '}', ' '], '', $categoryId);
+            
+            $response = $this->crmClient->request("new_ticketcategories($cleanCategoryId)", "GET", [
+                '$select' => 'new_conversion_type_enabled'
+            ]);
+
+            if ($response->successful()) {
+                $category = $response->json();
+                return isset($category['new_conversion_type_enabled']) && $category['new_conversion_type_enabled'] === true;
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Exception while checking conversion type enabled for validation", [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
         }
     }
 

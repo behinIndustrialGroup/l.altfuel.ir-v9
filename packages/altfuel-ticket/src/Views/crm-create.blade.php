@@ -16,6 +16,18 @@
                     <label for="">دسته بندی</label>
                     @include('ATView::partial-view.crm-category-selector')
                 </div>
+                
+                <!-- فیلد نوع تبدیل - فقط زمانی نمایش داده می‌شود که دسته‌بندی آن را فعال کرده باشد -->
+                <div class="form-group" id="conversion_type_field" style="display: none;">
+                    <label for="conversion_type">نوع تبدیل</label>
+                    <select name="conversion_type" id="conversion_type" class="form-control">
+                        <option value="">انتخاب کنید...</option>
+                        @foreach(config('ATConfig.conversion_types', []) as $key => $value)
+                            <option value="{{ $key }}">{{ $value }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                
                 <div class="form-group">
                     <label for="ticket_title">عنوان</label>
                     <input type="text" name="title" id="ticket_title" class="form-control" required>
@@ -41,6 +53,16 @@
                 if (!categoryId) {
                     alert('لطفاً دسته‌بندی را انتخاب کنید');
                     return false;
+                }
+                
+                // بررسی نوع تبدیل اگر فیلد نمایش داده شده باشد
+                const conversionField = $('#conversion_type_field');
+                if (conversionField.is(':visible')) {
+                    const conversionType = $('#conversion_type').val();
+                    if (!conversionType) {
+                        alert('لطفاً نوع تبدیل را انتخاب کنید');
+                        return false;
+                    }
                 }
                 
                 // بررسی عنوان

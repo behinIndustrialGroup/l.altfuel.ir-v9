@@ -42,7 +42,7 @@
                         if (response && response.length > 0) {
                             response.forEach(function(category) {
                                 childSelect.append(
-                                    `<option value="${category.new_ticketcategoryid}">${category.new_name}</option>`
+                                    `<option value="${category.new_ticketcategoryid}" data-conversion-enabled="${category.new_conversion_type_enabled || false}">${category.new_name}</option>`
                                 );
                             });
                         } else {
@@ -74,6 +74,21 @@
                 });
             } else {
                 childSelect.html('<option value="">ابتدا دسته‌بندی اصلی را انتخاب کنید</option>');
+            }
+        });
+
+        // رویداد تغییر دسته‌بندی فرعی برای نمایش/مخفی کردن فیلد نوع تبدیل
+        $('#child_category').change(function() {
+            const selectedOption = $(this).find('option:selected');
+            const conversionEnabled = selectedOption.data('conversion-enabled');
+            const conversionField = $('#conversion_type_field');
+            
+            if (conversionEnabled === true) {
+                conversionField.show();
+                $('#conversion_type').prop('required', true);
+            } else {
+                conversionField.hide();
+                $('#conversion_type').prop('required', false).val('');
             }
         });
     });
