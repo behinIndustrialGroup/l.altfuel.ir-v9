@@ -382,26 +382,63 @@ class SendFinancialToCrmController extends Controller
      */
     public function cleanDuplicateFinancialRecords()
     {
-        try {
-            set_time_limit(0);
+        set_time_limit(0);
 
-            echo "<h2>شروع پاک کردن رکوردهای مالی تکراری</h2>";
+        echo "<h2>شروع بررسی و پاک کردن رکوردهای مالی تکراری</h2><hr>";
+
+        $totalCenters = 0;
+        $totalDuplicatesFound = 0;
+        $totalDeleted = 0;
+        $totalErrors = 0;
+
+        try {
+            $agencies = $this->getAgenciesWithCrmId();
+            
+            if (empty($agencies)) {
+                echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
+                return;
+            }
+
+            echo "<p style='color: blue;'>📊 تعداد مراکز برای بررسی: <strong>" . count($agencies) . "</strong></p>";
             echo "<hr>";
 
-            $agencies = $this->getAgenciesWithCrmId();
-            $totalDeleted = 0;
+            echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+            echo "<tr style='background-color: #f0f0f0;'>";
+            echo "<th>نام مرکز</th>";
+            echo "<th>تعداد رکوردها</th>";
+            echo "<th>تکراری‌ها</th>";
+            echo "<th>حذف شده</th>";
+            echo "<th>خطاها</th>";
+            echo "<th>وضعیت</th>";
+            echo "</tr>";
 
             foreach ($agencies as $agency) {
-                echo "<h3>بررسی رکوردهای تکراری: {$agency['name']}</h3>";
-                echo "<ul>";
+                $totalCenters++;
+                $centerDeleted = 0;
+                $centerErrors = 0;
+                $centerDuplicates = 0;
+
+                echo "<tr>";
+                echo "<td>{$agency['name']}</td>";
 
                 // دریافت تمام رکوردهای مالی این مرکز از CRM
+                echo "<td>";
                 $crmRecords = $this->getCrmFinancialRecords($agency['crm_service_center_id']);
-
+                
                 if (empty($crmRecords)) {
-                    echo "<li style='color: orange;'>⚠ هیچ رکورد مالی در CRM یافت نشد</li>";
+                    echo "<span style='color: orange;'>0</span>";
+                    echo "</td>";
+                    echo "<td>-</td>";
+                    echo "<td>-</td>";
+                    echo "<td>-</td>";
+                    echo "<td style='color: orange;'>⚠ بدون رکورد</td>";
+                    echo "</tr>";
+                    flush();
                     continue;
                 }
+
+                echo "<span style='color: blue;'>" . count($crmRecords) . "</span>";
+                echo "</td>";
 
                 // گروه‌بندی رکوردها بر اساس نام و مبلغ
                 $groupedRecords = [];
@@ -413,7 +450,23 @@ class SendFinancialToCrmController extends Controller
                     $groupedRecords[$key][] = $record;
                 }
 
+                // شمارش تکراری‌ها
+                foreach ($groupedRecords as $key => $records) {
+                    if (count($records) > 1) {
+                        $centerDuplicates += (count($records) - 1); // تعداد رکوردهای اضافی
+                    }
+                }
+
+                echo "<td>";
+                if ($centerDuplicates > 0) {
+                    echo "<span style='color: red;'>$centerDuplicates</span>";
+                } else {
+                    echo "<span style='color: green;'>0</span>";
+                }
+                echo "</td>";
+
                 // حذف رکوردهای اضافی
+                echo "<td>";
                 foreach ($groupedRecords as $key => $records) {
                     if (count($records) > 1) {
                         // نگه داشتن اولین رکورد و حذف بقیه
@@ -422,27 +475,72 @@ class SendFinancialToCrmController extends Controller
                             $result = $this->deleteCrmFinancialRecord($recordId);
 
                             if ($result['success']) {
+                                $centerDeleted++;
                                 $totalDeleted++;
-                                echo "<li style='color: green;'>✓ رکورد تکراری حذف شد: {$records[$i]['rhs_name']}</li>";
                             } else {
-                                echo "<li style='color: red;'>✗ خطا در حذف: {$records[$i]['rhs_name']} - {$result['message']}</li>";
+                                $centerErrors++;
+                                $totalErrors++;
                             }
                         }
                     }
                 }
 
-                echo "</ul>";
-                echo "<hr>";
+                if ($centerDeleted > 0) {
+                    echo "<span style='color: green;'>$centerDeleted</span>";
+                } else {
+                    echo "<span style='color: gray;'>0</span>";
+                }
+                echo "</td>";
 
-                // استراحت کوتاه
-                usleep(500000); // 0.5 ثانیه
+                // نمایش خطاها
+                echo "<td>";
+                if ($centerErrors > 0) {
+                    echo "<span style='color: red;'>$centerErrors</span>";
+                } else {
+                    echo "<span style='color: green;'>0</span>";
+                }
+                echo "</td>";
+
+                // وضعیت نهایی
+                echo "<td>";
+                if ($centerErrors > 0) {
+                    echo "<span style='color: red;'>⚠ خطا</span>";
+                } elseif ($centerDeleted > 0) {
+                    echo "<span style='color: green;'>✓ پاک شد</span>";
+                } elseif ($centerDuplicates == 0) {
+                    echo "<span style='color: blue;'>✓ بدون تکراری</span>";
+                } else {
+                    echo "<span style='color: orange;'>⚠ نامشخص</span>";
+                }
+                echo "</td>";
+
+                echo "</tr>";
+
+                $totalDuplicatesFound += $centerDuplicates;
+
+                flush();
+                usleep(300000); // مکث کوتاه برای UI
             }
 
-            echo "<h2>نتیجه نهایی</h2>";
-            echo "<p><strong>تعداد رکوردهای حذف شده: $totalDeleted</strong></p>";
+            echo "</table>";
+
         } catch (\Exception $e) {
-            echo "<h2 style='color: red;'>خطا در پاک کردن رکوردهای تکراری:</h2>";
-            echo "<p>" . $e->getMessage() . "</p>";
+            echo "<tr><td colspan='6' style='color: red;'>خطا در پردازش: " . $e->getMessage() . "</td></tr>";
+            echo "</table>";
+        }
+
+        echo "<h2>پایان پردازش</h2>";
+        echo "<p><strong>مراکز بررسی شده:</strong> $totalCenters</p>";
+        echo "<p><strong>تکراری‌های یافت شده:</strong> $totalDuplicatesFound</p>";
+        echo "<p><strong>رکوردهای حذف شده:</strong> <span style='color: green;'>$totalDeleted</span></p>";
+        echo "<p><strong>خطاهای رخ داده:</strong> <span style='color: red;'>$totalErrors</span></p>";
+        
+        if ($totalDeleted > 0) {
+            echo "<p style='color: green;'>✅ عملیات پاک‌سازی با موفقیت انجام شد</p>";
+        } elseif ($totalDuplicatesFound == 0) {
+            echo "<p style='color: blue;'>ℹ️ هیچ رکورد تکراری یافت نشد</p>";
+        } else {
+            echo "<p style='color: orange;'>⚠️ رکوردهای تکراری یافت شد اما حذف نشدند</p>";
         }
     }
 
