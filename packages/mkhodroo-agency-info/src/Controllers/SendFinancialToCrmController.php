@@ -732,10 +732,10 @@ class SendFinancialToCrmController extends Controller
 
             $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
 
-            // echo "<h4>پاسخ CRM:</h4>";
-            // echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
-            // echo "<p><strong>Response Body:</strong></p>";
-            // echo "<pre>" . $response->body() . "</pre>";
+            echo "<h4>پاسخ CRM:</h4>";
+            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+            echo "<p><strong>Response Body:</strong></p>";
+            echo "<pre>" . $response->body() . "</pre>";
 
             if ($response->successful()) {
                 return [
