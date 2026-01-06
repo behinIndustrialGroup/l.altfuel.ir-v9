@@ -29,32 +29,30 @@ class SendFinancialToCrmController extends Controller
         $totalCenters = 0;
         $totalFinancialRecords = 0;
 
-        AgencyInfo::where('key', 'crm_service_center_id')->whereNotNull('value')
-            ->select(
-                DB::raw("MAX(CASE WHEN key IN ('membership_96') THEN value END) as membership_96"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_97') THEN value END) as membership_97"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_98') THEN value END) as membership_98"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_99') THEN value END) as membership_99"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_00') THEN value END) as membership_00"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_01') THEN value END) as membership_01"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_02') THEN value END) as membership_02"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_03') THEN value END) as membership_03"),
-                DB::raw("MAX(CASE WHEN key IN ('membership_04') THEN value END) as membership_04"),
-                DB::raw("MAX(CASE WHEN key IN ('irngv') THEN value END) as irngv"),
-                DB::raw("MAX(CASE WHEN key IN ('plate_reader') THEN value END) as plate_reader"),
-            )
-            ->chunk(20, function ($agencies) use (&$totalCenters, &$totalFinancialRecords) {
+        AgencyInfo::where('key', 'crm_service_center_id')
+            ->whereNotNull('value')
+            ->select([
+                DB::raw("MAX(CASE WHEN `key` = 'membership_96' THEN value END) AS membership_96"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_97' THEN value END) AS membership_97"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_98' THEN value END) AS membership_98"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_99' THEN value END) AS membership_99"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_00' THEN value END) AS membership_00"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_01' THEN value END) AS membership_01"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_02' THEN value END) AS membership_02"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_03' THEN value END) AS membership_03"),
+                DB::raw("MAX(CASE WHEN `key` = 'membership_04' THEN value END) AS membership_04"),
+                DB::raw("MAX(CASE WHEN `key` = 'irngv' THEN value END) AS irngv"),
+                DB::raw("MAX(CASE WHEN `key` = 'plate_reader' THEN value END) AS plate_reader"),
+            ])
+            ->chunk(20, function ($agencies) use (&$totalCenters) {
 
                 foreach ($agencies as $agency) {
-
                     $totalCenters++;
-
-                    echo "<p>📊 تعداد رکورد مالی: <strong>{$totalCenters}</strong></p>";
-                    echo "<hr>";
-
+                    echo "<p>🏢 مرکز #{$totalCenters}</p>";
                     flush();
                 }
             });
+
 
         echo "<h2>پایان پردازش</h2>";
         echo "<p>مراکز: $totalCenters</p>";
