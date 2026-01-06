@@ -704,17 +704,17 @@ class SendFinancialToCrmController extends Controller
             ];
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
-            if ($financial['pay_date']) {
+            if (isset($financial['pay_date']) && $financial['pay_date']) {
                 $financialData['rhs_paymentdate'] = $this->formatDate($financial['pay_date']);
             }
 
             // اضافه کردن کد پیگیری اگر وجود داشت
-            if ($financial['ref_id']) {
+            if (isset($financial['ref_id']) && $financial['ref_id']) {
                 $financialData['rhs_trackingcode'] = $financial['ref_id'];
             }
 
             // اضافه کردن سال اگر وجود داشت
-            if ($financial['year']) {
+            if (isset($financial['year']) && $financial['year']) {
                 $financialData['rhs_year'] = (string)$financial['year'];
             }
 
