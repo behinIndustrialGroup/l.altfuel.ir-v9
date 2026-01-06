@@ -21,12 +21,18 @@ class SendFinancialToCrmController extends Controller
      */
     public function sendFinancialDataToCrm()
     {
+        @ini_set('output_buffering', 'off');
+        @ini_set('zlib.output_compression', false);
+        while (ob_get_level()) {
+            ob_end_flush();
+        }
+        ob_implicit_flush(true);
         try {
             set_time_limit(0);
-            
+
             $agencies = $this->getAgenciesWithCrmId();
             $totalCount = count($agencies);
-            
+
             if ($totalCount == 0) {
                 echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
                 return;
@@ -34,58 +40,78 @@ class SendFinancialToCrmController extends Controller
 
             echo "<h2>شروع ارسال اطلاعات مالی $totalCount مرکز به CRM</h2>";
             echo "<hr>";
-            
+
             $successCount = 0;
             $errorCount = 0;
             $skippedCount = 0;
             $totalFinancialRecords = 0;
-
             foreach ($agencies as $agency) {
-                echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
-                echo "<ul>";
 
-                // دریافت اطلاعات مالی این مرکز
+                echo "<h3>🏢 {$agency['name']}</h3>";
+                flush();
+
                 $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
-                
+
                 if (empty($financialData)) {
-                    echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یافت نشد</li>";
-                    $skippedCount++;
+                    echo "<p style='color: orange;'>⚠ هیچ اطلاعات مالی ندارد</p>";
                 } else {
-                    // پردازش اطلاعات مالی
-                    foreach ($financialData as $financial) {
-                        // چک کردن وجود رکورد قبلی
-                        $existingRecord = $this->checkExistingFinancialRecord($financial, $agency['crm_service_center_id']);
-                        $totalFinancialRecords++;
-                        
-                        if ($existingRecord) {
-                            $skippedCount++;
-                            echo "<li style='color: orange;'>⚠ {$financial['name']} - قبلاً وجود دارد (رد شد)</li>";
-                        } else {
-                            $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
-                            
-                            if ($result['success']) {
-                                $successCount++;
-                                echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
-                            } else {
-                                $errorCount++;
-                                echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
-                            }
-                        }
-                    }
+                    $count = count($financialData);
+                    echo "<p style='color: blue;'>📊 تعداد رکوردهای مالی: <strong>$count</strong></p>";
+                    $totalFinancialRecords += $count;
                 }
 
-                echo "</ul>";
                 echo "<hr>";
-                
-                // استراحت کوتاه
-                usleep(500000); // 0.5 ثانیه
+                flush();
+
+                usleep(300000); // مکث کوتاه برای UI
             }
+
+
+            // foreach ($agencies as $agency) {
+            //     echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
+            //     echo "<ul>";
+
+            //     // دریافت اطلاعات مالی این مرکز
+            //     $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
+
+            //     if (empty($financialData)) {
+            //         echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یافت نشد</li>";
+            //         $skippedCount++;
+            //     } else {
+            //         // پردازش اطلاعات مالی
+            //         foreach ($financialData as $financial) {
+            //             // چک کردن وجود رکورد قبلی
+            //             $existingRecord = $this->checkExistingFinancialRecord($financial, $agency['crm_service_center_id']);
+            //             $totalFinancialRecords++;
+
+            //             if ($existingRecord) {
+            //                 $skippedCount++;
+            //                 echo "<li style='color: orange;'>⚠ {$financial['name']} - قبلاً وجود دارد (رد شد)</li>";
+            //             } else {
+            //                 $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
+
+            //                 if ($result['success']) {
+            //                     $successCount++;
+            //                     echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+            //                 } else {
+            //                     $errorCount++;
+            //                     echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+            //                 }
+            //             }
+            //         }
+            //     }
+
+            //     echo "</ul>";
+            //     echo "<hr>";
+
+            //     // استراحت کوتاه
+            //     usleep(500000); // 0.5 ثانیه
+            // }
 
             echo "<h2>نتیجه نهایی</h2>";
             echo "<p><strong>مراکز پردازش شده: $totalCount</strong></p>";
             echo "<p><strong>رکوردهای مالی: $totalFinancialRecords</strong></p>";
             echo "<p><strong>موفق: $successCount - خطا: $errorCount - رد شده: $skippedCount</strong></p>";
-
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در پردازش:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
@@ -99,7 +125,7 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             echo "<h2>تست ارسال اطلاعات مالی</h2>";
-            
+
             // تست اتصال به CRM
             echo "<h3>1. تست اتصال به CRM:</h3>";
             try {
@@ -107,7 +133,7 @@ class SendFinancialToCrmController extends Controller
                     '$select' => 'rhs_servicecenterid,rhs_name',
                     '$top' => 1
                 ]);
-                
+
                 if ($testResponse->successful()) {
                     echo "<p style='color: green;'>✓ اتصال به CRM موفق</p>";
                 } else {
@@ -119,7 +145,7 @@ class SendFinancialToCrmController extends Controller
                 echo "<p style='color: red;'>✗ Exception در اتصال به CRM: " . $e->getMessage() . "</p>";
                 return;
             }
-            
+
             // تست دسترسی به جدول مالی
             echo "<h3>2. تست دسترسی به جدول rhs_financialinformationcenters:</h3>";
             try {
@@ -127,7 +153,7 @@ class SendFinancialToCrmController extends Controller
                     '$select' => 'rhs_financialinformationcenterid,rhs_name',
                     '$top' => 1
                 ]);
-                
+
                 if ($financialTestResponse->successful()) {
                     echo "<p style='color: green;'>✓ دسترسی به جدول مالی موفق</p>";
                     $financialData = $financialTestResponse->json();
@@ -135,7 +161,7 @@ class SendFinancialToCrmController extends Controller
                 } else {
                     echo "<p style='color: red;'>✗ خطا در دسترسی به جدول مالی: " . $financialTestResponse->status() . "</p>";
                     echo "<pre>" . $financialTestResponse->body() . "</pre>";
-                    
+
                     if ($financialTestResponse->status() == 404) {
                         echo "<p style='color: orange;'>⚠ احتمالاً جدول rhs_financialinformationcenters در CRM وجود ندارد یا نام آن متفاوت است</p>";
                     }
@@ -145,29 +171,29 @@ class SendFinancialToCrmController extends Controller
                 echo "<p style='color: red;'>✗ Exception در دسترسی به جدول مالی: " . $e->getMessage() . "</p>";
                 return;
             }
-            
+
             // بررسی مراکز با CRM ID
             echo "<h3>3. بررسی مراکز با CRM ID:</h3>";
             $agencies = $this->getAgenciesWithCrmId();
             echo "<p>تعداد مراکز با CRM ID: " . count($agencies) . "</p>";
-            
+
             if (empty($agencies)) {
                 echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
-                
+
                 // بررسی اینکه آیا اصلاً رکوردی با key 'crm_service_center_id' وجود دارد
                 $crmIdCount = DB::table('agency_info')
                     ->where('key', 'crm_service_center_id')
                     ->count();
                 echo "<p>تعداد رکوردهای crm_service_center_id در دیتابیس: $crmIdCount</p>";
-                
+
                 if ($crmIdCount == 0) {
                     echo "<p style='color: orange;'>⚠ هیچ مرکزی در CRM ایجاد نشده است. ابتدا از روت /agency-info/send-to-crm استفاده کنید.</p>";
                 }
                 return;
             }
-            
+
             $firstAgency = $agencies[0];
-            
+
             echo "<h3>4. اطلاعات اولین مرکز:</h3>";
             echo "<pre>";
             print_r([
@@ -176,22 +202,22 @@ class SendFinancialToCrmController extends Controller
                 'crm_service_center_id' => $firstAgency['crm_service_center_id']
             ]);
             echo "</pre>";
-            
+
             // بررسی اطلاعات مالی
             echo "<h3>3. بررسی اطلاعات مالی:</h3>";
             $financialData = $this->getFinancialDataForAgency($firstAgency['parent_id']);
             echo "<p>تعداد اطلاعات مالی یافت شده: " . count($financialData) . "</p>";
-            
+
             if (empty($financialData)) {
                 echo "<p style='color: orange;'>این مرکز اطلاعات مالی ندارد</p>";
-                
+
                 // بررسی اینکه آیا اصلاً رکوردهای مالی وجود دارند
                 $financialCount = DB::table('agency_info')
                     ->where('parent_id', $firstAgency['parent_id'])
                     ->whereIn('key', ['membership_96', 'irngv'])
                     ->count();
                 echo "<p>تعداد رکوردهای مالی در دیتابیس برای این مرکز: $financialCount</p>";
-                
+
                 // نمایش تمام کلیدهای موجود برای این مرکز
                 $allKeys = DB::table('agency_info')
                     ->where('parent_id', $firstAgency['parent_id'])
@@ -199,37 +225,36 @@ class SendFinancialToCrmController extends Controller
                     ->toArray();
                 echo "<p>کلیدهای موجود برای این مرکز:</p>";
                 echo "<pre>" . implode(', ', $allKeys) . "</pre>";
-                
+
                 return;
             }
-            
+
             echo "<h3>4. اطلاعات مالی یافت شده:</h3>";
             echo "<pre>";
             print_r($financialData);
             echo "</pre>";
-            
+
             // تست ایجاد اولین رکورد مالی
             $firstFinancial = $financialData[0];
             echo "<h3>5. تست چک کردن رکورد تکراری: {$firstFinancial['name']}</h3>";
-            
+
             $existingRecord = $this->checkExistingFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
-            
+
             if ($existingRecord) {
                 echo "<p style='color: orange;'>⚠ این رکورد مالی قبلاً در CRM وجود دارد</p>";
             } else {
                 echo "<p style='color: green;'>✓ این رکورد مالی در CRM وجود ندارد، می‌توان ایجاد کرد</p>";
-                
+
                 echo "<h3>6. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
-                
+
                 $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
-                
+
                 if ($result['success']) {
                     echo "<p style='color: green;'>✓ رکورد مالی با موفقیت ایجاد شد</p>";
                 } else {
                     echo "<p style='color: red;'>✗ خطا در ایجاد رکورد مالی: {$result['message']}</p>";
                 }
             }
-            
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در تست:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
@@ -244,25 +269,25 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             set_time_limit(0);
-            
+
             echo "<h2>شروع پاک کردن رکوردهای مالی تکراری</h2>";
             echo "<hr>";
-            
+
             $agencies = $this->getAgenciesWithCrmId();
             $totalDeleted = 0;
-            
+
             foreach ($agencies as $agency) {
                 echo "<h3>بررسی رکوردهای تکراری: {$agency['name']}</h3>";
                 echo "<ul>";
-                
+
                 // دریافت تمام رکوردهای مالی این مرکز از CRM
                 $crmRecords = $this->getCrmFinancialRecords($agency['crm_service_center_id']);
-                
+
                 if (empty($crmRecords)) {
                     echo "<li style='color: orange;'>⚠ هیچ رکورد مالی در CRM یافت نشد</li>";
                     continue;
                 }
-                
+
                 // گروه‌بندی رکوردها بر اساس نام و مبلغ
                 $groupedRecords = [];
                 foreach ($crmRecords as $record) {
@@ -272,7 +297,7 @@ class SendFinancialToCrmController extends Controller
                     }
                     $groupedRecords[$key][] = $record;
                 }
-                
+
                 // حذف رکوردهای اضافی
                 foreach ($groupedRecords as $key => $records) {
                     if (count($records) > 1) {
@@ -280,7 +305,7 @@ class SendFinancialToCrmController extends Controller
                         for ($i = 1; $i < count($records); $i++) {
                             $recordId = $records[$i]['rhs_financialinformationcenterid'];
                             $result = $this->deleteCrmFinancialRecord($recordId);
-                            
+
                             if ($result['success']) {
                                 $totalDeleted++;
                                 echo "<li style='color: green;'>✓ رکورد تکراری حذف شد: {$records[$i]['rhs_name']}</li>";
@@ -290,17 +315,16 @@ class SendFinancialToCrmController extends Controller
                         }
                     }
                 }
-                
+
                 echo "</ul>";
                 echo "<hr>";
-                
+
                 // استراحت کوتاه
                 usleep(500000); // 0.5 ثانیه
             }
-            
+
             echo "<h2>نتیجه نهایی</h2>";
             echo "<p><strong>تعداد رکوردهای حذف شده: $totalDeleted</strong></p>";
-            
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در پاک کردن رکوردهای تکراری:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
@@ -317,14 +341,13 @@ class SendFinancialToCrmController extends Controller
                 '$filter' => "_rhs_servicecenter_value eq '$serviceCenterId'",
                 '$select' => 'rhs_financialinformationcenterid,rhs_name,rhs_amount,rhs_paymentdate,rhs_trackingcode'
             ]);
-            
+
             if ($response->successful()) {
                 $data = $response->json();
                 return $data['value'] ?? [];
             }
-            
+
             return [];
-            
         } catch (\Exception $e) {
             Log::error("Error getting CRM financial records", [
                 'service_center_id' => $serviceCenterId,
@@ -341,25 +364,24 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             $response = $this->crmClient->request("rhs_financialinformationcenters($recordId)", "DELETE");
-            
+
             if ($response->successful()) {
                 return [
                     'success' => true,
                     'message' => 'رکورد حذف شد'
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'message' => 'خطا در حذف - Status: ' . $response->status()
             ];
-            
         } catch (\Exception $e) {
             Log::error("Error deleting CRM financial record", [
                 'record_id' => $recordId,
                 'error' => $e->getMessage()
             ]);
-            
+
             return [
                 'success' => false,
                 'message' => 'Exception در حذف: ' . $e->getMessage()
@@ -374,33 +396,32 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             $persianName = $this->convertToPersianName($financial['name']);
-            
+
             // جستجو بر اساس نام، مبلغ و service center
             $filter = "rhs_name eq '$persianName' and rhs_amount eq " . floatval($financial['amount']) . " and _rhs_servicecenter_value eq '$serviceCenterId'";
-            
+
             $response = $this->crmClient->request("rhs_financialinformationcenters", "GET", [
                 '$filter' => $filter,
                 '$select' => 'rhs_financialinformationcenterid,rhs_name,rhs_amount',
                 '$top' => 1
             ]);
-            
+
             if ($response->successful()) {
                 $data = $response->json();
                 $records = $data['value'] ?? [];
-                
+
                 return count($records) > 0;
             }
-            
+
             // اگر خطا در جستجو رخ داد، فرض می‌کنیم رکورد وجود ندارد
             return false;
-            
         } catch (\Exception $e) {
             Log::error("Error checking existing financial record", [
                 'financial' => $financial,
                 'service_center_id' => $serviceCenterId,
                 'error' => $e->getMessage()
             ]);
-            
+
             // در صورت خطا، فرض می‌کنیم رکورد وجود ندارد تا از دست رفتن داده جلوگیری شود
             return false;
         }
@@ -413,22 +434,22 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             $agencies = [];
-            
+
             // دریافت مراکزی که CRM ID دارند
             $crmIds = DB::table('agency_info')
                 ->where('key', 'crm_service_center_id')
                 ->get();
-                
+
             foreach ($crmIds as $crmRecord) {
                 // دریافت نام مرکز
                 $nameRecords = DB::table('agency_info')
                     ->where('parent_id', $crmRecord->parent_id)
                     ->whereIn('key', ['firstname', 'lastname'])
                     ->get();
-                    
+
                 $firstname = '';
                 $lastname = '';
-                
+
                 foreach ($nameRecords as $record) {
                     if ($record->key === 'firstname') {
                         $firstname = $record->value ?? '';
@@ -436,16 +457,16 @@ class SendFinancialToCrmController extends Controller
                         $lastname = $record->value ?? '';
                     }
                 }
-                
+
                 $name = trim($firstname . ' ' . $lastname);
-                
+
                 $agencies[] = [
                     'parent_id' => $crmRecord->parent_id,
                     'name' => $name ?: 'نامشخص',
                     'crm_service_center_id' => $crmRecord->value
                 ];
             }
-            
+
             return $agencies;
         } catch (\Exception $e) {
             Log::error("Error getting agencies with CRM ID", [
@@ -535,7 +556,7 @@ class SendFinancialToCrmController extends Controller
             $year = $matches[1];
             return "حق عضویت سال $year";
         }
-        
+
         // اگر نام شناخته شده نبود، همان نام انگلیسی را برگردان
         return $englishName;
     }
@@ -549,7 +570,7 @@ class SendFinancialToCrmController extends Controller
             $year = intval($matches[1]);
             return $year >= 96 ? 1300 + $year : 1400 + $year; // تبدیل به سال شمسی کامل
         }
-        
+
         return null; // برای سایر موارد مثل irngv، debt
     }
 
@@ -560,7 +581,7 @@ class SendFinancialToCrmController extends Controller
     {
         try {
             $persianName = $this->convertToPersianName($financial['name']);
-            
+
             $financialData = [
                 'rhs_name' => $persianName,
                 'rhs_amount' => floatval($financial['amount']),
@@ -583,7 +604,7 @@ class SendFinancialToCrmController extends Controller
             }
 
             // حذف فیلدهای خالی
-            $financialData = array_filter($financialData, function($value) {
+            $financialData = array_filter($financialData, function ($value) {
                 return $value !== '' && $value !== null;
             });
 
@@ -595,12 +616,12 @@ class SendFinancialToCrmController extends Controller
             echo "</pre>";
 
             $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
-            
+
             echo "<h4>پاسخ CRM:</h4>";
             echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
             echo "<p><strong>Response Body:</strong></p>";
             echo "<pre>" . $response->body() . "</pre>";
-            
+
             if ($response->successful()) {
                 echo "<p style='color: green;'>✓ درخواست موفق بود</p>";
                 return [
@@ -612,9 +633,9 @@ class SendFinancialToCrmController extends Controller
             // تحلیل خطاهای رایج
             $errorBody = $response->body();
             $statusCode = $response->status();
-            
+
             $errorMessage = "خطا در ایجاد رکورد مالی - Status: $statusCode";
-            
+
             if ($statusCode == 400) {
                 $errorMessage .= " (Bad Request - احتمالاً فیلد اجباری خالی است یا فرمت داده اشتباه است)";
             } elseif ($statusCode == 404) {
@@ -635,14 +656,13 @@ class SendFinancialToCrmController extends Controller
                 'success' => false,
                 'message' => $errorMessage
             ];
-
         } catch (\Exception $e) {
             echo "<h4 style='color: red;'>Exception رخ داد:</h4>";
             echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
             echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
             echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
             echo "<pre>" . $e->getTraceAsString() . "</pre>";
-            
+
             Log::error("Exception creating financial record", [
                 'financial' => $financial,
                 'service_center_id' => $serviceCenterId,
@@ -663,7 +683,7 @@ class SendFinancialToCrmController extends Controller
     private function formatDate($date)
     {
         if (!$date) return null;
-        
+
         try {
             return \Carbon\Carbon::parse($date)->toIso8601String();
         } catch (\Exception $e) {
