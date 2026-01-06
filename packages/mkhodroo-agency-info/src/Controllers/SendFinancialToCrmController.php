@@ -33,6 +33,42 @@ class SendFinancialToCrmController extends Controller
             'firstname',
             'lastname',
             'membership_96',
+            'membership_96_pay_date',
+            'membership_96_ref_id',
+            'membership_97',
+            'membership_97_pay_date',
+            'membership_97_ref_id',
+            'membership_98',
+            'membership_98_pay_date',
+            'membership_98_ref_id',
+            'membership_99',
+            'membership_99_pay_date',
+            'membership_99_ref_id',
+            'membership_00',
+            'membership_00_pay_date',
+            'membership_00_ref_id',
+            'membership_01',
+            'membership_01_pay_date',
+            'membership_01_ref_id',
+            'membership_02',
+            'membership_02_pay_date',
+            'membership_02_ref_id',
+            'membership_03',
+            'membership_03_pay_date',
+            'membership_03_ref_id',
+            'membership_04',
+            'membership_04_pay_date',
+            'membership_04_ref_id',
+            'irngv',
+            'irngv_pay_date',
+            'irngv_ref_id',
+            'plate_reader',
+            'plate_reader_pay_date',
+            'plate_reader_ref_id',
+        ];
+
+        $financialCols = [
+            'membership_96',
             'membership_97',
             'membership_98',
             'membership_99',
@@ -56,7 +92,7 @@ class SendFinancialToCrmController extends Controller
             ->havingNotNull('crm_service_center_id')
             ->groupBy('parent_id')
             ->orderBy('parent_id')
-            ->chunk(20, function ($agencies) use (&$totalCenters) {
+            ->chunk(20, function ($agencies) use (&$totalCenters, $financialCols) {
                 echo "<table>";
                 foreach ($agencies as $agency) {
                     $totalCenters++;
@@ -73,7 +109,20 @@ class SendFinancialToCrmController extends Controller
                     echo "<td>{$agency->membership_04}</td>";
                     echo "<td>{$agency->irngv}</td>";
                     echo "<td>{$agency->plate_reader}</td>";
+                    foreach ($financialCols as $col) {
+                        $paydate = $col . '_pay_date';
+                        $refId = $col . '_ref_id';
+                        $financial['name'] = $col;
+                        $financial['amount'] = $agency->$col;
+                        $financial['pay_date'] = $agency->$paydate;
+                        $financial['ref_id'] = $agency->$refId;
+                        $response = $this->createFinancialRecord($financial, $agency->crm_service_center_id);
+                        echo "<td>";
+                        echo $response['message'];
+                        echo "</td>";
+                    }
                     echo "</tr>";
+
                     flush();
                 }
                 echo"</table>";
@@ -674,22 +723,21 @@ class SendFinancialToCrmController extends Controller
                 return $value !== '' && $value !== null;
             });
 
-            echo "<h4>درحال ارسال به CRM:</h4>";
-            echo "<p><strong>نام انگلیسی:</strong> {$financial['name']}</p>";
-            echo "<p><strong>نام فارسی:</strong> $persianName</p>";
-            echo "<pre>";
-            print_r($financialData);
-            echo "</pre>";
+            // echo "<h4>درحال ارسال به CRM:</h4>";
+            // echo "<p><strong>نام انگلیسی:</strong> {$financial['name']}</p>";
+            // echo "<p><strong>نام فارسی:</strong> $persianName</p>";
+            // echo "<pre>";
+            // print_r($financialData);
+            // echo "</pre>";
 
             $response = $this->crmClient->request("rhs_financialinformationcenters", "POST", $financialData);
 
-            echo "<h4>پاسخ CRM:</h4>";
-            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
-            echo "<p><strong>Response Body:</strong></p>";
-            echo "<pre>" . $response->body() . "</pre>";
+            // echo "<h4>پاسخ CRM:</h4>";
+            // echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
+            // echo "<p><strong>Response Body:</strong></p>";
+            // echo "<pre>" . $response->body() . "</pre>";
 
             if ($response->successful()) {
-                echo "<p style='color: green;'>✓ درخواست موفق بود</p>";
                 return [
                     'success' => true,
                     'message' => 'رکورد مالی ایجاد شد'
@@ -723,11 +771,11 @@ class SendFinancialToCrmController extends Controller
                 'message' => $errorMessage
             ];
         } catch (\Exception $e) {
-            echo "<h4 style='color: red;'>Exception رخ داد:</h4>";
-            echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
-            echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
-            echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
-            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+            // echo "<h4 style='color: red;'>Exception رخ داد:</h4>";
+            // echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
+            // echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
+            // echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
+            // echo "<pre>" . $e->getTraceAsString() . "</pre>";
 
             Log::error("Exception creating financial record", [
                 'financial' => $financial,
