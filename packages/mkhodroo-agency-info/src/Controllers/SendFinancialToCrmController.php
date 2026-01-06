@@ -47,6 +47,7 @@ class SendFinancialToCrmController extends Controller
             ->select($selects)
             ->havingNotNull('crm_service_center_id')
             ->groupBy('parent_id')
+            ->orderBy('parent_id')
             ->chunk(20, function ($agencies) use (&$totalCenters) {
 
                 foreach ($agencies as $agency) {
