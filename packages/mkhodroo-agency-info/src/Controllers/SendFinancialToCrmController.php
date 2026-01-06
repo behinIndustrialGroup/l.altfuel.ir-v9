@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Behin\CrmClient\CrmClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 
 class SendFinancialToCrmController extends Controller
 {
@@ -21,102 +22,142 @@ class SendFinancialToCrmController extends Controller
      */
     public function sendFinancialDataToCrm()
     {
-        @ini_set('output_buffering', 'off');
-        @ini_set('zlib.output_compression', false);
-        while (ob_get_level()) {
-            ob_end_flush();
-        }
-        ob_implicit_flush(true);
-        try {
-            set_time_limit(0);
+        set_time_limit(0);
 
-            $agencies = $this->getAgenciesWithCrmId();
-            $totalCount = count($agencies);
+        echo "<h2>شروع بررسی اطلاعات مالی مراکز</h2><hr>";
 
-            if ($totalCount == 0) {
-                echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
-                return;
-            }
+        $totalCenters = 0;
+        $totalFinancialRecords = 0;
 
-            echo "<h2>شروع ارسال اطلاعات مالی $totalCount مرکز به CRM</h2>";
-            echo "<hr>";
+        AgencyInfo::where('key', 'crm_service_center_id')->whereNotNull('value')
+            ->select(
+                DB::raw("MAX(CASE WHEN key IN ('membership_96') THEN value END) as membership_96"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_97') THEN value END) as membership_97"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_98') THEN value END) as membership_98"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_99') THEN value END) as membership_99"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_00') THEN value END) as membership_00"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_01') THEN value END) as membership_01"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_02') THEN value END) as membership_02"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_03') THEN value END) as membership_03"),
+                DB::raw("MAX(CASE WHEN key IN ('membership_04') THEN value END) as membership_04"),
+                DB::raw("MAX(CASE WHEN key IN ('irngv') THEN value END) as irngv"),
+                DB::raw("MAX(CASE WHEN key IN ('plate_reader') THEN value END) as plate_reader"),
+            )
+            ->chunk(20, function ($agencies) use (&$totalCenters, &$totalFinancialRecords) {
 
-            $successCount = 0;
-            $errorCount = 0;
-            $skippedCount = 0;
-            $totalFinancialRecords = 0;
-            foreach ($agencies as $agency) {
+                foreach ($agencies as $agency) {
 
-                echo "<h3>🏢 {$agency['name']}</h3>";
-                flush();
+                    $totalCenters++;
 
-                $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
+                    echo "<p>📊 تعداد رکورد مالی: <strong>{$totalCenters}</strong></p>";
+                    echo "<hr>";
 
-                if (empty($financialData)) {
-                    echo "<p style='color: orange;'>⚠ هیچ اطلاعات مالی ندارد</p>";
-                } else {
-                    $count = count($financialData);
-                    echo "<p style='color: blue;'>📊 تعداد رکوردهای مالی: <strong>$count</strong></p>";
-                    $totalFinancialRecords += $count;
+                    flush();
                 }
+            });
 
-                echo "<hr>";
-                flush();
-
-                usleep(300000); // مکث کوتاه برای UI
-            }
-
-
-            // foreach ($agencies as $agency) {
-            //     echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
-            //     echo "<ul>";
-
-            //     // دریافت اطلاعات مالی این مرکز
-            //     $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
-
-            //     if (empty($financialData)) {
-            //         echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یافت نشد</li>";
-            //         $skippedCount++;
-            //     } else {
-            //         // پردازش اطلاعات مالی
-            //         foreach ($financialData as $financial) {
-            //             // چک کردن وجود رکورد قبلی
-            //             $existingRecord = $this->checkExistingFinancialRecord($financial, $agency['crm_service_center_id']);
-            //             $totalFinancialRecords++;
-
-            //             if ($existingRecord) {
-            //                 $skippedCount++;
-            //                 echo "<li style='color: orange;'>⚠ {$financial['name']} - قبلاً وجود دارد (رد شد)</li>";
-            //             } else {
-            //                 $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
-
-            //                 if ($result['success']) {
-            //                     $successCount++;
-            //                     echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
-            //                 } else {
-            //                     $errorCount++;
-            //                     echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
-            //                 }
-            //             }
-            //         }
-            //     }
-
-            //     echo "</ul>";
-            //     echo "<hr>";
-
-            //     // استراحت کوتاه
-            //     usleep(500000); // 0.5 ثانیه
-            // }
-
-            echo "<h2>نتیجه نهایی</h2>";
-            echo "<p><strong>مراکز پردازش شده: $totalCount</strong></p>";
-            echo "<p><strong>رکوردهای مالی: $totalFinancialRecords</strong></p>";
-            echo "<p><strong>موفق: $successCount - خطا: $errorCount - رد شده: $skippedCount</strong></p>";
-        } catch (\Exception $e) {
-            echo "<h2 style='color: red;'>خطا در پردازش:</h2>";
-            echo "<p>" . $e->getMessage() . "</p>";
-        }
+        echo "<h2>پایان پردازش</h2>";
+        echo "<p>مراکز: $totalCenters</p>";
     }
+
+    // public function sendFinancialDataToCrm()
+    // {
+    //     @ini_set('output_buffering', 'off');
+    //     @ini_set('zlib.output_compression', false);
+    //     while (ob_get_level()) {
+    //         ob_end_flush();
+    //     }
+    //     ob_implicit_flush(true);
+    //     try {
+    //         set_time_limit(0);
+
+    //         $agencies = $this->getAgenciesWithCrmId();
+    //         $totalCount = count($agencies);
+
+    //         if ($totalCount == 0) {
+    //             echo "<p style='color: red;'>هیچ مرکزی با CRM ID یافت نشد</p>";
+    //             return;
+    //         }
+
+    //         echo "<h2>شروع ارسال اطلاعات مالی $totalCount مرکز به CRM</h2>";
+    //         echo "<hr>";
+
+    //         $successCount = 0;
+    //         $errorCount = 0;
+    //         $skippedCount = 0;
+    //         $totalFinancialRecords = 0;
+    //         foreach ($agencies as $agency) {
+
+    //             echo "<h3>🏢 {$agency['name']}</h3>";
+    //             flush();
+
+    //             $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
+
+    //             if (empty($financialData)) {
+    //                 echo "<p style='color: orange;'>⚠ هیچ اطلاعات مالی ندارد</p>";
+    //             } else {
+    //                 $count = count($financialData);
+    //                 echo "<p style='color: blue;'>📊 تعداد رکوردهای مالی: <strong>$count</strong></p>";
+    //                 $totalFinancialRecords += $count;
+    //             }
+
+    //             echo "<hr>";
+    //             flush();
+
+    //             usleep(300000); // مکث کوتاه برای UI
+    //         }
+
+
+    //         // foreach ($agencies as $agency) {
+    //         //     echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
+    //         //     echo "<ul>";
+
+    //         //     // دریافت اطلاعات مالی این مرکز
+    //         //     $financialData = $this->getFinancialDataForAgency($agency['parent_id']);
+
+    //         //     if (empty($financialData)) {
+    //         //         echo "<li style='color: orange;'>⚠ هیچ اطلاعات مالی یافت نشد</li>";
+    //         //         $skippedCount++;
+    //         //     } else {
+    //         //         // پردازش اطلاعات مالی
+    //         //         foreach ($financialData as $financial) {
+    //         //             // چک کردن وجود رکورد قبلی
+    //         //             $existingRecord = $this->checkExistingFinancialRecord($financial, $agency['crm_service_center_id']);
+    //         //             $totalFinancialRecords++;
+
+    //         //             if ($existingRecord) {
+    //         //                 $skippedCount++;
+    //         //                 echo "<li style='color: orange;'>⚠ {$financial['name']} - قبلاً وجود دارد (رد شد)</li>";
+    //         //             } else {
+    //         //                 $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
+
+    //         //                 if ($result['success']) {
+    //         //                     $successCount++;
+    //         //                     echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+    //         //                 } else {
+    //         //                     $errorCount++;
+    //         //                     echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+    //         //                 }
+    //         //             }
+    //         //         }
+    //         //     }
+
+    //         //     echo "</ul>";
+    //         //     echo "<hr>";
+
+    //         //     // استراحت کوتاه
+    //         //     usleep(500000); // 0.5 ثانیه
+    //         // }
+
+    //         echo "<h2>نتیجه نهایی</h2>";
+    //         echo "<p><strong>مراکز پردازش شده: $totalCount</strong></p>";
+    //         echo "<p><strong>رکوردهای مالی: $totalFinancialRecords</strong></p>";
+    //         echo "<p><strong>موفق: $successCount - خطا: $errorCount - رد شده: $skippedCount</strong></p>";
+    //     } catch (\Exception $e) {
+    //         echo "<h2 style='color: red;'>خطا در پردازش:</h2>";
+    //         echo "<p>" . $e->getMessage() . "</p>";
+    //     }
+    // }
 
     /**
      * تست ارسال اطلاعات مالی
