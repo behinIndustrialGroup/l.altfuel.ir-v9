@@ -30,9 +30,17 @@ class SendFinancialToCrmController extends Controller
         $totalFinancialRecords = 0;
         $columns = [
             'crm_service_center_id',
+            'firstname',
+            'lastname',
             'membership_96',
             'membership_97',
             'membership_98',
+            'membership_99',
+            'membership_00',
+            'membership_01',
+            'membership_02',
+            'membership_03',
+            'membership_04',
             'irngv',
             'plate_reader',
         ];
@@ -49,12 +57,26 @@ class SendFinancialToCrmController extends Controller
             ->groupBy('parent_id')
             ->orderBy('parent_id')
             ->chunk(20, function ($agencies) use (&$totalCenters) {
-
+                echo "<table>";
                 foreach ($agencies as $agency) {
                     $totalCenters++;
-                    echo "<p>🏢 مرکز #{$agency->membership_96}</p>";
+                    echo "<tr>";
+                    echo "<td>{$agency->firstname} {$agency->lastname}</td>";
+                    echo "<td>{$agency->membership_96}</td>";
+                    echo "<td>{$agency->membership_97}</td>";
+                    echo "<td>{$agency->membership_98}</td>";
+                    echo "<td>{$agency->membership_99}</td>";
+                    echo "<td>{$agency->membership_00}</td>";
+                    echo "<td>{$agency->membership_01}</td>";
+                    echo "<td>{$agency->membership_02}</td>";
+                    echo "<td>{$agency->membership_03}</td>";
+                    echo "<td>{$agency->membership_04}</td>";
+                    echo "<td>{$agency->irngv}</td>";
+                    echo "<td>{$agency->plate_reader}</td>";
+                    echo "</tr>";
                     flush();
                 }
+                echo"</table>";
             });
   
 
