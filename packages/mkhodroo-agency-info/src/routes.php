@@ -50,6 +50,7 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     // Financial CRM Routes
     Route::get('send-financial-to-crm', [SendFinancialToCrmController::class, 'sendFinancialDataToCrm'])->name('sendFinancialToCrm');
     Route::get('test-financial-crm', [SendFinancialToCrmController::class, 'testFinancialData'])->name('testFinancialCrm');
+    Route::get('clean-duplicate-financial', [SendFinancialToCrmController::class, 'cleanDuplicateFinancialRecords'])->name('cleanDuplicateFinancial');
     
     // Debt CRM Routes
     Route::get('send-debt-to-crm', [SendDebtToCrmController::class, 'sendDebtDataToCrm'])->name('sendDebtToCrm');

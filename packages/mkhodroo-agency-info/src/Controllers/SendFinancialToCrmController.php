@@ -53,15 +53,23 @@ class SendFinancialToCrmController extends Controller
                 } else {
                     // پردازش اطلاعات مالی
                     foreach ($financialData as $financial) {
-                        $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
+                        // چک کردن وجود رکورد قبلی
+                        $existingRecord = $this->checkExistingFinancialRecord($financial, $agency['crm_service_center_id']);
                         $totalFinancialRecords++;
                         
-                        if ($result['success']) {
-                            $successCount++;
-                            echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+                        if ($existingRecord) {
+                            $skippedCount++;
+                            echo "<li style='color: orange;'>⚠ {$financial['name']} - قبلاً وجود دارد (رد شد)</li>";
                         } else {
-                            $errorCount++;
-                            echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+                            $result = $this->createFinancialRecord($financial, $agency['crm_service_center_id']);
+                            
+                            if ($result['success']) {
+                                $successCount++;
+                                echo "<li style='color: green;'>✓ {$financial['name']} - موفق</li>";
+                            } else {
+                                $errorCount++;
+                                echo "<li style='color: red;'>✗ {$financial['name']} - خطا: {$result['message']}</li>";
+                            }
                         }
                     }
                 }
@@ -202,20 +210,199 @@ class SendFinancialToCrmController extends Controller
             
             // تست ایجاد اولین رکورد مالی
             $firstFinancial = $financialData[0];
-            echo "<h3>5. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
+            echo "<h3>5. تست چک کردن رکورد تکراری: {$firstFinancial['name']}</h3>";
             
-            $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
+            $existingRecord = $this->checkExistingFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
             
-            if ($result['success']) {
-                echo "<p style='color: green;'>✓ رکورد مالی با موفقیت ایجاد شد</p>";
+            if ($existingRecord) {
+                echo "<p style='color: orange;'>⚠ این رکورد مالی قبلاً در CRM وجود دارد</p>";
             } else {
-                echo "<p style='color: red;'>✗ خطا در ایجاد رکورد مالی: {$result['message']}</p>";
+                echo "<p style='color: green;'>✓ این رکورد مالی در CRM وجود ندارد، می‌توان ایجاد کرد</p>";
+                
+                echo "<h3>6. تست ایجاد رکورد مالی: {$firstFinancial['name']}</h3>";
+                
+                $result = $this->createFinancialRecord($firstFinancial, $firstAgency['crm_service_center_id']);
+                
+                if ($result['success']) {
+                    echo "<p style='color: green;'>✓ رکورد مالی با موفقیت ایجاد شد</p>";
+                } else {
+                    echo "<p style='color: red;'>✗ خطا در ایجاد رکورد مالی: {$result['message']}</p>";
+                }
             }
             
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در تست:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
             echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        }
+    }
+
+    /**
+     * پاک کردن رکوردهای مالی تکراری از CRM
+     */
+    public function cleanDuplicateFinancialRecords()
+    {
+        try {
+            set_time_limit(0);
+            
+            echo "<h2>شروع پاک کردن رکوردهای مالی تکراری</h2>";
+            echo "<hr>";
+            
+            $agencies = $this->getAgenciesWithCrmId();
+            $totalDeleted = 0;
+            
+            foreach ($agencies as $agency) {
+                echo "<h3>بررسی رکوردهای تکراری: {$agency['name']}</h3>";
+                echo "<ul>";
+                
+                // دریافت تمام رکوردهای مالی این مرکز از CRM
+                $crmRecords = $this->getCrmFinancialRecords($agency['crm_service_center_id']);
+                
+                if (empty($crmRecords)) {
+                    echo "<li style='color: orange;'>⚠ هیچ رکورد مالی در CRM یافت نشد</li>";
+                    continue;
+                }
+                
+                // گروه‌بندی رکوردها بر اساس نام و مبلغ
+                $groupedRecords = [];
+                foreach ($crmRecords as $record) {
+                    $key = $record['rhs_name'] . '_' . $record['rhs_amount'];
+                    if (!isset($groupedRecords[$key])) {
+                        $groupedRecords[$key] = [];
+                    }
+                    $groupedRecords[$key][] = $record;
+                }
+                
+                // حذف رکوردهای اضافی
+                foreach ($groupedRecords as $key => $records) {
+                    if (count($records) > 1) {
+                        // نگه داشتن اولین رکورد و حذف بقیه
+                        for ($i = 1; $i < count($records); $i++) {
+                            $recordId = $records[$i]['rhs_financialinformationcenterid'];
+                            $result = $this->deleteCrmFinancialRecord($recordId);
+                            
+                            if ($result['success']) {
+                                $totalDeleted++;
+                                echo "<li style='color: green;'>✓ رکورد تکراری حذف شد: {$records[$i]['rhs_name']}</li>";
+                            } else {
+                                echo "<li style='color: red;'>✗ خطا در حذف: {$records[$i]['rhs_name']} - {$result['message']}</li>";
+                            }
+                        }
+                    }
+                }
+                
+                echo "</ul>";
+                echo "<hr>";
+                
+                // استراحت کوتاه
+                usleep(500000); // 0.5 ثانیه
+            }
+            
+            echo "<h2>نتیجه نهایی</h2>";
+            echo "<p><strong>تعداد رکوردهای حذف شده: $totalDeleted</strong></p>";
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در پاک کردن رکوردهای تکراری:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
+    }
+
+    /**
+     * دریافت رکوردهای مالی یک مرکز از CRM
+     */
+    private function getCrmFinancialRecords($serviceCenterId)
+    {
+        try {
+            $response = $this->crmClient->request("rhs_financialinformationcenters", "GET", [
+                '$filter' => "_rhs_servicecenter_value eq '$serviceCenterId'",
+                '$select' => 'rhs_financialinformationcenterid,rhs_name,rhs_amount,rhs_paymentdate,rhs_trackingcode'
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['value'] ?? [];
+            }
+            
+            return [];
+            
+        } catch (\Exception $e) {
+            Log::error("Error getting CRM financial records", [
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * حذف رکورد مالی از CRM
+     */
+    private function deleteCrmFinancialRecord($recordId)
+    {
+        try {
+            $response = $this->crmClient->request("rhs_financialinformationcenters($recordId)", "DELETE");
+            
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'message' => 'رکورد حذف شد'
+                ];
+            }
+            
+            return [
+                'success' => false,
+                'message' => 'خطا در حذف - Status: ' . $response->status()
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error("Error deleting CRM financial record", [
+                'record_id' => $recordId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'message' => 'Exception در حذف: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * چک کردن وجود رکورد مالی قبلی در CRM
+     */
+    private function checkExistingFinancialRecord($financial, $serviceCenterId)
+    {
+        try {
+            $persianName = $this->convertToPersianName($financial['name']);
+            
+            // جستجو بر اساس نام، مبلغ و service center
+            $filter = "rhs_name eq '$persianName' and rhs_amount eq " . floatval($financial['amount']) . " and _rhs_servicecenter_value eq '$serviceCenterId'";
+            
+            $response = $this->crmClient->request("rhs_financialinformationcenters", "GET", [
+                '$filter' => $filter,
+                '$select' => 'rhs_financialinformationcenterid,rhs_name,rhs_amount',
+                '$top' => 1
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                $records = $data['value'] ?? [];
+                
+                return count($records) > 0;
+            }
+            
+            // اگر خطا در جستجو رخ داد، فرض می‌کنیم رکورد وجود ندارد
+            return false;
+            
+        } catch (\Exception $e) {
+            Log::error("Error checking existing financial record", [
+                'financial' => $financial,
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage()
+            ]);
+            
+            // در صورت خطا، فرض می‌کنیم رکورد وجود ندارد تا از دست رفتن داده جلوگیری شود
+            return false;
         }
     }
 
