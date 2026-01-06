@@ -28,30 +28,34 @@ class SendFinancialToCrmController extends Controller
 
         $totalCenters = 0;
         $totalFinancialRecords = 0;
+        $columns = [
+            'crm_service_center_id',
+            'membership_96',
+            'membership_97',
+            'membership_98',
+            'irngv',
+            'plate_reader',
+        ];
 
-        AgencyInfo::where('key', 'crm_service_center_id')
-            ->whereNotNull('value')
-            ->select([
-                DB::raw("MAX(CASE WHEN `key` = 'membership_96' THEN value END) AS membership_96"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_97' THEN value END) AS membership_97"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_98' THEN value END) AS membership_98"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_99' THEN value END) AS membership_99"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_00' THEN value END) AS membership_00"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_01' THEN value END) AS membership_01"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_02' THEN value END) AS membership_02"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_03' THEN value END) AS membership_03"),
-                DB::raw("MAX(CASE WHEN `key` = 'membership_04' THEN value END) AS membership_04"),
-                DB::raw("MAX(CASE WHEN `key` = 'irngv' THEN value END) AS irngv"),
-                DB::raw("MAX(CASE WHEN `key` = 'plate_reader' THEN value END) AS plate_reader"),
-            ])
+        $selects = ['parent_id'];
+
+        foreach ($columns as $col) {
+            $selects[] = DB::raw("MAX(CASE WHEN `key` = '$col' THEN value END) AS `$col`");
+        }
+
+        $data = DB::table('agency_info')
+            ->select($selects)
+            ->havingNotNull('crm_service_center_id')
+            ->groupBy('parent_id')
             ->chunk(20, function ($agencies) use (&$totalCenters) {
 
                 foreach ($agencies as $agency) {
                     $totalCenters++;
-                    echo "<p>🏢 مرکز #{$totalCenters}</p>";
+                    echo "<p>🏢 مرکز #{$agency->membership_96}</p>";
                     flush();
                 }
             });
+  
 
 
         echo "<h2>پایان پردازش</h2>";
