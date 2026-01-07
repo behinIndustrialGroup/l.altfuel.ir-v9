@@ -729,8 +729,8 @@ class SendFinancialToCrmController extends Controller
                 $payDate = isset($records[$dateKey]) ? $records[$dateKey]->value : null;
                 $refId = isset($records[$refKey]) ? $records[$refKey]->value : null;
 
-                // اگر حداقل مبلغ وجود داشت، رکورد را اضافه کن
-                if ($amount && $amount !== '' && $amount !== '0') {
+                // اگر حداقل مبلغ وجود داشت و خالی نبود، رکورد را اضافه کن
+                if ($amount && $amount !== '' && $amount !== '0' && floatval($amount) > 0) {
                     $financialRecords[] = [
                         'name' => $name,
                         'amount' => $amount,
@@ -797,9 +797,13 @@ class SendFinancialToCrmController extends Controller
 
             $financialData = [
                 'rhs_name' => $persianName,
-                'rhs_amount' => floatval($financial['amount']),
                 'rhs_Servicecenter@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
+
+            // فقط اگر مبلغ وجود داشت و خالی نبود، آن را اضافه کن
+            if (isset($financial['amount']) && $financial['amount'] !== '' && $financial['amount'] !== '0' && $financial['amount'] !== 0) {
+                $financialData['rhs_amount'] = floatval($financial['amount']);
+            }
 
             // اضافه کردن تاریخ پرداخت اگر وجود داشت
             if (isset($financial['pay_date']) && $financial['pay_date']) {
