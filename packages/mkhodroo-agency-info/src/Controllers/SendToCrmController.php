@@ -24,7 +24,18 @@ class SendToCrmController extends Controller
         try {
             set_time_limit(0);
             
-            $agencies = $this->getAgencyData();
+            // تعریف آرایه کدهای مراکز مجاز - می‌توانید این آرایه را تغییر دهید
+            $allowedAgencyCodes = [
+                '12001', '12002', '12003', '12004', '12005',
+                '13001', '13002', '13003',
+                '14001', '14002'
+                // کدهای مرکز مورد نظر خود را اینجا اضافه کنید
+            ];
+            
+            // اگر می‌خواهید همه مراکز را پردازش کنید، این خط را uncomment کنید:
+            // $allowedAgencyCodes = null;
+            
+            $agencies = $this->getAgencyData($allowedAgencyCodes);
             $totalCount = count($agencies);
             
             if ($totalCount == 0) {
@@ -33,6 +44,9 @@ class SendToCrmController extends Controller
             }
 
             echo "<h2>شروع ارسال اطلاعات مالی $totalCount مرکز به CRM</h2>";
+            if ($allowedAgencyCodes !== null) {
+                echo "<p style='color: blue;'>فقط مراکز با کدهای مجاز پردازش می‌شوند: " . implode(', ', $allowedAgencyCodes) . "</p>";
+            }
             echo "<hr>";
             
             $successCount = 0;
@@ -45,12 +59,12 @@ class SendToCrmController extends Controller
                 $serviceCenterId = $this->getCrmServiceCenterId($agency['parent_id']);
                 
                 if (!$serviceCenterId) {
-                    echo "<p style='color: orange;'>⚠ {$agency['name']} - مرکز در CRM وجود ندارد، رد شد</p>";
+                    echo "<p style='color: orange;'>⚠ {$agency['name']} (کد: {$agency['agency_code']}) - مرکز در CRM وجود ندارد، رد شد</p>";
                     $skippedCount++;
                     continue;
                 }
 
-                echo "<h3>پردازش اطلاعات مالی: {$agency['name']}</h3>";
+                echo "<h3>پردازش اطلاعات مالی: {$agency['name']} (کد: {$agency['agency_code']})</h3>";
                 echo "<ul>";
 
                 // دریافت اطلاعات مالی این مرکز
@@ -230,12 +244,27 @@ class SendToCrmController extends Controller
         try {
             echo "<h2>آمار مراکز در CRM</h2>";
             
-            $agencies = $this->getAgencyData();
+            // تعریف آرایه کدهای مراکز مجاز - می‌توانید این آرایه را تغییر دهید
+            $allowedAgencyCodes = [
+                '12001', '12002', '12003', '12004', '12005',
+                '13001', '13002', '13003',
+                '14001', '14002'
+                // کدهای مرکز مورد نظر خود را اینجا اضافه کنید
+            ];
+            
+            // اگر می‌خواهید همه مراکز را بررسی کنید، این خط را uncomment کنید:
+            // $allowedAgencyCodes = null;
+            
+            $agencies = $this->getAgencyData($allowedAgencyCodes);
             $totalCount = count($agencies);
             
             if ($totalCount == 0) {
                 echo "<p style='color: red;'>هیچ مرکزی یافت نشد</p>";
                 return;
+            }
+            
+            if ($allowedAgencyCodes !== null) {
+                echo "<p style='color: blue;'>فقط مراکز با کدهای مجاز بررسی می‌شوند: " . implode(', ', $allowedAgencyCodes) . "</p>";
             }
             
             $existingInCrm = 0;
@@ -253,12 +282,13 @@ class SendToCrmController extends Controller
                     $existingIds[] = [
                         'parent_id' => $agency['parent_id'],
                         'name' => $agency['name'],
+                        'agency_code' => $agency['agency_code'],
                         'crm_id' => $crmId
                     ];
-                    echo "<li style='color: blue;'>✓ {$agency['name']} - موجود در CRM (ID: $crmId)</li>";
+                    echo "<li style='color: blue;'>✓ {$agency['name']} (کد: {$agency['agency_code']}) - موجود در CRM (ID: $crmId)</li>";
                 } else {
                     $notInCrm++;
-                    echo "<li style='color: orange;'>⚠ {$agency['name']} - موجود نیست در CRM</li>";
+                    echo "<li style='color: orange;'>⚠ {$agency['name']} (کد: {$agency['agency_code']}) - موجود نیست در CRM</li>";
                 }
             }
             
@@ -302,7 +332,18 @@ class SendToCrmController extends Controller
         try {
             set_time_limit(0); // بدون محدودیت زمان
             
-            $agencies = $this->getAgencyData();
+            // تعریف آرایه کدهای مراکز مجاز - می‌توانید این آرایه را تغییر دهید
+            $allowedAgencyCodes = [
+                '12001', '12002', '12003', '12004', '12005',
+                '13001', '13002', '13003',
+                '14001', '14002'
+                // کدهای مرکز مورد نظر خود را اینجا اضافه کنید
+            ];
+            
+            // اگر می‌خواهید همه مراکز را پردازش کنید، این خط را uncomment کنید:
+            // $allowedAgencyCodes = null;
+            
+            $agencies = $this->getAgencyData($allowedAgencyCodes);
             $totalCount = count($agencies);
             
             if ($totalCount == 0) {
@@ -323,6 +364,9 @@ class SendToCrmController extends Controller
             $allResults = [];
 
             echo "<h2>شروع ارسال $totalCount مرکز به CRM</h2>";
+            if ($allowedAgencyCodes !== null) {
+                echo "<p style='color: blue;'>فقط مراکز با کدهای مجاز پردازش می‌شوند: " . implode(', ', $allowedAgencyCodes) . "</p>";
+            }
             echo "<p>تعداد chunk ها: $totalChunks</p>";
             echo "<hr>";
             
@@ -348,14 +392,14 @@ class SendToCrmController extends Controller
                     if ($result['success']) {
                         if (isset($result['skipped']) && $result['skipped']) {
                             $skippedCount++;
-                            echo "<li style='color: blue;'>⏭ {$result['name']} - رد شد: {$result['message']}</li>";
+                            echo "<li style='color: blue;'>⏭ {$result['name']} (کد: {$agency['agency_code']}) - رد شد: {$result['message']}</li>";
                         } else {
                             $successCount++;
-                            echo "<li style='color: green;'>✓ {$result['name']} - موفق</li>";
+                            echo "<li style='color: green;'>✓ {$result['name']} (کد: {$agency['agency_code']}) - موفق</li>";
                         }
                     } else {
                         $errorCount++;
-                        echo "<li style='color: red;'>✗ {$result['name']} - خطا: {$result['message']}</li>";
+                        echo "<li style='color: red;'>✗ {$result['name']} (کد: {$agency['agency_code']}) - خطا: {$result['message']}</li>";
                     }
                     
                     // فلاش کردن خروجی برای نمایش فوری
@@ -389,7 +433,8 @@ class SendToCrmController extends Controller
                 'total' => $totalCount,
                 'success' => $successCount,
                 'skipped' => $skippedCount,
-                'error' => $errorCount
+                'error' => $errorCount,
+                'allowed_codes' => $allowedAgencyCodes
             ]);
 
         } catch (\Exception $e) {
@@ -1350,8 +1395,16 @@ class SendToCrmController extends Controller
     /**
      * دریافت اطلاعات مراکز
      */
-    private function getAgencyData()
+    private function getAgencyData($allowedAgencyCodes = null)
     {
+        // اگر پارامتر ارسال نشده، از کانفیگ استفاده کن
+        if ($allowedAgencyCodes === null) {
+            $filterEnabled = config('agency_crm_filter.filter_enabled', false);
+            if ($filterEnabled) {
+                $allowedAgencyCodes = config('agency_crm_filter.allowed_agency_codes', []);
+            }
+        }
+
         $desiredKeys = [
             'customer_type',
             'firstname',
@@ -1413,6 +1466,13 @@ class SendToCrmController extends Controller
             return $row;
         })->values();
 
+        // فیلتر کردن بر اساس کدهای مرکز مجاز (اگر تعریف شده باشد)
+        if ($allowedAgencyCodes !== null && is_array($allowedAgencyCodes) && !empty($allowedAgencyCodes)) {
+            $structured = $structured->filter(function ($agency) use ($allowedAgencyCodes) {
+                return in_array($agency['agency_code'], $allowedAgencyCodes);
+            })->values();
+        }
+
         return $structured->toArray();
     }
 
@@ -1466,6 +1526,91 @@ class SendToCrmController extends Controller
             'not ok', 'notok', 'not_ok' => 2, // غیرفعال = 2 در CRM
             default => 1 // پیش‌فرض فعال
         };
+    }
+
+    /**
+     * نمایش پیش‌نمایش مراکز فیلتر شده
+     */
+    public function previewFilteredAgencies()
+    {
+        try {
+            echo "<h2>پیش‌نمایش مراکز فیلتر شده</h2>";
+            
+            // دریافت تنظیمات از کانفیگ
+            $filterEnabled = config('agency_crm_filter.filter_enabled', false);
+            $allowedAgencyCodes = $filterEnabled ? config('agency_crm_filter.allowed_agency_codes', []) : null;
+            
+            if (!$filterEnabled) {
+                echo "<p style='color: orange;'>فیلتر غیرفعال است - همه مراکز نمایش داده می‌شوند</p>";
+            } else {
+                echo "<p style='color: blue;'>فیلتر فعال است - تعداد کدهای مجاز: " . count($allowedAgencyCodes) . "</p>";
+            }
+            
+            $agencies = $this->getAgencyData($allowedAgencyCodes);
+            $totalCount = count($agencies);
+            
+            if ($totalCount == 0) {
+                echo "<p style='color: red;'>هیچ مرکزی با کدهای تعریف شده یافت نشد</p>";
+                return;
+            }
+            
+            echo "<h3>مراکز یافت شده ($totalCount مرکز):</h3>";
+            echo "<table border='1' style='border-collapse: collapse; width: 100%; font-family: Arial;'>";
+            echo "<tr style='background-color: #f0f0f0;'>";
+            echo "<th style='padding: 8px;'>ردیف</th>";
+            echo "<th style='padding: 8px;'>کد مرکز</th>";
+            echo "<th style='padding: 8px;'>نام</th>";
+            echo "<th style='padding: 8px;'>موبایل</th>";
+            echo "<th style='padding: 8px;'>استان</th>";
+            echo "<th style='padding: 8px;'>شهر</th>";
+            echo "<th style='padding: 8px;'>وضعیت در CRM</th>";
+            echo "</tr>";
+            
+            $foundCodes = [];
+            foreach ($agencies as $index => $agency) {
+                $foundCodes[] = $agency['agency_code'];
+                $crmId = $this->getCrmServiceCenterId($agency['parent_id']);
+                $crmStatus = $crmId ? "موجود (ID: $crmId)" : "موجود نیست";
+                $crmColor = $crmId ? 'green' : 'red';
+                
+                echo "<tr>";
+                echo "<td style='padding: 8px;'>" . ($index + 1) . "</td>";
+                echo "<td style='padding: 8px;'><strong>{$agency['agency_code']}</strong></td>";
+                echo "<td style='padding: 8px;'>{$agency['name']}</td>";
+                echo "<td style='padding: 8px;'>{$agency['mobile']}</td>";
+                echo "<td style='padding: 8px;'>{$agency['province']}</td>";
+                echo "<td style='padding: 8px;'>{$agency['city']}</td>";
+                echo "<td style='padding: 8px; color: $crmColor;'>$crmStatus</td>";
+                echo "</tr>";
+            }
+            echo "</table>";
+            
+            // نمایش کدهای پیدا نشده
+            if ($filterEnabled && $allowedAgencyCodes) {
+                $notFoundCodes = array_diff($allowedAgencyCodes, $foundCodes);
+                if (!empty($notFoundCodes)) {
+                    echo "<div style='margin: 20px 0; padding: 15px; border: 1px solid orange; background-color: #fff3cd;'>";
+                    echo "<h4>⚠ کدهای پیدا نشده (" . count($notFoundCodes) . " کد):</h4>";
+                    echo "<p style='color: red;'>" . implode(', ', $notFoundCodes) . "</p>";
+                    echo "<p><small>این کدها در دیتابیس وجود ندارند یا اطلاعات کاملی ندارند</small></p>";
+                    echo "</div>";
+                }
+                
+                echo "<div style='margin: 20px 0; padding: 15px; border: 1px solid #ddd; background-color: #f9f9f9;'>";
+                echo "<h4>خلاصه:</h4>";
+                echo "<ul>";
+                echo "<li><strong>کل کدهای تعریف شده:</strong> " . count($allowedAgencyCodes) . "</li>";
+                echo "<li><strong>کدهای پیدا شده:</strong> <span style='color: green;'>" . count($foundCodes) . "</span></li>";
+                echo "<li><strong>کدهای پیدا نشده:</strong> <span style='color: red;'>" . count($notFoundCodes) . "</span></li>";
+                echo "<li><strong>درصد موفقیت:</strong> " . round((count($foundCodes) / count($allowedAgencyCodes)) * 100, 2) . "%</li>";
+                echo "</ul>";
+                echo "</div>";
+            }
+            
+        } catch (\Exception $e) {
+            echo "<h2 style='color: red;'>خطا در نمایش پیش‌نمایش:</h2>";
+            echo "<p>" . $e->getMessage() . "</p>";
+        }
     }
 
     /**
