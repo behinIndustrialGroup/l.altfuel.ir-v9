@@ -27,6 +27,7 @@ return [
         ['id' => 40, 'name' => 'شادمان'],
         ['id' => 1365, 'name' => 'آهنگران'],
         ['id' => 1427, 'name' => 'حاجیوند'],
+        ['id' => 2823, 'name' => 'رضایی'],
     ],
     'attachment-file-types' => [
         'image/png', 'image/jpg', 'image/jpeg', 'application/pdf', 'application/x-zip-compressed',
