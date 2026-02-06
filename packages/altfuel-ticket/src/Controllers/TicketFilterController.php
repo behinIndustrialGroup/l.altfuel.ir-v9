@@ -24,14 +24,35 @@ class TicketFilterController extends Controller
             $query->where('id', $request->ticket_number);
         }
 
-        if ($request->filled('date_from')) {
-            $from = Carbon::createFromTimestamp($request->date_from_alt / 1000)->startOfDay();
+        if ($request->filled('ticket_date_from')) {
+            $from = Carbon::createFromTimestamp($request->ticket_date_from_alt / 1000)->startOfDay();
             $query->where('created_at', '>=', $from);
         }
 
-        if ($request->filled('date_to')) {
-            $to = Carbon::createFromTimestamp($request->date_to_alt / 1000)->endOfDay();
+        if ($request->filled('ticket_date_to')) {
+            $to = Carbon::createFromTimestamp($request->ticket_date_to_alt / 1000)->endOfDay();
             $query->where('created_at', '<=', $to);
+        }
+
+        if ($request->filled('comment_date_from') || $request->filled('comment_date_to')) {
+            $commentQuery = TicketComment::query();
+
+            if ($request->filled('comment_date_from')) {
+                $from = Carbon::createFromTimestamp($request->comment_date_from_alt / 1000)->startOfDay();
+                $commentQuery->where('created_at', '>=', $from);
+            }
+
+            if ($request->filled('comment_date_to')) {
+                $to = Carbon::createFromTimestamp($request->comment_date_to_alt / 1000)->endOfDay();
+                $commentQuery->where('created_at', '<=', $to);
+            }
+
+            $ticketIds = $commentQuery->pluck('ticket_id')->unique();
+            if ($ticketIds->isNotEmpty()) {
+                $query->whereIn('id', $ticketIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         if ($request->filled('agent_id')) {

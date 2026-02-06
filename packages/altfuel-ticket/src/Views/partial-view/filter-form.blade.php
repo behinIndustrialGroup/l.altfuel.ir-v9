@@ -22,16 +22,35 @@
         <input type="text" name="ticket_number" class="form-control" placeholder="مثلاً 1234">
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <label>از تاریخ:</label>
-            <input type="text" id="date_from" name="date_from" class="form-control" placeholder="تاریخ شروع">
-            <input type="hidden" id="date_from_alt" name="date_from_alt" class="form-control" placeholder="تاریخ شروع">
+    <div class="form-group mb-3">
+        <label class="fw-bold">تاریخ تیکت:</label>
+        <div class="row">
+            <div class="col-md-6">
+                <label>از تاریخ:</label>
+                <input type="text" id="ticket_date_from" name="ticket_date_from" class="form-control" placeholder="تاریخ شروع">
+                <input type="hidden" id="ticket_date_from_alt" name="ticket_date_from_alt" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label>تا تاریخ:</label>
+                <input type="text" id="ticket_date_to" name="ticket_date_to" class="form-control" placeholder="تاریخ پایان">
+                <input type="hidden" id="ticket_date_to_alt" name="ticket_date_to_alt" class="form-control">
+            </div>
         </div>
-        <div class="col-md-6">
-            <label>تا تاریخ:</label>
-            <input type="text" id="date_to" name="date_to" class="form-control" placeholder="تاریخ پایان">
-            <input type="hidden" id="date_to_alt" name="date_to_alt" class="form-control" placeholder="تاریخ پایان">
+    </div>
+
+    <div class="form-group mb-2">
+        <label class="fw-bold">تاریخ کامنت:</label>
+        <div class="row">
+            <div class="col-md-6">
+                <label>از تاریخ:</label>
+                <input type="text" id="comment_date_from" name="comment_date_from" class="form-control" placeholder="تاریخ شروع">
+                <input type="hidden" id="comment_date_from_alt" name="comment_date_from_alt" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label>تا تاریخ:</label>
+                <input type="text" id="comment_date_to" name="comment_date_to" class="form-control" placeholder="تاریخ پایان">
+                <input type="hidden" id="comment_date_to_alt" name="comment_date_to_alt" class="form-control">
+            </div>
         </div>
     </div>
 
@@ -82,12 +101,12 @@
 </div>
 <script>
     $(document).ready(function() {
-        $('#date_from').persianDatepicker({
+        $('#ticket_date_from').persianDatepicker({
             format: 'YYYY/MM/DD',
             observer: true,
             initialValue: false,
             autoClose: true,
-            altField: "#date_from_alt",
+            altField: "#ticket_date_from_alt",
             calendar: {
                 persian: {
                     leapYearMode: 'astronomical',
@@ -95,15 +114,41 @@
                 }
             }
         });
-    });
 
-    $(document).ready(function() {
-        $('#date_to').persianDatepicker({
+        $('#ticket_date_to').persianDatepicker({
             format: 'YYYY/MM/DD',
             observer: true,
             initialValue: false,
             autoClose: true,
-            altField: "#date_to_alt",
+            altField: "#ticket_date_to_alt",
+            calendar: {
+                persian: {
+                    leapYearMode: 'astronomical',
+                    locale: 'fa'
+                }
+            }
+        });
+
+        $('#comment_date_from').persianDatepicker({
+            format: 'YYYY/MM/DD',
+            observer: true,
+            initialValue: false,
+            autoClose: true,
+            altField: "#comment_date_from_alt",
+            calendar: {
+                persian: {
+                    leapYearMode: 'astronomical',
+                    locale: 'fa'
+                }
+            }
+        });
+
+        $('#comment_date_to').persianDatepicker({
+            format: 'YYYY/MM/DD',
+            observer: true,
+            initialValue: false,
+            autoClose: true,
+            altField: "#comment_date_to_alt",
             calendar: {
                 persian: {
                     leapYearMode: 'astronomical',
