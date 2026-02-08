@@ -50,8 +50,6 @@ class TicketFilterController extends Controller
             $ticketIds = $commentQuery->pluck('ticket_id')->unique();
             if ($ticketIds->isNotEmpty()) {
                 $query->whereIn('id', $ticketIds);
-            } else {
-                $query->whereRaw('1 = 0');
             }
         }
 
