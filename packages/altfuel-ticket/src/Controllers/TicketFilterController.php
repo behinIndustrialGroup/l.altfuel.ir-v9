@@ -18,6 +18,14 @@ class TicketFilterController extends Controller
 {
     public function filterByAgent(Request $request)
     {
+        // بررسی اینکه اگر تاریخ کامنت پر شده، کارشناس هم باید انتخاب شده باشه
+        if (($request->filled('comment_date_from') || $request->filled('comment_date_to')) && !$request->filled('agent_id')) {
+            return response()->json([
+                'error' => true,
+                'message' => 'برای فیلتر بر اساس تاریخ کامنت، باید کارشناس را انتخاب کنید.'
+            ], 400);
+        }
+
         $query = Ticket::query();
 
         if ($request->filled('ticket_number')) {
@@ -32,25 +40,6 @@ class TicketFilterController extends Controller
         if ($request->filled('ticket_date_to')) {
             $to = Carbon::createFromTimestamp($request->ticket_date_to_alt / 1000)->endOfDay();
             $query->where('created_at', '<=', $to);
-        }
-
-        if ($request->filled('comment_date_from') || $request->filled('comment_date_to')) {
-            $commentQuery = TicketComment::query();
-
-            if ($request->filled('comment_date_from')) {
-                $from = Carbon::createFromTimestamp($request->comment_date_from_alt / 1000)->startOfDay();
-                $commentQuery->where('created_at', '>=', $from);
-            }
-
-            if ($request->filled('comment_date_to')) {
-                $to = Carbon::createFromTimestamp($request->comment_date_to_alt / 1000)->endOfDay();
-                $commentQuery->where('created_at', '<=', $to);
-            }
-
-            $ticketIds = $commentQuery->pluck('ticket_id')->unique();
-            if ($ticketIds->isNotEmpty()) {
-                $query->whereIn('id', $ticketIds);
-            }
         }
 
         if ($request->filled('agent_id')) {
@@ -71,8 +60,27 @@ class TicketFilterController extends Controller
                     }
                 }
             } else {
-                $ticketIds = TicketComment::where('user_id', $agentId)->pluck('ticket_id')->unique();
-                $query->whereIn('id', $ticketIds);
+                // اگر تاریخ کامنت هم پر شده، فیلتر ترکیبی اعمال میشه
+                $commentQuery = TicketComment::where('user_id', $agentId);
+
+                if ($request->filled('comment_date_from')) {
+                    $from = Carbon::createFromTimestamp($request->comment_date_from_alt / 1000)->startOfDay();
+                    $commentQuery->where('created_at', '>=', $from);
+                }
+
+                if ($request->filled('comment_date_to')) {
+                    $to = Carbon::createFromTimestamp($request->comment_date_to_alt / 1000)->endOfDay();
+                    $commentQuery->where('created_at', '<=', $to);
+                }
+
+                $ticketIds = $commentQuery->pluck('ticket_id')->unique();
+                
+                if ($ticketIds->isNotEmpty()) {
+                    $query->whereIn('id', $ticketIds);
+                } else {
+                    // اگر کامنتی پیدا نشد، نتیجه خالی برگردونیم
+                    $query->whereRaw('1 = 0');
+                }
             }
         }
 
