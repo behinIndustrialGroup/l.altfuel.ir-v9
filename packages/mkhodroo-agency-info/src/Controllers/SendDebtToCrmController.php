@@ -17,12 +17,22 @@ class SendDebtToCrmController extends Controller
     }
 
     /**
-     * ارسال اطلاعات بدهی مراکز به CRM
+     * ارسال اطلاعات بدهی مراکز به CRM (با پردازش chunk به chunk)
      */
     public function sendDebtDataToCrm()
     {
         try {
             set_time_limit(0);
+            @ini_set('output_buffering', 'off');
+            @ini_set('zlib.output_compression', 0);
+            @apache_setenv('no-gzip', 1);
+            @ini_set('implicit_flush', 1);
+            ob_implicit_flush(1);
+            
+            if (ob_get_level() == 0) ob_start();
+            
+            $chunkSize = 10; // تعداد مراکز در هر chunk
+            $offset = request()->get('offset', 0);
             
             $agencies = $this->getAgenciesWithCrmId();
             $totalCount = count($agencies);
@@ -32,63 +42,76 @@ class SendDebtToCrmController extends Controller
                 return;
             }
 
-            echo "<h2>شروع ارسال اطلاعات بدهی $totalCount مرکز به CRM</h2>";
+            // محاسبه chunk فعلی
+            $currentChunk = array_slice($agencies, $offset, $chunkSize);
+            $remainingCount = $totalCount - $offset - count($currentChunk);
+            
+            echo "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>";
+            echo "<h2>پردازش بدهی مراکز - Chunk " . (floor($offset / $chunkSize) + 1) . "</h2>";
+            echo "<p><strong>مراکز کل: $totalCount | پردازش شده: $offset | باقیمانده: " . ($remainingCount + count($currentChunk)) . "</strong></p>";
             echo "<hr>";
             
             $successCount = 0;
             $errorCount = 0;
             $skippedCount = 0;
-            $totalDebtRecords = 0;
 
-            foreach ($agencies as $agency) {
-                echo "<h3>پردازش اطلاعات بدهی: {$agency['name']}</h3>";
+            foreach ($currentChunk as $agency) {
+                echo "<h3>پردازش: {$agency['name']}</h3>";
                 echo "<ul>";
+                ob_flush();
+                flush();
 
-                // دریافت اطلاعات بدهی این مرکز
                 $debtData = $this->getDebtDataForAgency($agency['parent_id']);
                 
                 if (empty($debtData)) {
-                    echo "<li style='color: orange;'>⚠ هیچ اطلاعات بدهی یافت نشد</li>";
+                    echo "<li style='color: orange;'>⚠ بدون بدهی</li>";
                     $skippedCount++;
                 } else {
-                    // پردازش اطلاعات بدهی
                     foreach ($debtData as $debt) {
-                        // چک کردن وجود رکورد قبلی
                         $existingRecord = $this->checkExistingDebtRecord($debt, $agency['crm_service_center_id']);
-                        $totalDebtRecords++;
                         
                         if ($existingRecord) {
                             $skippedCount++;
-                            echo "<li style='color: orange;'>⚠ {$debt['display_name']} - قبلاً وجود دارد (رد شد)</li>";
+                            echo "<li style='color: orange;'>⚠ {$debt['display_name']} - تکراری</li>";
                         } else {
-                            $result = $this->createDebtRecord($debt, $agency['crm_service_center_id']);
+                            $result = $this->createDebtRecord($debt, $agency['crm_service_center_id'], false);
                             
                             if ($result['success']) {
                                 $successCount++;
-                                echo "<li style='color: blue;'>✓ {$debt['display_name']} - موفق</li>";
+                                echo "<li style='color: green;'>✓ {$debt['display_name']}</li>";
                             } else {
                                 $errorCount++;
-                                echo "<li style='color: red;'>✗ {$debt['display_name']} - خطا: {$result['message']}</li>";
+                                echo "<li style='color: red;'>✗ {$debt['display_name']} - {$result['message']}</li>";
                             }
                         }
+                        ob_flush();
+                        flush();
                     }
                 }
 
                 echo "</ul>";
-                echo "<hr>";
-                
-                // استراحت کوتاه
-                usleep(500000); // 0.5 ثانیه
+                ob_flush();
+                flush();
+                usleep(300000);
             }
 
-            echo "<h2>نتیجه نهایی</h2>";
-            echo "<p><strong>مراکز پردازش شده: $totalCount</strong></p>";
-            echo "<p><strong>رکوردهای بدهی: $totalDebtRecords</strong></p>";
-            echo "<p><strong>موفق: $successCount - خطا: $errorCount - رد شده: $skippedCount</strong></p>";
+            echo "<hr>";
+            echo "<p><strong>این Chunk: موفق: $successCount | خطا: $errorCount | رد شده: $skippedCount</strong></p>";
+            
+            // اگر مراکز بیشتری باقی مانده، دکمه ادامه نمایش بده
+            if ($remainingCount > 0) {
+                $nextOffset = $offset + $chunkSize;
+                echo "<br><a href='?offset=$nextOffset' style='display:inline-block;padding:10px 20px;background:#4CAF50;color:white;text-decoration:none;border-radius:5px;'>ادامه پردازش ($remainingCount مرکز باقیمانده)</a>";
+                echo "<script>setTimeout(function(){ window.location.href='?offset=$nextOffset'; }, 2000);</script>";
+            } else {
+                echo "<h2 style='color: green;'>✓ پردازش تمام مراکز تکمیل شد</h2>";
+            }
+            
+            echo "</body></html>";
+            ob_end_flush();
 
         } catch (\Exception $e) {
-            echo "<h2 style='color: red;'>خطا در پردازش:</h2>";
-            echo "<p>" . $e->getMessage() . "</p>";
+            echo "<h2 style='color: red;'>خطا: " . $e->getMessage() . "</h2>";
         }
     }
 
@@ -228,28 +251,39 @@ class SendDebtToCrmController extends Controller
     }
 
     /**
-     * چک کردن وجود رکورد بدهی قبلی در CRM
+     * چک کردن وجود رکورد بدهی قبلی در CRM (بهبود یافته)
      */
     private function checkExistingDebtRecord($debt, $serviceCenterId)
     {
         try {
-            // جستجو بر اساس نام، مبلغ و service center
-            $filter = "rhs_name eq '{$debt['display_name']}' and rhs_amountowed eq " . floatval($debt['amount']) . " and _rhs_servicecentercode_value eq '$serviceCenterId'";
+            // جستجوی دقیق‌تر با escape کردن single quote
+            $debtName = str_replace("'", "''", $debt['display_name']);
+            $amount = floatval($debt['amount']);
+            
+            // فیلتر بر اساس نام و service center (بدون مبلغ برای جلوگیری از مشکلات float)
+            $filter = "rhs_name eq '$debtName' and _rhs_servicecentercode_value eq '$serviceCenterId'";
 
             $response = $this->crmClient->request("rhs_debtinformations", "GET", [
                 '$filter' => $filter,
                 '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed',
-                '$top' => 1
+                '$top' => 5
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
                 $records = $data['value'] ?? [];
 
-                return count($records) > 0;
+                // چک دقیق‌تر روی مبلغ (با tolerance برای float)
+                foreach ($records as $record) {
+                    $existingAmount = floatval($record['rhs_amountowed'] ?? 0);
+                    if (abs($existingAmount - $amount) < 0.01) {
+                        return true;
+                    }
+                }
+                
+                return false;
             }
 
-            // اگر خطا در جستجو رخ داد، فرض می‌کنیم رکورد وجود ندارد
             return false;
         } catch (\Exception $e) {
             Log::error("Error checking existing debt record", [
@@ -258,7 +292,6 @@ class SendDebtToCrmController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            // در صورت خطا، فرض می‌کنیم رکورد وجود ندارد تا از دست رفتن داده جلوگیری شود
             return false;
         }
     }
@@ -367,7 +400,7 @@ class SendDebtToCrmController extends Controller
     /**
      * ایجاد رکورد بدهی در CRM
      */
-    private function createDebtRecord($debt, $serviceCenterId)
+    private function createDebtRecord($debt, $serviceCenterId, $verbose = false)
     {
         try {
             $debtData = [
@@ -376,62 +409,52 @@ class SendDebtToCrmController extends Controller
                 'rhs_ServiceCenterCode@odata.bind' => "/rhs_servicecenters($serviceCenterId)"
             ];
 
-            // اضافه کردن تاریخ پرداخت اگر وجود داشت
             if ($debt['pay_date']) {
                 $debtData['rhs_debtpaymentdate'] = $this->formatDate($debt['pay_date']);
             }
 
-            // اضافه کردن کد پیگیری اگر وجود داشت
             if ($debt['ref_id']) {
                 $debtData['rhs_paymentid'] = $debt['ref_id'];
             }
 
-            // حذف فیلدهای خالی
             $debtData = array_filter($debtData, function($value) {
                 return $value !== '' && $value !== null;
             });
 
-            echo "<h4>درحال ارسال بدهی به CRM:</h4>";
-            echo "<p><strong>نام انگلیسی:</strong> {$debt['name']}</p>";
-            echo "<p><strong>نام فارسی:</strong> {$debt['display_name']}</p>";
-            echo "<pre>";
-            print_r($debtData);
-            echo "</pre>";
+            if ($verbose) {
+                echo "<h4>ارسال به CRM:</h4>";
+                echo "<pre>" . json_encode($debtData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "</pre>";
+            }
 
             $response = $this->crmClient->request("rhs_debtinformations", "POST", $debtData);
             
-            echo "<h4>پاسخ CRM برای بدهی:</h4>";
-            echo "<p><strong>Status Code:</strong> " . $response->status() . "</p>";
-            echo "<p><strong>Response Body:</strong></p>";
-            echo "<pre>" . $response->body() . "</pre>";
+            if ($verbose) {
+                echo "<h4>پاسخ CRM:</h4>";
+                echo "<p>Status: " . $response->status() . "</p>";
+                echo "<pre>" . $response->body() . "</pre>";
+            }
             
             if ($response->successful()) {
-                echo "<p style='color: green;'>✓ درخواست بدهی موفق بود</p>";
                 return [
                     'success' => true,
-                    'message' => 'رکورد بدهی ایجاد شد'
+                    'message' => 'موفق'
                 ];
             }
 
-            // تحلیل خطاهای رایج
-            $errorBody = $response->body();
             $statusCode = $response->status();
-            
-            $errorMessage = "خطا در ایجاد رکورد بدهی - Status: $statusCode";
+            $errorMessage = "Status: $statusCode";
             
             if ($statusCode == 400) {
-                $errorMessage .= " (Bad Request - احتمالاً فیلد اجباری خالی است یا فرمت داده اشتباه است)";
+                $errorMessage = "Bad Request";
             } elseif ($statusCode == 404) {
-                $errorMessage .= " (Not Found - احتمالاً Service Center ID اشتباه است یا جدول rhs_debtinformation وجود ندارد)";
+                $errorMessage = "Not Found";
             } elseif ($statusCode == 401) {
-                $errorMessage .= " (Unauthorized - مشکل احراز هویت)";
-            } elseif ($statusCode == 403) {
-                $errorMessage .= " (Forbidden - عدم دسترسی)";
+                $errorMessage = "Unauthorized";
             }
 
             Log::error("Failed to create debt record", [
                 'debt_data' => $debtData,
-                'response_status' => $response->status(),
+                'response_status' => $statusCode,
                 'response_body' => $response->body()
             ]);
 
@@ -441,22 +464,20 @@ class SendDebtToCrmController extends Controller
             ];
 
         } catch (\Exception $e) {
-            echo "<h4 style='color: red;'>Exception در ایجاد بدهی رخ داد:</h4>";
-            echo "<p><strong>پیام خطا:</strong> " . $e->getMessage() . "</p>";
-            echo "<p><strong>فایل:</strong> " . $e->getFile() . "</p>";
-            echo "<p><strong>خط:</strong> " . $e->getLine() . "</p>";
-            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+            if ($verbose) {
+                echo "<h4 style='color: red;'>Exception:</h4>";
+                echo "<p>" . $e->getMessage() . "</p>";
+            }
             
             Log::error("Exception creating debt record", [
                 'debt' => $debt,
                 'service_center_id' => $serviceCenterId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Exception در ایجاد رکورد بدهی: ' . $e->getMessage()
+                'message' => 'Exception: ' . $e->getMessage()
             ];
         }
     }
