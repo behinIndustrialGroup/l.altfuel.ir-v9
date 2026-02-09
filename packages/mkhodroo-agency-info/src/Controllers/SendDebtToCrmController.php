@@ -53,15 +53,23 @@ class SendDebtToCrmController extends Controller
                 } else {
                     // پردازش اطلاعات بدهی
                     foreach ($debtData as $debt) {
-                        $result = $this->createDebtRecord($debt, $agency['crm_service_center_id']);
+                        // چک کردن وجود رکورد قبلی
+                        $existingRecord = $this->checkExistingDebtRecord($debt, $agency['crm_service_center_id']);
                         $totalDebtRecords++;
                         
-                        if ($result['success']) {
-                            $successCount++;
-                            echo "<li style='color: blue;'>✓ {$debt['display_name']} - موفق</li>";
+                        if ($existingRecord) {
+                            $skippedCount++;
+                            echo "<li style='color: orange;'>⚠ {$debt['display_name']} - قبلاً وجود دارد (رد شد)</li>";
                         } else {
-                            $errorCount++;
-                            echo "<li style='color: red;'>✗ {$debt['display_name']} - خطا: {$result['message']}</li>";
+                            $result = $this->createDebtRecord($debt, $agency['crm_service_center_id']);
+                            
+                            if ($result['success']) {
+                                $successCount++;
+                                echo "<li style='color: blue;'>✓ {$debt['display_name']} - موفق</li>";
+                            } else {
+                                $errorCount++;
+                                echo "<li style='color: red;'>✗ {$debt['display_name']} - خطا: {$result['message']}</li>";
+                            }
                         }
                     }
                 }
@@ -216,6 +224,42 @@ class SendDebtToCrmController extends Controller
             echo "<h2 style='color: red;'>خطا در تست:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
             echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        }
+    }
+
+    /**
+     * چک کردن وجود رکورد بدهی قبلی در CRM
+     */
+    private function checkExistingDebtRecord($debt, $serviceCenterId)
+    {
+        try {
+            // جستجو بر اساس نام، مبلغ و service center
+            $filter = "rhs_name eq '{$debt['display_name']}' and rhs_amountowed eq " . floatval($debt['amount']) . " and _rhs_servicecentercode_value eq '$serviceCenterId'";
+
+            $response = $this->crmClient->request("rhs_debtinformations", "GET", [
+                '$filter' => $filter,
+                '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed',
+                '$top' => 1
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $records = $data['value'] ?? [];
+
+                return count($records) > 0;
+            }
+
+            // اگر خطا در جستجو رخ داد، فرض می‌کنیم رکورد وجود ندارد
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Error checking existing debt record", [
+                'debt' => $debt,
+                'service_center_id' => $serviceCenterId,
+                'error' => $e->getMessage()
+            ]);
+
+            // در صورت خطا، فرض می‌کنیم رکورد وجود ندارد تا از دست رفتن داده جلوگیری شود
+            return false;
         }
     }
 
