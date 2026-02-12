@@ -78,23 +78,39 @@ class UserCentersController extends Controller
 
         $debts = [];
 
-        // خواندن بدهی‌ها از CRM
-        $response = $this->crmClient->request("rhs_debtinformations", "GET", [
-            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
-            '$filter' => "_rhs_servicecentercode_value eq '$serviceCenterId'",
-        ]);
+        // سعی ۱: بر اساس نام lookup که در SendDebtToCrmController استفاده شده (_rhs_servicecentercode_value)
+        $responses = [];
+        $filters = [
+            "_rhs_servicecentercode_value eq '$serviceCenterId'",
+            "_rhs_servicecenter_value eq '$serviceCenterId'",
+        ];
 
-        if ($response->successful()) {
+        foreach ($filters as $filter) {
+            $response = $this->crmClient->request("rhs_debtinformations", "GET", [
+                '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
+                '$filter' => $filter,
+            ]);
+
+            if (! $response->successful()) {
+                continue;
+            }
+
             $data = $response->json();
-            $debts = collect($data['value'] ?? [])
-                ->map(function (array $debt) {
-                    $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
+            $items = $data['value'] ?? [];
 
-                    $debt['is_paid'] = $isPaid;
+            if (! empty($items)) {
+                $debts = collect($items)
+                    ->map(function (array $debt) {
+                        $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
 
-                    return $debt;
-                })
-                ->toArray();
+                        $debt['is_paid'] = $isPaid;
+
+                        return $debt;
+                    })
+                    ->toArray();
+
+                break;
+            }
         }
 
         return view('AgencyView::user-debts', [
