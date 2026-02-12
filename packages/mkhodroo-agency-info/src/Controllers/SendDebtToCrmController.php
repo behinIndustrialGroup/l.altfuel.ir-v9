@@ -82,6 +82,12 @@ class SendDebtToCrmController extends Controller
                         $debt['ref_id'] = $agency->$refId;
 
                         if ($debt['amount'] && $debt['amount'] !== '' && $debt['amount'] !== '0') {
+                            // اگر رکورد مشابه در CRM وجود داشته باشد، دیگر ساخته نشود
+                            if ($this->checkExistingDebtRecord($debt, $agency->crm_service_center_id)) {
+                                echo "تکراری ";
+                                continue;
+                            }
+
                             $totalDebtRecords++;
                             $response = $this->createDebtRecord($debt, $agency->crm_service_center_id);
                             echo $response['message'] . " ";
@@ -172,11 +178,22 @@ class SendDebtToCrmController extends Controller
         try {
             $debtName = str_replace("'", "''", $debt['display_name']);
 
-            $filter = "rhs_name eq '$debtName' and rhs_amountowed eq " . floatval($debt['amount']) . " and _rhs_servicecentercode_value eq '$serviceCenterId'";
+            $conditions = [];
+            $conditions[] = "rhs_name eq '$debtName'";
+            $conditions[] = "rhs_amountowed eq " . floatval($debt['amount']);
+            $conditions[] = "_rhs_servicecentercode_value eq '$serviceCenterId'";
+
+            // اگر ref_id داریم، آن را هم در شرط در نظر بگیریم تا تکراری دقیق‌تر شود
+            if (!empty($debt['ref_id'])) {
+                $refId = str_replace("'", "''", $debt['ref_id']);
+                $conditions[] = "rhs_paymentid eq '$refId'";
+            }
+
+            $filter = implode(' and ', $conditions);
 
             $response = $this->crmClient->request("rhs_debtinformations", "GET", [
                 '$filter' => $filter,
-                '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed',
+                '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_paymentid',
                 '$top' => 1
             ]);
 
