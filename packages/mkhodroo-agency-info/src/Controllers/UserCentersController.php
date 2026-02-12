@@ -5,6 +5,7 @@ namespace Mkhodroo\AgencyInfo\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
+use Illuminate\Http\Request;
 
 class UserCentersController extends Controller
 {
@@ -25,7 +26,7 @@ class UserCentersController extends Controller
      * اگر الگوی نگهداری شماره‌ها (مثلاً 98+ / 0 اول شماره و ...) متفاوت باشد،
      * می‌توانید در همین متد قبل از join نرمال‌سازی لازم را اضافه کنید.
      */
-    public function index()
+    public function index(Request $request)
     {
         /** @var User $user */
         $user = auth()->user();
@@ -34,7 +35,8 @@ class UserCentersController extends Controller
             abort(403);
         }
 
-        $mobile = $user->email;
+        // اگر موبایل به‌عنوان تست ارسال شده باشد، از آن استفاده می‌کنیم
+        $mobile = $request->get('mobile', $user->email);
 
         $centers = [];
 

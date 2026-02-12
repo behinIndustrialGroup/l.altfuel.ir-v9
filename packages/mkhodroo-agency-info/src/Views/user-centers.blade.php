@@ -93,8 +93,8 @@
                         حساب کاربری شما ذخیره شده، مراکزی که در CRM ثبت شده‌اند نمایش داده می‌شوند.
                     </p>
                     <p class="uc-card__subtitle mb-0">
-                        <strong>کاربر:</strong> {{ $user->name ?? '-' }} |
-                        <strong>شماره تلفن (email):</strong>
+                        <strong>کاربر لاگین‌شده:</strong> {{ $user->name ?? '-' }} |
+                        <strong>شماره پیش‌فرض کاربر (email):</strong>
                         <span dir="ltr">{{ $user->email ?? '-' }}</span>
                     </p>
                 </div>
@@ -104,6 +104,30 @@
                 </div>
             </div>
             <div class="uc-table-wrapper table-responsive">
+                <form class="mb-4" method="GET" action="{{ route('agencyInfo.userCenters') }}">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">شماره تلفن (email) برای جستجو</label>
+                            <input type="text"
+                                   name="mobile"
+                                   class="form-control"
+                                   dir="ltr"
+                                   value="{{ request('mobile', $user->email) }}"
+                                   placeholder="مثال: 0912... یا ایمیل ذخیره شده">
+                        </div>
+                        <div class="col-md-2 mt-2 mt-md-0">
+                            <button type="submit" class="btn btn-primary w-100">
+                                جستجو
+                            </button>
+                        </div>
+                        <div class="col-md-6 mt-2 mt-md-0">
+                            <span class="text-muted small">
+                                شماره‌ای که جستجو می‌شود:
+                                <strong dir="ltr">{{ request('mobile', $user->email) }}</strong>
+                            </span>
+                        </div>
+                    </div>
+                </form>
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
