@@ -136,6 +136,7 @@
                             <th>کد مرکز</th>
                             <th>موبایل ثبت شده در CRM</th>
                             <th>تلفن</th>
+                            <th style="width: 150px;">بدهی‌ها</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,6 +147,20 @@
                                 <td dir="ltr">{{ $center['rhs_centercode'] ?? '-' }}</td>
                                 <td dir="ltr">{{ $center['rhs_mobile'] ?? '-' }}</td>
                                 <td dir="ltr">{{ $center['rhs_phone'] ?? '-' }}</td>
+                                <td>
+                                    @if(!empty($center['rhs_servicecenterid'] ?? null))
+                                        <a href="{{ route('agencyInfo.userCenters.debts', [
+                                                'serviceCenterId' => $center['rhs_servicecenterid'],
+                                                'name' => $center['rhs_name'] ?? null,
+                                                'code' => $center['rhs_centercode'] ?? null,
+                                            ]) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            مشاهده بدهی‌ها
+                                        </a>
+                                    @else
+                                        <span class="text-muted small">شناسه CRM موجود نیست</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>

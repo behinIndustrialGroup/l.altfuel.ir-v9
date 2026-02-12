@@ -61,6 +61,52 @@ class UserCentersController extends Controller
     }
 
     /**
+     * نمایش بدهی‌های یک مرکز خاص از CRM
+     */
+    public function debts(string $serviceCenterId, Request $request)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        // اطلاعات نمایشی مرکز (اختیاری، اگر از لیست ارسال شده باشد)
+        $centerName = $request->get('name');
+        $centerCode = $request->get('code');
+
+        $debts = [];
+
+        // خواندن بدهی‌ها از CRM
+        $response = $this->crmClient->request("rhs_debtinformations", "GET", [
+            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
+            '$filter' => "_rhs_servicecentercode_value eq '$serviceCenterId'",
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $debts = collect($data['value'] ?? [])
+                ->map(function (array $debt) {
+                    $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
+
+                    $debt['is_paid'] = $isPaid;
+
+                    return $debt;
+                })
+                ->toArray();
+        }
+
+        return view('AgencyView::user-debts', [
+            'user' => $user,
+            'serviceCenterId' => $serviceCenterId,
+            'centerName' => $centerName,
+            'centerCode' => $centerCode,
+            'debts' => $debts,
+        ]);
+    }
+
+    /**
      * نرمال‌سازی شماره موبایل برای تطبیق با CRM
      *
      * در صورت نیاز می‌توانید منطق را با فرمت واقعی داده‌های خود تنظیم کنید.
