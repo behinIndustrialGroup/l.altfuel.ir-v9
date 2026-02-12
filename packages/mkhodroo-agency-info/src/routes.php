@@ -16,6 +16,7 @@ use Mkhodroo\AgencyInfo\Controllers\QueryController;
 use Mkhodroo\AgencyInfo\Controllers\SendToCrmController;
 use Mkhodroo\AgencyInfo\Controllers\SendFinancialToCrmController;
 use Mkhodroo\AgencyInfo\Controllers\SendDebtToCrmController;
+use Mkhodroo\AgencyInfo\Controllers\UserCentersController;
 use Mkhodroo\AgencyInfo\Models\AgencyInfo;
 use Mkhodroo\Cities\Controllers\CityController;
 use Mkhodroo\UserRoles\Controllers\GetRoleController;
@@ -26,6 +27,7 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     Route::get('create-form', [CreateAgencyController::class, 'view'])->name('createForm');
     Route::post('create', [CreateAgencyController::class, 'create'])->name('create');
     Route::get('list-form', [AgencyListController::class, 'view'])->name('listForm');
+    Route::get('user-centers', [UserCentersController::class, 'index'])->name('userCenters');
     Route::get('list', [AgencyListController::class, 'list'])->name('list');
     Route::post('filter-list', [AgencyListController::class, 'filterList'])->name('filterList');
     Route::get('edit/{parent_id}', [AgencyController::class, 'view'])->name('editForm');
