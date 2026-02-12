@@ -5,6 +5,7 @@ namespace Mkhodroo\AgencyInfo\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class UserCentersController extends Controller
@@ -19,12 +20,12 @@ class UserCentersController extends Controller
     /**
      * نمایش مراکز متناظر کاربر لاگین‌شده بر اساس شماره تلفن
      *
-     * طبق نیاز شما، فرض شده است که:
-     * - شماره تلفن کاربر در ستون email جدول users ذخیره شده است
-     * - شماره تلفن مراکز در CRM در فیلد rhs_mobile ذخیره شده است
-     *
-     * اگر الگوی نگهداری شماره‌ها (مثلاً 98+ / 0 اول شماره و ...) متفاوت باشد،
-     * می‌توانید در همین متد قبل از join نرمال‌سازی لازم را اضافه کنید.
+     * منبع اصلی تطبیق، جدول local `agency_info` است:
+     * - mobile کاربر بر اساس فیلد email گرفته می‌شود
+     * - مراکز کاربر از `agency_info` با key=mobile پیدا می‌شوند
+     * - برای هر مرکز، مقدار ذخیره‌شده `crm_service_center_id` استفاده می‌شود
+     *   (همان مقداری که در SendDebtToCrmController برای ایجاد بدهی‌ها استفاده شده)
+     * - سپس اطلاعات تکمیلی مرکز از خود CRM بر اساس همین ID خوانده می‌شود
      */
     public function index(Request $request)
     {
@@ -43,14 +44,74 @@ class UserCentersController extends Controller
         if ($mobile) {
             $normalizedMobile = $this->normalizeMobile($mobile);
 
-            $response = $this->crmClient->request("rhs_servicecenters", "GET", [
-                '$select' => 'rhs_servicecenterid,rhs_name,rhs_centercode,rhs_mobile,rhs_phone',
-                '$filter' => "rhs_mobile eq '$normalizedMobile'",
-            ]);
+            // ۱. پیدا کردن parent_id های مراکز بر اساس mobile در agency_info
+            $parentIds = DB::table('agency_info')
+                ->where('key', 'mobile')
+                ->where('value', $normalizedMobile)
+                ->pluck('parent_id')
+                ->unique()
+                ->values();
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $centers = $data['value'] ?? [];
+            foreach ($parentIds as $parentId) {
+                // ۲. خواندن CRM Service Center ID که قبلاً ذخیره شده
+                $serviceCenterId = DB::table('agency_info')
+                    ->where('parent_id', $parentId)
+                    ->where('key', 'crm_service_center_id')
+                    ->value('value');
+
+                if (! $serviceCenterId) {
+                    continue;
+                }
+
+                // ۳. اطلاعات تکمیلی از CRM (در صورت امکان)
+                $crmName = null;
+                $crmCode = null;
+                $crmMobile = null;
+                $crmPhone = null;
+
+                $response = $this->crmClient->request("rhs_servicecenters($serviceCenterId)", "GET", [
+                    '$select' => 'rhs_servicecenterid,rhs_name,rhs_centercode,rhs_mobile,rhs_phone',
+                ]);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $crmName = $data['rhs_name'] ?? null;
+                    $crmCode = $data['rhs_centercode'] ?? null;
+                    $crmMobile = $data['rhs_mobile'] ?? null;
+                    $crmPhone = $data['rhs_phone'] ?? null;
+                }
+
+                // ۴. fallback به داده‌های local اگر چیزی در CRM نبود
+                if (! $crmName) {
+                    $firstname = DB::table('agency_info')
+                        ->where('parent_id', $parentId)
+                        ->where('key', 'firstname')
+                        ->value('value');
+                    $lastname = DB::table('agency_info')
+                        ->where('parent_id', $parentId)
+                        ->where('key', 'lastname')
+                        ->value('value');
+                    $crmName = trim(($firstname ?? '') . ' ' . ($lastname ?? ''));
+                }
+
+                if (! $crmCode) {
+                    $crmCode = DB::table('agency_info')
+                        ->where('parent_id', $parentId)
+                        ->where('key', 'agency_code')
+                        ->value('value');
+                }
+
+                if (! $crmMobile) {
+                    $crmMobile = $normalizedMobile;
+                }
+
+                $centers[] = [
+                    'service_center_id' => $serviceCenterId,
+                    'name' => $crmName ?: '-',
+                    'code' => $crmCode,
+                    'mobile' => $crmMobile,
+                    'phone' => $crmPhone,
+                ];
             }
         }
 

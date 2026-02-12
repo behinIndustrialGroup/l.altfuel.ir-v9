@@ -143,16 +143,16 @@
                         @forelse ($centers as $index => $center)
                             <tr>
                                 <td>{{ $index + 1 }}</td>
-                                <td>{{ $center['rhs_name'] ?? '-' }}</td>
-                                <td dir="ltr">{{ $center['rhs_centercode'] ?? '-' }}</td>
-                                <td dir="ltr">{{ $center['rhs_mobile'] ?? '-' }}</td>
-                                <td dir="ltr">{{ $center['rhs_phone'] ?? '-' }}</td>
+                                <td>{{ $center['name'] ?? '-' }}</td>
+                                <td dir="ltr">{{ $center['code'] ?? '-' }}</td>
+                                <td dir="ltr">{{ $center['mobile'] ?? '-' }}</td>
+                                <td dir="ltr">{{ $center['phone'] ?? '-' }}</td>
                                 <td>
-                                    @if(!empty($center['rhs_servicecenterid'] ?? null))
+                                    @if(!empty($center['service_center_id'] ?? null))
                                         <a href="{{ route('agencyInfo.userCenters.debts', [
-                                                'serviceCenterId' => $center['rhs_servicecenterid'],
-                                                'name' => $center['rhs_name'] ?? null,
-                                                'code' => $center['rhs_centercode'] ?? null,
+                                                'serviceCenterId' => $center['service_center_id'],
+                                                'name' => $center['name'] ?? null,
+                                                'code' => $center['code'] ?? null,
                                             ]) }}"
                                            class="btn btn-sm btn-outline-primary">
                                             مشاهده بدهی‌ها
