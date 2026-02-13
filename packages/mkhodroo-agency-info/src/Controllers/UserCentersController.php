@@ -5,7 +5,6 @@ namespace Mkhodroo\AgencyInfo\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class UserCentersController extends Controller
@@ -20,12 +19,10 @@ class UserCentersController extends Controller
     /**
      * نمایش مراکز متناظر کاربر لاگین‌شده بر اساس شماره تلفن
      *
-     * منبع اصلی تطبیق، جدول local `agency_info` است:
-     * - mobile کاربر بر اساس فیلد email گرفته می‌شود
-     * - مراکز کاربر از `agency_info` با key=mobile پیدا می‌شوند
-     * - برای هر مرکز، مقدار ذخیره‌شده `crm_service_center_id` استفاده می‌شود
-     *   (همان مقداری که در SendDebtToCrmController برای ایجاد بدهی‌ها استفاده شده)
-     * - سپس اطلاعات تکمیلی مرکز از خود CRM بر اساس همین ID خوانده می‌شود
+     * منبع اصلی تطبیق فقط CRM است:
+     * - mobile کاربر بر اساس فیلد email گرفته می‌شود (یا ورودی تست)
+     * - مراکز کاربر مستقیماً از جدول rhs_servicecenters در CRM با فیلتر روی rhs_mobile پیدا می‌شوند
+     * - هیچ وابستگی‌ای به جدول agency_info نداریم
      */
     public function index(Request $request)
     {
@@ -44,74 +41,46 @@ class UserCentersController extends Controller
         if ($mobile) {
             $normalizedMobile = $this->normalizeMobile($mobile);
 
-            // ۱. پیدا کردن parent_id های مراکز بر اساس mobile در agency_info
-            $parentIds = DB::table('agency_info')
-                ->where('key', 'mobile')
-                ->where('value', $normalizedMobile)
-                ->pluck('parent_id')
-                ->unique()
-                ->values();
+            // برای پوشش فرمت‌های مختلف شماره، چند فیلتر مختلف امتحان می‌کنیم
+            $mobilesToTry = [$normalizedMobile];
 
-            foreach ($parentIds as $parentId) {
-                // ۲. خواندن CRM Service Center ID که قبلاً ذخیره شده
-                $serviceCenterId = DB::table('agency_info')
-                    ->where('parent_id', $parentId)
-                    ->where('key', 'crm_service_center_id')
-                    ->value('value');
+            // اگر با 0 شروع می‌شود، نسخه‌های بین‌المللی را هم تست کن
+            if (str_starts_with($normalizedMobile, '0') && strlen($normalizedMobile) === 11) {
+                $withoutZero = substr($normalizedMobile, 1); // 912...
+                $mobilesToTry[] = '98' . $withoutZero;       // 98912...
+                $mobilesToTry[] = '+98' . $withoutZero;      // +98912...
+            }
 
-                if (! $serviceCenterId) {
+            $seenIds = [];
+
+            foreach ($mobilesToTry as $m) {
+                $response = $this->crmClient->request("rhs_servicecenters", "GET", [
+                    '$select' => 'rhs_servicecenterid,rhs_name,rhs_centercode,rhs_mobile,rhs_phone',
+                    '$filter' => "rhs_mobile eq '$m'",
+                ]);
+
+                if (! $response->successful()) {
                     continue;
                 }
 
-                // ۳. اطلاعات تکمیلی از CRM (در صورت امکان)
-                $crmName = null;
-                $crmCode = null;
-                $crmMobile = null;
-                $crmPhone = null;
+                $data = $response->json();
+                $items = $data['value'] ?? [];
 
-                $response = $this->crmClient->request("rhs_servicecenters($serviceCenterId)", "GET", [
-                    '$select' => 'rhs_servicecenterid,rhs_name,rhs_centercode,rhs_mobile,rhs_phone',
-                ]);
+                foreach ($items as $item) {
+                    $id = $item['rhs_servicecenterid'] ?? null;
+                    if (! $id || isset($seenIds[$id])) {
+                        continue;
+                    }
+                    $seenIds[$id] = true;
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $crmName = $data['rhs_name'] ?? null;
-                    $crmCode = $data['rhs_centercode'] ?? null;
-                    $crmMobile = $data['rhs_mobile'] ?? null;
-                    $crmPhone = $data['rhs_phone'] ?? null;
+                    $centers[] = [
+                        'service_center_id' => $id,
+                        'name' => $item['rhs_name'] ?? '-',
+                        'code' => $item['rhs_centercode'] ?? null,
+                        'mobile' => $item['rhs_mobile'] ?? $m,
+                        'phone' => $item['rhs_phone'] ?? null,
+                    ];
                 }
-
-                // ۴. fallback به داده‌های local اگر چیزی در CRM نبود
-                if (! $crmName) {
-                    $firstname = DB::table('agency_info')
-                        ->where('parent_id', $parentId)
-                        ->where('key', 'firstname')
-                        ->value('value');
-                    $lastname = DB::table('agency_info')
-                        ->where('parent_id', $parentId)
-                        ->where('key', 'lastname')
-                        ->value('value');
-                    $crmName = trim(($firstname ?? '') . ' ' . ($lastname ?? ''));
-                }
-
-                if (! $crmCode) {
-                    $crmCode = DB::table('agency_info')
-                        ->where('parent_id', $parentId)
-                        ->where('key', 'agency_code')
-                        ->value('value');
-                }
-
-                if (! $crmMobile) {
-                    $crmMobile = $normalizedMobile;
-                }
-
-                $centers[] = [
-                    'service_center_id' => $serviceCenterId,
-                    'name' => $crmName ?: '-',
-                    'code' => $crmCode,
-                    'mobile' => $crmMobile,
-                    'phone' => $crmPhone,
-                ];
             }
         }
 
