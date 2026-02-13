@@ -107,66 +107,30 @@ class UserCentersController extends Controller
         $centerCode = $request->get('code');
 
         $debts = [];
-        $debugInfo = [];
 
         // نرمال‌سازی GUID (حذف براکت و تبدیل به lowercase)
         $normalizedId = strtolower(trim($serviceCenterId, '{}'));
 
-        // فیلترهای مختلف برای تست
-        $filters = [
-            "_rhs_servicecentercode_value eq $normalizedId",
-            "_rhs_servicecenter_value eq $normalizedId",
-            "rhs_servicecentercode eq $normalizedId",
-            "rhs_servicecenter eq $normalizedId",
-        ];
+        // جستجوی بدهی‌ها بر اساس lookup field
+        // توجه: GUID در OData باید بدون کوتیشن باشد
+        $response = $this->crmClient->request("rhs_debtinformations", "GET", [
+            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
+            '$filter' => "_rhs_servicecentercode_value eq $normalizedId",
+        ]);
 
-        foreach ($filters as $index => $filter) {
-            $response = $this->crmClient->request("rhs_debtinformations", "GET", [
-                '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
-                '$filter' => $filter,
-            ]);
-
-            $debugInfo[$index] = [
-                'filter' => $filter,
-                'status' => $response->status(),
-                'successful' => $response->successful(),
-                'count' => 0,
-            ];
-
-            if (! $response->successful()) {
-                $debugInfo[$index]['error'] = $response->body();
-                continue;
-            }
-
+        if ($response->successful()) {
             $data = $response->json();
             $items = $data['value'] ?? [];
-            $debugInfo[$index]['count'] = count($items);
 
-            if (! empty($items)) {
-                $debts = collect($items)
-                    ->map(function (array $debt) {
-                        $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
+            $debts = collect($items)
+                ->map(function (array $debt) {
+                    $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
 
-                        $debt['is_paid'] = $isPaid;
+                    $debt['is_paid'] = $isPaid;
 
-                        return $debt;
-                    })
-                    ->toArray();
-
-                $debugInfo[$index]['success'] = true;
-                break;
-            }
-        }
-
-        // اگر در حالت دیباگ هستیم، اطلاعات را نمایش بده
-        if ($request->has('debug')) {
-            return response()->json([
-                'service_center_id' => $serviceCenterId,
-                'normalized_id' => $normalizedId,
-                'debts_found' => count($debts),
-                'debug_info' => $debugInfo,
-                'debts' => $debts,
-            ]);
+                    return $debt;
+                })
+                ->toArray();
         }
 
         return view('AgencyView::user-debts', [
