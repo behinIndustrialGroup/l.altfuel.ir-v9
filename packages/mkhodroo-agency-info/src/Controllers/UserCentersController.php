@@ -107,26 +107,40 @@ class UserCentersController extends Controller
         $centerCode = $request->get('code');
 
         $debts = [];
+        $debugInfo = [];
 
-        // سعی ۱: بر اساس نام lookup که در SendDebtToCrmController استفاده شده (_rhs_servicecentercode_value)
-        $responses = [];
+        // نرمال‌سازی GUID (حذف براکت و تبدیل به lowercase)
+        $normalizedId = strtolower(trim($serviceCenterId, '{}'));
+
+        // فیلترهای مختلف برای تست
         $filters = [
-            "_rhs_servicecentercode_value eq '$serviceCenterId'",
-            "_rhs_servicecenter_value eq '$serviceCenterId'",
+            "_rhs_servicecentercode_value eq $normalizedId",
+            "_rhs_servicecenter_value eq $normalizedId",
+            "rhs_servicecentercode eq $normalizedId",
+            "rhs_servicecenter eq $normalizedId",
         ];
 
-        foreach ($filters as $filter) {
+        foreach ($filters as $index => $filter) {
             $response = $this->crmClient->request("rhs_debtinformations", "GET", [
                 '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
                 '$filter' => $filter,
             ]);
 
+            $debugInfo[$index] = [
+                'filter' => $filter,
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+                'count' => 0,
+            ];
+
             if (! $response->successful()) {
+                $debugInfo[$index]['error'] = $response->body();
                 continue;
             }
 
             $data = $response->json();
             $items = $data['value'] ?? [];
+            $debugInfo[$index]['count'] = count($items);
 
             if (! empty($items)) {
                 $debts = collect($items)
@@ -139,8 +153,20 @@ class UserCentersController extends Controller
                     })
                     ->toArray();
 
+                $debugInfo[$index]['success'] = true;
                 break;
             }
+        }
+
+        // اگر در حالت دیباگ هستیم، اطلاعات را نمایش بده
+        if ($request->has('debug')) {
+            return response()->json([
+                'service_center_id' => $serviceCenterId,
+                'normalized_id' => $normalizedId,
+                'debts_found' => count($debts),
+                'debug_info' => $debugInfo,
+                'debts' => $debts,
+            ]);
         }
 
         return view('AgencyView::user-debts', [
