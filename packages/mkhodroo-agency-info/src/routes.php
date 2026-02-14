@@ -29,6 +29,8 @@ Route::name('agencyInfo.')->prefix('agency-info')->middleware(['web', 'auth', 'a
     Route::get('list-form', [AgencyListController::class, 'view'])->name('listForm');
     Route::get('user-centers', [UserCentersController::class, 'index'])->name('userCenters');
     Route::get('user-centers/{serviceCenterId}/debts', [UserCentersController::class, 'debts'])->name('userCenters.debts');
+    Route::post('user-centers/debt/{debtId}/pay', [UserCentersController::class, 'payDebt'])->name('userCenters.payDebt');
+    Route::get('user-centers/verify-debt-payment', [UserCentersController::class, 'verifyDebtPayment'])->name('user-centers.verify-debt-payment');
     Route::get('list', [AgencyListController::class, 'list'])->name('list');
     Route::post('filter-list', [AgencyListController::class, 'filterList'])->name('filterList');
     Route::get('edit/{parent_id}', [AgencyController::class, 'view'])->name('editForm');

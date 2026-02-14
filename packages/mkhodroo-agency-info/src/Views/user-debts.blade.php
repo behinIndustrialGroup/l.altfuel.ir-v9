@@ -73,6 +73,22 @@
 
 @section('content')
     <div class="ud-container">
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fa fa-exclamation-circle ms-1"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fa fa-check-circle ms-1"></i>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="ud-card">
             <div class="ud-card__header d-flex justify-content-between align-items-start flex-column flex-lg-row">
                 <div>
@@ -135,9 +151,13 @@
                                 </td>
                                 <td>
                                     @if(! $isPaid)
-                                        <button type="button" class="btn btn-sm btn-success">
-                                            پرداخت بدهی
-                                        </button>
+                                        <form action="{{ route('agencyInfo.userCenters.payDebt', ['debtId' => $debt['rhs_debtinformationid']]) }}" method="POST" style="display: inline;">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fa fa-credit-card ms-1"></i>
+                                                پرداخت بدهی
+                                            </button>
+                                        </form>
                                     @else
                                         <span class="text-muted small">پرداخت شده</span>
                                     @endif

@@ -2,10 +2,12 @@
 
 namespace Mkhodroo\AgencyInfo\Controllers;
 
+use App\CustomClasses\zibal2;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class UserCentersController extends Controller
 {
@@ -139,6 +141,148 @@ class UserCentersController extends Controller
             'centerName' => $centerName,
             'centerCode' => $centerCode,
             'debts' => $debts,
+        ]);
+    }
+
+    /**
+     * شروع فرآیند پرداخت بدهی
+     */
+    public function payDebt(string $debtId, Request $request)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        // نرمال‌سازی GUID
+        $normalizedId = strtolower(trim($debtId, '{}'));
+
+        // دریافت اطلاعات بدهی از CRM
+        $response = $this->crmClient->request("rhs_debtinformations($normalizedId)", "GET", [
+            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid,_rhs_servicecentercode_value',
+        ]);
+
+        if (! $response->successful()) {
+            abort(404, 'بدهی مورد نظر یافت نشد');
+        }
+
+        $debt = $response->json();
+
+        // بررسی اینکه بدهی قبلاً پرداخت نشده باشد
+        if (! empty($debt['rhs_debtpaymentdate']) || ! empty($debt['rhs_paymentid'])) {
+            return redirect()->back()->with('error', 'این بدهی قبلاً پرداخت شده است');
+        }
+
+        $amount = $debt['rhs_amountowed'] ?? 0;
+
+        if ($amount <= 0) {
+            return redirect()->back()->with('error', 'مبلغ بدهی نامعتبر است');
+        }
+
+        // آماده‌سازی درگاه پرداخت
+        $callbackUrl = route('user-centers.verify-debt-payment');
+        $description = sprintf(
+            'پرداخت بدهی %s به مبلغ %s تومان',
+            $debt['rhs_name'] ?? 'بدون عنوان',
+            number_format($amount)
+        );
+
+        $authorityCode = zibal2::getAuthority($amount, $description, $user->email, $callbackUrl);
+
+        if (! $authorityCode) {
+            return redirect()->back()->with('error', 'خطا در اتصال به درگاه پرداخت');
+        }
+
+        // ذخیره اطلاعات پرداخت در Cache برای 15 دقیقه
+        Cache::put("debt_payment_{$authorityCode}", [
+            'debt_id' => $normalizedId,
+            'user_id' => $user->id,
+            'amount' => $amount,
+            'debt_name' => $debt['rhs_name'] ?? 'بدون عنوان',
+            'service_center_id' => $debt['_rhs_servicecentercode_value'] ?? null,
+        ], now()->addMinutes(15));
+
+        // هدایت به درگاه پرداخت
+        return redirect(config('zibal.pay_url') . $authorityCode);
+    }
+
+    /**
+     * تایید پرداخت بدهی و ثبت در CRM
+     */
+    public function verifyDebtPayment(Request $request)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        $authority = $request->Authority ?? $request->trackId;
+
+        if (! $authority) {
+            return view('AgencyView::debt-payment-result', [
+                'success' => false,
+                'message' => 'کد پیگیری نامعتبر است',
+            ]);
+        }
+
+        // دریافت اطلاعات پرداخت از Cache
+        $paymentData = Cache::get("debt_payment_{$authority}");
+
+        if (! $paymentData) {
+            return view('AgencyView::debt-payment-result', [
+                'success' => false,
+                'message' => 'اطلاعات پرداخت یافت نشد یا منقضی شده است',
+            ]);
+        }
+
+        // تایید پرداخت با درگاه
+        $refId = zibal2::verify($request, $paymentData['amount']);
+
+        if (! $refId) {
+            return view('AgencyView::debt-payment-result', [
+                'success' => false,
+                'message' => 'پرداخت ناموفق بود',
+                'debt_name' => $paymentData['debt_name'],
+                'amount' => $paymentData['amount'],
+            ]);
+        }
+
+        // ثبت اطلاعات پرداخت در CRM
+        $updateResponse = $this->crmClient->request(
+            "rhs_debtinformations({$paymentData['debt_id']})",
+            "PATCH",
+            [],
+            [
+                'rhs_paymentid' => (string) $refId,
+                'rhs_debtpaymentdate' => now()->format('Y-m-d'),
+            ]
+        );
+
+        // حذف اطلاعات از Cache
+        Cache::forget("debt_payment_{$authority}");
+
+        if (! $updateResponse->successful()) {
+            // پرداخت موفق بود اما ثبت در CRM ناموفق
+            return view('AgencyView::debt-payment-result', [
+                'success' => true,
+                'warning' => true,
+                'message' => 'پرداخت با موفقیت انجام شد اما خطا در ثبت اطلاعات در سیستم رخ داد. لطفاً با پشتیبانی تماس بگیرید.',
+                'ref_id' => $refId,
+                'debt_name' => $paymentData['debt_name'],
+                'amount' => $paymentData['amount'],
+            ]);
+        }
+
+        return view('AgencyView::debt-payment-result', [
+            'success' => true,
+            'message' => 'پرداخت با موفقیت انجام شد',
+            'ref_id' => $refId,
+            'debt_name' => $paymentData['debt_name'],
+            'amount' => $paymentData['amount'],
         ]);
     }
 
