@@ -8,6 +8,7 @@ use App\Models\User;
 use Behin\CrmClient\CrmClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class UserCentersController extends Controller
 {
@@ -190,7 +191,6 @@ class UserCentersController extends Controller
         );
 
         $authorityCode = zibal2::getAuthority($amount, $description, $user->email, $callbackUrl);
-
         if (! $authorityCode) {
             return redirect()->back()->with('error', 'خطا در اتصال به درگاه پرداخت');
         }
