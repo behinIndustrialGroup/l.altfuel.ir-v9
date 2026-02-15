@@ -71,14 +71,15 @@ class zibalTest
 
             );
 
-            $response = self::postToZibal('verify', $parameters);
+            $response = self::postToZibal('inquiry', $parameters);
 
             if ($response->result == 100) {
-                return $response->refNumber;
+                return $response->refNumber ?? 'refId';
                 echo "<pre>"; //for pretty view :)
                 var_dump($response);
                 //update database or something else
-            } else {
+            }
+            else {
                 return 0;
                 echo "result: " . $response->result . "<br>";
                 echo "message: " . $response->message;

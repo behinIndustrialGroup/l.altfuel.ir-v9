@@ -262,6 +262,9 @@ class UserCentersController extends Controller
             ]
         );
 
+        Log::info('test');
+        Log::info((array) $updateResponse);
+
         // حذف اطلاعات از Cache
         Cache::forget("debt_payment_{$authority}");
 
