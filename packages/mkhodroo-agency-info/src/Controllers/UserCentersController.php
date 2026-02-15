@@ -182,7 +182,7 @@ class UserCentersController extends Controller
         }
 
         // آماده‌سازی درگاه پرداخت
-        $callbackUrl = route('user-centers.verify-debt-payment');
+        $callbackUrl = route('agencyInfo.user-centers.verify-debt-payment');
         $description = sprintf(
             'پرداخت بدهی %s به مبلغ %s تومان',
             $debt['rhs_name'] ?? 'بدون عنوان',
