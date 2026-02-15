@@ -8,7 +8,7 @@ use SoapClient;
 
 class zibal2
 {
-    protected static $merchantId = "zibal";
+    protected static $merchantId = "693d3b04666ab9002003d5dd";
 
     protected $callbackUrl;
 
@@ -23,6 +23,7 @@ class zibal2
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($parameters));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response  = curl_exec($ch);
+        // return $response;
         curl_close($ch);
         return json_decode($response);
     }
@@ -39,7 +40,8 @@ class zibal2
         );
 
         $response = self::postToZibal('request', $parameters);
-        var_dump($response);
+        // return $response;
+        // Log::info($response);
         if ($response->result == 100) {
             return $response->trackId;
             $startGateWayUrl = "https://gateway.zibal.ir/start/" . $response->trackId;
