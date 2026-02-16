@@ -309,8 +309,7 @@ class UserCentersController extends Controller
             $response = $this->crmClient->request(
                 "rhs_debtinformations({$debtId})",
                 "PATCH",
-                [],
-                $payload
+                $payload  // برای PATCH، پارامتر سوم body است نه query parameters
             );
 
             if ($response->successful()) {
