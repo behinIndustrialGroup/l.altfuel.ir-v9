@@ -32,7 +32,9 @@ class IrngvChargeController extends Controller
 
         Log::info($info);
 
-        $response = Http::asMultipart()->post(
+        $response = Http::withOptions([
+            'verify' => false,
+        ])->asMultipart()->post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
                 [
@@ -104,7 +106,9 @@ class IrngvChargeController extends Controller
                 'ref_id' => $result,
                 'status' => 'success',
             ]);
-            $response = Http::asMultipart()->post(
+            $response = Http::withOptions([
+                'verify' => false,
+            ])->asMultipart()->post(
                 'https://irngv.mimt.gov.ir/api/PaymentServices/PaymentInfo',
                 [
                     [
@@ -125,11 +129,11 @@ class IrngvChargeController extends Controller
                     ]
                 ]
             );
-            return redirect("https://irngv.mimt.gov.ir/blog/paid/". $irngvCharge->order_id);
+            return redirect("https://irngv.mimt.gov.ir/blog/paid/" . $irngvCharge->order_id);
             return $response->json();
         }
 
-        return redirect("https://irngv.mimt.gov.ir/blog/paid/". $irngvCharge->order_id);
+        return redirect("https://irngv.mimt.gov.ir/blog/paid/" . $irngvCharge->order_id);
     }
 
     public function status(Request $request)
