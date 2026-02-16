@@ -251,24 +251,13 @@ class UserCentersController extends Controller
             ]);
         }
 
-        // ثبت اطلاعات پرداخت در CRM
-        $updateResponse = $this->crmClient->request(
-            "rhs_debtinformations({$paymentData['debt_id']})",
-            "PATCH",
-            [],
-            [
-                'rhs_paymentid' => (string) $refId,
-                'rhs_debtpaymentdate' => now()->format('Y-m-d'),
-            ]
-        );
-
-        Log::info('test');
-        Log::info((array) $updateResponse);
+        // استفاده از متد کمکی که فرمت‌های مختلف رو امتحان می‌کنه
+        $updateResult = $this->tryUpdateDebt($paymentData['debt_id'], (string) $refId);
 
         // حذف اطلاعات از Cache
         Cache::forget("debt_payment_{$authority}");
 
-        if (! $updateResponse->successful()) {
+        if (! $updateResult['success']) {
             // پرداخت موفق بود اما ثبت در CRM ناموفق
             return view('AgencyView::debt-payment-result', [
                 'success' => true,
@@ -287,6 +276,71 @@ class UserCentersController extends Controller
             'debt_name' => $paymentData['debt_name'],
             'amount' => $paymentData['amount'],
         ]);
+    }
+
+    /**
+     * تلاش برای آپدیت بدهی با فرمت‌های مختلف
+     */
+    protected function tryUpdateDebt(string $debtId, string $refId): array
+    {
+        // فرمت‌های مختلف تاریخ که CRM ممکنه بپذیره
+        $dateFormats = [
+            now()->format('Y-m-d\TH:i:s\Z'),           // ISO 8601 UTC
+            now()->format('Y-m-d\TH:i:sP'),            // ISO 8601 with timezone
+            now()->format('Y-m-d'),                     // Simple date
+            now()->toIso8601String(),                   // Laravel ISO 8601
+            now()->toDateTimeString(),                  // Y-m-d H:i:s
+        ];
+
+        $lastError = null;
+
+        foreach ($dateFormats as $index => $dateFormat) {
+            $payload = [
+                'rhs_paymentid' => (string) $refId,
+                'rhs_debtpaymentdate' => $dateFormat,
+            ];
+
+            Log::info("Attempt #{$index} to update debt", [
+                'debt_id' => $debtId,
+                'date_format' => $dateFormat,
+                'payload' => $payload,
+            ]);
+
+            $response = $this->crmClient->request(
+                "rhs_debtinformations({$debtId})",
+                "PATCH",
+                [],
+                $payload
+            );
+
+            if ($response->successful()) {
+                Log::info("Successfully updated debt with format #{$index}", [
+                    'date_format' => $dateFormat,
+                ]);
+
+                return [
+                    'success' => true,
+                    'format_used' => $dateFormat,
+                ];
+            }
+
+            $lastError = [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'format' => $dateFormat,
+            ];
+
+            Log::warning("Attempt #{$index} failed", $lastError);
+        }
+
+        Log::error('All update attempts failed', [
+            'last_error' => $lastError,
+        ]);
+
+        return [
+            'success' => false,
+            'last_error' => $lastError,
+        ];
     }
 
     /**
@@ -316,4 +370,3 @@ class UserCentersController extends Controller
         return $mobile;
     }
 }
-
