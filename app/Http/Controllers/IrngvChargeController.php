@@ -32,9 +32,7 @@ class IrngvChargeController extends Controller
 
         Log::info($info);
 
-        $response = Http::withOptions([
-    'verify' => false,
-])->asMultipart()->post(
+        $response = Http::asMultipart()->post(
             'https://irngv.mimt.gov.ir/api/PaymentServices/OrderInfo',
             [
                 [
@@ -106,9 +104,7 @@ class IrngvChargeController extends Controller
                 'ref_id' => $result,
                 'status' => 'success',
             ]);
-            $response = Http::withOptions([
-    'verify' => false,
-])->asMultipart()->post(
+            $response = Http::asMultipart()->post(
                 'https://irngv.mimt.gov.ir/api/PaymentServices/PaymentInfo',
                 [
                     [
