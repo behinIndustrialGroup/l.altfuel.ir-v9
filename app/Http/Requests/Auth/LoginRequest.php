@@ -48,7 +48,7 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
         // return response("",500);
         $user = User::where('email', $this->only('email'))->first();
-        if($user->disabled === 1){
+        if(isset($user->disabled) and $user->disabled === 1){
             throw new Exception("کاربر غیر فعال شده");
         }
         if (! Auth::attempt($this->only('email', 'password'), 1)) {

@@ -30,7 +30,7 @@ class IrngvChargeController extends Controller
             'user_agent'    => $request->userAgent(),
         ];
 
-        Log::info($info);
+        // Log::info($info);
 
         $response = Http::withOptions([
             'verify' => false,
@@ -45,7 +45,13 @@ class IrngvChargeController extends Controller
         );
 
         if ($response->successful()) {
-            Log::info(json_encode($response->json()));
+            Log::build([
+                'driver' => 'single',
+                'path' => storage_path("logs/irngv-payments/{$orderId}.log"),
+            ])->info('response from irngv for start: ', (array)$response->json());
+            // Log::info('#######################');
+            // Log::info('response from irngv for start');
+            // Log::info((array)$response->json());
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
             $amount = $data['amount'] ?? '10000';
@@ -129,6 +135,33 @@ class IrngvChargeController extends Controller
                     ]
                 ]
             );
+            Log::build([
+                'driver' => 'single',
+                'path' => storage_path("logs/irngv-payments/{$irngvCharge->order_id}.log"),
+            ])->info('data send to irngv for verify: ', [
+                [
+                    'name'     => 'orderCode',
+                    'contents' => $irngvCharge->order_id,
+                ],
+                [
+                    'name' => 'amount',
+                    'contents' => $irngvCharge->amount,
+                ],
+                [
+                    'name' => 'order_id',
+                    'contents' => $irngvCharge->ref_id,
+                ],
+                [
+                    'name' => 'payment_status',
+                    'contents' => 200,
+                ]
+            ]);
+
+            Log::build([
+                'driver' => 'single',
+                'path' => storage_path("logs/irngv-payments/{$irngvCharge->order_id}.log"),
+            ])->info('response from irngv for verify: ', (array)$response->json());
+            
             return redirect("https://irngv.mimt.gov.ir/blog/paid/" . $irngvCharge->order_id);
             return $response->json();
         }

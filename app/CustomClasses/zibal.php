@@ -97,6 +97,8 @@ class zibal
         );
 
         $response = self::postToZibal('verify', $parameters);
+        Log::info('response from zibal: ');
+        Log::info((array) $response);
 
         if ($response->result == 100 or $response->result == 201) {
             return $response->refNumber ?? 1;
