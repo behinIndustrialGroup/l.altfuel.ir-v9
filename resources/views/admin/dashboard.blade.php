@@ -5,7 +5,7 @@
 @endsection
 
 @section('content')
-    @if (access('آیکون مشاهده مراکز من'))
+    @if (auth()->user()->access('آیکون مشاهده مراکز من'))
         <div class="col-sm-3 ">
             <!-- small box -->
             <div class="small-box bg-primary">
