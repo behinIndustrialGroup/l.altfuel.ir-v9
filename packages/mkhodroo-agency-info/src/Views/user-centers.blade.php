@@ -87,16 +87,16 @@
             <div class="uc-card__header d-flex justify-content-between align-items-start flex-column flex-lg-row">
                 <div>
                     <h1 class="uc-card__title mb-2">مراکز متصل به شما</h1>
-                    <p class="uc-card__subtitle">
+                    {{-- <p class="uc-card__subtitle">
                         در این صفحه بر اساس شماره تلفنی که در ستون
                         <strong>email</strong>
                         حساب کاربری شما ذخیره شده، مراکزی که در CRM ثبت شده‌اند نمایش داده می‌شوند.
-                    </p>
-                    <p class="uc-card__subtitle mb-0">
+                    </p> --}}
+                    {{-- <p class="uc-card__subtitle mb-0">
                         <strong>کاربر لاگین‌شده:</strong> {{ $user->name ?? '-' }} |
                         <strong>شماره پیش‌فرض کاربر (email):</strong>
                         <span dir="ltr">{{ $user->email ?? '-' }}</span>
-                    </p>
+                    </p> --}}
                 </div>
                 <div class="uc-badge mt-3 mt-lg-0">
                     <i class="fa fa-building ms-1"></i>
@@ -104,7 +104,7 @@
                 </div>
             </div>
             <div class="uc-table-wrapper table-responsive">
-                <form class="mb-4" method="GET" action="{{ route('agencyInfo.userCenters') }}">
+                {{-- <form class="mb-4" method="GET" action="{{ route('agencyInfo.userCenters') }}">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-4">
                             <label class="form-label">شماره تلفن (email) برای جستجو</label>
@@ -127,7 +127,7 @@
                             </span>
                         </div>
                     </div>
-                </form>
+                </form> --}}
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>

@@ -99,9 +99,9 @@
                             | <strong>کد مرکز:</strong> <span dir="ltr">{{ $centerCode }}</span>
                         @endif
                     </p>
-                    <p class="ud-card__subtitle mb-0">
+                    {{-- <p class="ud-card__subtitle mb-0">
                         <strong>کاربر:</strong> {{ $user->name ?? '-' }}
-                    </p>
+                    </p> --}}
                 </div>
                 <div class="ud-badge mt-3 mt-lg-0">
                     <i class="fa fa-file-invoice-dollar ms-1"></i>
