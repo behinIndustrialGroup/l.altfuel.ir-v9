@@ -40,7 +40,3 @@ class GetCaseVarsController extends Controller
         ->get();
     }
 }
-
-class variableStruct {
-    public $name;
-  }

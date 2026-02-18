@@ -179,11 +179,11 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'access'])->group(functi
     Route::get('/editqr/{id}', [QrController::class, 'editform']);
     Route::post('/editqr/{id}', [QrController::class, 'edit']);
 
-    Route::get('/addarchive', 'ArchiveController@index');
-    Route::post('/addarchive', 'ArchiveController@create');
+    // Route::get('/addarchive', 'ArchiveController@index');
+    // Route::post('/addarchive', 'ArchiveController@create');
 
-    Route::get('/addstatus', 'ArchiveController@addstatusform');
-    Route::post('/addstatus', 'ArchiveController@addstatus');
+    // Route::get('/addstatus', 'ArchiveController@addstatusform');
+    // Route::post('/addstatus', 'ArchiveController@addstatus');
 
     Route::name('agency.')->prefix('/agency/')->group(function () {
         Route::get('', [AgencyController::class, 'listForm'])->name('list-form');
@@ -251,13 +251,13 @@ Route::prefix('admin')->middleware(['auth', 'verified', 'access'])->group(functi
     });
 
     Route::prefix('/contractors')->group(function () {
-        Route::get('/', 'ContractorsController@index');
+        // Route::get('/', 'ContractorsController@index');
 
-        Route::get('/show/{id}', 'ContractorsController@show');
-        Route::post('edit/{id}', 'ContractorsController@edit');
+        // Route::get('/show/{id}', 'ContractorsController@show');
+        // Route::post('edit/{id}', 'ContractorsController@edit');
 
-        Route::get('/add', 'ContractorsController@addform');
-        Route::post('/add', 'ContractorsController@addmarkaz');
+        // Route::get('/add', 'ContractorsController@addform');
+        // Route::post('/add', 'ContractorsController@addmarkaz');
     });
 
 

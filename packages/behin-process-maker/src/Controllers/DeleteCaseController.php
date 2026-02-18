@@ -19,6 +19,3 @@ class DeleteCaseController extends Controller
     }
 }
 
-class variableStruct {
-    public $name;
-  }
