@@ -5,17 +5,20 @@
 @endsection
 
 @section('content')
-    @if (auth()->user()->access('پذیرش همایش'))
-        <div class="col-lg-3 col-6">
-            <div class="small-box bg-info">
+    @if (access('آیکون مشاهده مراکز من'))
+        <div class="col-sm-3 ">
+            <!-- small box -->
+            <div class="small-box bg-primary">
                 <div class="inner">
-                    <p>پذیرش همایش</p>
+                    <h3>{{ trans('مراکز من') }}</h3>
+
+                    <p>{{ trans('مشاهده اطلاعات مراکز مرتبط با شما و بدهی های مرکز') }}</p>
                 </div>
                 <div class="icon">
                     <i class="ion ion-bag"></i>
                 </div>
-                <a href="{{ route('event-verification.verify-form', 4) }}" class="small-box-footer">More info <i
-                        class="fa fa-arrow-circle-right"></i></a>
+                <a href="{{ route('agencyInfo.userCenters') }}" class="small-box-footer">{{ trans('مشاهده') }}
+                    <i class="fa fa-arrow-circle-left"></i></a>
             </div>
         </div>
     @endif
