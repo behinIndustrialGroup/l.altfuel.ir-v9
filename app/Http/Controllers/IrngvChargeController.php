@@ -92,7 +92,7 @@ class IrngvChargeController extends Controller
             'mobile' => $mobile,
             'callback_url' => $callbackUrl,
             'irngv_callback_url' => $irngvCallbackUrl,
-            'authority' => $authority,
+            'authority' => (string)$authority,
             'status' => $status,
         ]);
         return redirect(config('zibal.pay_url') . $authority);
