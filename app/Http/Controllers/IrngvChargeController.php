@@ -49,9 +49,6 @@ class IrngvChargeController extends Controller
                 'driver' => 'single',
                 'path' => storage_path("logs/irngv-payments/{$orderId}.log"),
             ])->info('response from irngv for start: ', (array)$response->json());
-            // Log::info('#######################');
-            // Log::info('response from irngv for start');
-            // Log::info((array)$response->json());
             $data = $response->json();
             // if (isset($data['amount']) and isset($data['mobile']) and isset($data['name'])) {
             $amount = $data['amount'] ?? '10000';
