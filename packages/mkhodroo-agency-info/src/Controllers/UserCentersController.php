@@ -253,18 +253,22 @@ class UserCentersController extends Controller
         }
 
         // ثبت اطلاعات پرداخت در CRM
-        // تبدیل تاریخ میلادی به شمسی
+        // تاریخ شمسی برای نمایش
         $persianDate = Verta::now()->format('Y/m/d H:i:s');
+        
+        // تبدیل به میلادی برای ارسال به CRM (CRM فقط تاریخ میلادی قبول می‌کنه)
+        $gregorianDate = now()->format('Y-m-d\TH:i:s\Z');
         
         $updatePayload = [
             'rhs_paymentid' => (string) $refId,
-            'rhs_debtpaymentdate' => $persianDate, // تاریخ شمسی
+            'rhs_debtpaymentdate' => $gregorianDate, // تاریخ میلادی برای CRM
         ];
 
         Log::info('Updating debt in CRM', [
             'debt_id' => $paymentData['debt_id'],
             'ref_id' => $refId,
             'persian_date' => $persianDate,
+            'gregorian_date' => $gregorianDate,
         ]);
 
         $updateResponse = $this->crmClient->request(
@@ -272,6 +276,12 @@ class UserCentersController extends Controller
             "PATCH",
             $updatePayload
         );
+
+        Log::info('CRM Update Response', [
+            'status' => $updateResponse->status(),
+            'successful' => $updateResponse->successful(),
+            'body' => $updateResponse->body(),
+        ]);
 
         // حذف اطلاعات از Cache
         Cache::forget("debt_payment_{$authority}");
