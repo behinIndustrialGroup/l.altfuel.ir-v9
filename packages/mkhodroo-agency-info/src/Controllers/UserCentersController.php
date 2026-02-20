@@ -6,6 +6,7 @@ use App\CustomClasses\zibalTest;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
+use Hekmatinasser\Verta\Verta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -252,14 +253,18 @@ class UserCentersController extends Controller
         }
 
         // ثبت اطلاعات پرداخت در CRM
+        // تبدیل تاریخ میلادی به شمسی
+        $persianDate = Verta::now()->format('Y/m/d H:i:s');
+        
         $updatePayload = [
             'rhs_paymentid' => (string) $refId,
-            'rhs_debtpaymentdate' => now()->format('Y-m-d\TH:i:s\Z'), // ISO 8601 UTC format
+            'rhs_debtpaymentdate' => $persianDate, // تاریخ شمسی
         ];
 
         Log::info('Updating debt in CRM', [
             'debt_id' => $paymentData['debt_id'],
             'ref_id' => $refId,
+            'persian_date' => $persianDate,
         ]);
 
         $updateResponse = $this->crmClient->request(
