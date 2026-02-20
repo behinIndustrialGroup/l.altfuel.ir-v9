@@ -2,7 +2,7 @@
 
 namespace Mkhodroo\AgencyInfo\Controllers;
 
-use App\CustomClasses\zibalTest;
+use App\CustomClasses\zibal2;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Behin\CrmClient\CrmClient;
@@ -191,7 +191,7 @@ class UserCentersController extends Controller
             number_format($amount)
         );
 
-        $authorityCode = zibalTest::getAuthority($amount, $description, $user->email, $callbackUrl);
+        $authorityCode = zibal2::getAuthority($amount, $description, $user->email, $callbackUrl);
         if (! $authorityCode) {
             return redirect()->back()->with('error', 'خطا در اتصال به درگاه پرداخت');
         }
@@ -241,7 +241,7 @@ class UserCentersController extends Controller
         }
 
         // تایید پرداخت با درگاه
-        $refId = zibalTest::verify($request, $paymentData['amount']);
+        $refId = zibal2::verify($request, $paymentData['amount']);
 
         if (! $refId) {
             return view('AgencyView::debt-payment-result', [
