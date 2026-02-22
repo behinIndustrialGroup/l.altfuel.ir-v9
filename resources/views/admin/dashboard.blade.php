@@ -6,7 +6,7 @@
 
 @section('content')
     <div class="card p-2">
-        @if (auth()->user()->access('آیکون مشاهده مراکز من'))
+        @if (auth()->user()->access('آیکون مشاهده مراکز من') || auth()->user()->id == 1247)
             <div class="col-sm-3 ">
                 <!-- small box -->
                 <div class="small-box bg-primary">
