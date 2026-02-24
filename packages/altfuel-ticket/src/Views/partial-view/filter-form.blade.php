@@ -52,6 +52,16 @@
                 <input type="hidden" id="comment_date_to_alt" name="comment_date_to_alt" class="form-control">
             </div>
         </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <label>از ساعت:</label>
+                <input type="time" id="comment_time_from" name="comment_time_from" class="form-control" placeholder="ساعت شروع">
+            </div>
+            <div class="col-md-6">
+                <label>تا ساعت:</label>
+                <input type="time" id="comment_time_to" name="comment_time_to" class="form-control" placeholder="ساعت پایان">
+            </div>
+        </div>
     </div>
 
     <div class="form-group mb-2">

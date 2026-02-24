@@ -65,11 +65,25 @@ class TicketFilterController extends Controller
 
                 if ($request->filled('comment_date_from')) {
                     $from = Carbon::createFromTimestamp($request->comment_date_from_alt / 1000)->startOfDay();
+                    
+                    // اگر ساعت شروع هم مشخص شده، اعمال کن
+                    if ($request->filled('comment_time_from')) {
+                        [$hour, $minute] = explode(':', $request->comment_time_from);
+                        $from->setTime((int)$hour, (int)$minute, 0);
+                    }
+                    
                     $commentQuery->where('created_at', '>=', $from);
                 }
 
                 if ($request->filled('comment_date_to')) {
                     $to = Carbon::createFromTimestamp($request->comment_date_to_alt / 1000)->endOfDay();
+                    
+                    // اگر ساعت پایان هم مشخص شده، اعمال کن
+                    if ($request->filled('comment_time_to')) {
+                        [$hour, $minute] = explode(':', $request->comment_time_to);
+                        $to->setTime((int)$hour, (int)$minute, 59);
+                    }
+                    
                     $commentQuery->where('created_at', '<=', $to);
                 }
 
