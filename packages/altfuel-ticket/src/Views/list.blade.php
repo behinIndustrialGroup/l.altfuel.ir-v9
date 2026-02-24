@@ -75,6 +75,10 @@
 
 @section('script')
     <script>
+        // ذخیره فیلترهای اعمال شده
+        var lastFilterType = null; // نوع آخرین فیلتر: 'filter', 'filterAll', 'oldTicket'
+        var lastFilterData = null; // داده‌های آخرین فیلتر
+
         var table = $('#tickets-table').DataTable({
             "order": [
                 [5, "desc"]
@@ -182,6 +186,8 @@
 
         function filter() {
             data = $('#cat-form').serialize();
+            lastFilterType = 'filter';
+            lastFilterData = data;
             send_ajax_request(
                 "{{ route('ATRoutes.get.getByCatagory') }}",
                 data,
@@ -199,6 +205,8 @@
 
         function filterAll() {
             data = $('#cat-form').serialize();
+            lastFilterType = 'filterAll';
+            lastFilterData = data;
             send_ajax_request(
                 "{{ route('ATRoutes.get.getAllByCatagory') }}",
                 data,
@@ -213,6 +221,8 @@
 
         function oldTicket() {
             data = $('#cat-form').serialize();
+            lastFilterType = 'oldTicket';
+            lastFilterData = data;
             send_ajax_request(
                 "{{ route('ATRoutes.get.oldGetByCatagory') }}",
                 data,
@@ -233,6 +243,41 @@
                     update_datatable(data);
                 }
             )
+        }
+
+        // تابع برای اعمال مجدد آخرین فیلتر
+        function reapplyLastFilter() {
+            if (lastFilterType === null) {
+                // اگر هیچ فیلتری اعمال نشده، لیست پیش‌فرض را نمایش بده
+                return;
+            }
+
+            // اعمال مجدد آخرین فیلتر بر اساس نوع آن
+            if (lastFilterType === 'filter') {
+                send_ajax_request(
+                    "{{ route('ATRoutes.get.getByCatagory') }}",
+                    lastFilterData,
+                    function(data) {
+                        update_datatable(data);
+                    }
+                )
+            } else if (lastFilterType === 'filterAll') {
+                send_ajax_request(
+                    "{{ route('ATRoutes.get.getAllByCatagory') }}",
+                    lastFilterData,
+                    function(data) {
+                        update_datatable(data);
+                    }
+                )
+            } else if (lastFilterType === 'oldTicket') {
+                send_ajax_request(
+                    "{{ route('ATRoutes.get.oldGetByCatagory') }}",
+                    lastFilterData,
+                    function(data) {
+                        update_datatable(data);
+                    }
+                )
+            }
         }
 
 

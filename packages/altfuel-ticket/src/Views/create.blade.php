@@ -10,6 +10,9 @@
             ایجاد تیکت پشتیبانی
         </div>
         <div class="card-body">
+            <div class="alert alert-danger" role="alert">
+                <strong>توجه:</strong> لازم است در ابتدای تیکت شماره وین یا شاسی خودرو مربوطه را وارد کنید
+            </div>
             <form action="javascript:void(0)" id="ticket-form" enctype="multipart/form-data">
                 @csrf
                 <div class="form-group">

@@ -43,6 +43,11 @@
                 function(data) {
                     child_cat.html('');
                     data.forEach(element => {
+                        // Skip irngv category (id: 1, parent_id: 1)
+                        if (element.id == 1 && element.parent_id == 1) {
+                            return;
+                        }
+                        
                         if (element.count) {
                             child_cat.append(
                                 new Option(

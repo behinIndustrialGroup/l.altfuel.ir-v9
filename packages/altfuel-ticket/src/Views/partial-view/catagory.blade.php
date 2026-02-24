@@ -64,6 +64,11 @@
                     child_cat.html('');
                     let firstOption = null;
                     data.forEach(element => {
+                        // Skip irngv category (id: 1, parent_id: 1)
+                        if (element.id == 1 && element.parent_id == 1) {
+                            return;
+                        }
+                        
                         if (element.count) {
                             const option = appendOptionWithMeta(element, element.name + '(' + element.count + ')');
                             if (!firstOption) {

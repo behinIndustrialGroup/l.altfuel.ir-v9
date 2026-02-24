@@ -155,7 +155,11 @@
         send_ajax_formdata_request("{{ route('ATRoutes.changeStatus') }}", fd, function(res) {
             console.log(res);
             change_status_btn_color();
-            filter();
+            if (typeof reapplyLastFilter === 'function') {
+                reapplyLastFilter();
+            } else if (typeof filter === 'function') {
+                filter();
+            }
         });
     }
 
@@ -178,7 +182,11 @@
                 if (response.label) {
                     $('#ticket-conversion-type-label').text(response.label);
                 }
-                filter();
+                if (typeof reapplyLastFilter === 'function') {
+                    reapplyLastFilter();
+                } else if (typeof filter === 'function') {
+                    filter();
+                }
             }
         );
     }

@@ -131,6 +131,10 @@
                 } else {
                     window.location = "{{ route('ATRoutes.show.listForm') }}"
                 }
+                // اعمال مجدد فیلتر قبلی
+                if (typeof reapplyLastFilter === 'function') {
+                    reapplyLastFilter();
+                }
             },
             function(data) {
                 show_error(data);
