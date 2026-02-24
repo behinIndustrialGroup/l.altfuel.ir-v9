@@ -55,11 +55,11 @@
         <div class="row mt-2">
             <div class="col-md-6">
                 <label>از ساعت:</label>
-                <input type="time" id="comment_time_from" name="comment_time_from" class="form-control" placeholder="ساعت شروع">
+                <input type="time" id="comment_time_from" name="comment_time_from" class="form-control" placeholder="ساعت شروع" disabled>
             </div>
             <div class="col-md-6">
                 <label>تا ساعت:</label>
-                <input type="time" id="comment_time_to" name="comment_time_to" class="form-control" placeholder="ساعت پایان">
+                <input type="time" id="comment_time_to" name="comment_time_to" class="form-control" placeholder="ساعت پایان" disabled>
             </div>
         </div>
     </div>
@@ -165,6 +165,30 @@
                     locale: 'fa'
                 }
             }
+        });
+
+        // فعال/غیرفعال کردن فیلدهای ساعت بر اساس تاریخ کامنت
+        function toggleCommentTimeFields() {
+            var dateFrom = $('#comment_date_from').val();
+            var dateTo = $('#comment_date_to').val();
+            var timeFromField = $('#comment_time_from');
+            var timeToField = $('#comment_time_to');
+
+            if (dateFrom || dateTo) {
+                timeFromField.prop('disabled', false);
+                timeToField.prop('disabled', false);
+            } else {
+                timeFromField.prop('disabled', true).val('');
+                timeToField.prop('disabled', true).val('');
+            }
+        }
+
+        // بررسی اولیه
+        toggleCommentTimeFields();
+
+        // رویداد تغییر برای تاریخ‌های کامنت
+        $('#comment_date_from, #comment_date_to').on('change', function() {
+            toggleCommentTimeFields();
         });
     });
 
