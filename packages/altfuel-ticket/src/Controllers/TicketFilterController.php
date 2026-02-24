@@ -26,6 +26,15 @@ class TicketFilterController extends Controller
             ], 400);
         }
 
+        // بررسی اینکه اگر ساعت کامنت پر شده، تاریخ کامنت هم باید انتخاب شده باشه
+        if (($request->filled('comment_time_from') || $request->filled('comment_time_to')) && 
+            !$request->filled('comment_date_from') && !$request->filled('comment_date_to')) {
+            return response()->json([
+                'error' => true,
+                'message' => 'برای استفاده از فیلتر ساعت، باید تاریخ کامنت را انتخاب کنید.'
+            ], 400);
+        }
+
         $query = Ticket::query();
 
         if ($request->filled('ticket_number')) {
