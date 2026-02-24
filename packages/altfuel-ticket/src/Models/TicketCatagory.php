@@ -10,6 +10,8 @@ class TicketCatagory extends Model
     use HasFactory;
     public $table = "altfuel_ticket_catagories";
 
+    protected $fillable = ['order'];
+
     protected $casts = [
         'conversion_type_enabled' => 'boolean',
         'conversion_type_required' => 'boolean',

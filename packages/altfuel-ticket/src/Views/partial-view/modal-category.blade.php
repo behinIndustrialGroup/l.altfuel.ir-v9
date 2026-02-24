@@ -43,8 +43,8 @@
                 function(data) {
                     child_cat.html('');
                     data.forEach(element => {
-                        // Skip irngv category (id: 1, parent_id: 1)
-                        if (element.id == 1 && element.parent_id == 1) {
+                        // Skip irngv category (id: 1, parent_id: 1) and id: 11, parent_id: 11
+                        if ((element.id == 1 && element.parent_id == 1) || (element.id == 11 && element.parent_id == 11)) {
                             return;
                         }
                         

@@ -36,11 +36,11 @@ class TicketCatagoryController extends Controller
     function getChildrenByParentId($parent_id = null, $count = false)
     {
         if ($count) {
-            return TicketCatagory::where('parent_id', $parent_id)->get()->each(function ($row) {
+            return TicketCatagory::where('parent_id', $parent_id)->orderBy('order', 'asc')->orderBy('id', 'asc')->get()->each(function ($row) {
                 $row->count = Ticket::where('cat_id', $row->id)->where('status', config('ATConfig.status.new'))->count();
             });
         }
-        return TicketCatagory::where('parent_id', $parent_id)->get();
+        return TicketCatagory::where('parent_id', $parent_id)->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
     }
 
     function getActorsByCatId($catId)
@@ -52,7 +52,7 @@ class TicketCatagoryController extends Controller
 
     function getAllParent()
     {
-        return TicketCatagory::whereRaw('parent_id = id')->get();
+        return TicketCatagory::whereRaw('parent_id = id')->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
     }
 
 
