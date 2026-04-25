@@ -34,9 +34,11 @@ class SendDebtToCrmController extends Controller
             'debt1',
             'debt1_pay_date',
             'debt1_ref_id',
+            'debt1_description',
             'debt2',
             'debt2_pay_date',
             'debt2_ref_id',
+            'debt2_description',
         ];
 
         $debtCols = [
@@ -75,11 +77,13 @@ class SendDebtToCrmController extends Controller
                     foreach ($debtCols as $col) {
                         $paydate = $col . '_pay_date';
                         $refId = $col . '_ref_id';
+                        $description = $col . '_description';
                         $debt['name'] = $col;
                         $debt['display_name'] = $col === 'debt1' ? 'بدهی اول' : 'بدهی دوم';
                         $debt['amount'] = $agency->$col;
                         $debt['pay_date'] = $agency->$paydate;
                         $debt['ref_id'] = $agency->$refId;
+                        $debt['description'] = $agency->$description;
 
                         if ($debt['amount'] && $debt['amount'] !== '' && $debt['amount'] !== '0') {
                             // اگر رکورد مشابه در CRM وجود داشته باشد، دیگر ساخته نشود
@@ -140,8 +144,32 @@ class SendDebtToCrmController extends Controller
             try {
                 $debtTestResponse = $this->crmClient->request("rhs_debtinformations", "GET", [
                     '$select' => 'rhs_debtinformationid,rhs_name',
-                    '$top' => 1
+                    '$filter' => "_rhs_servicecentercode_value eq '5184974d-7df0-f011-843f-2c44fd7f92e7'",
                 ]);
+
+                // if ($debtTestResponse->successful()) {
+                //     $data = $debtTestResponse->json();
+                //     $items = $data['value'] ?? [];
+
+                //     $debts = collect($items)
+                //         ->map(function (array $debt) {
+                //             $isPaid = ! empty($debt['rhs_debtpaymentdate'] ?? null) || ! empty($debt['rhs_paymentid'] ?? null);
+
+                //             $debt['is_paid'] = $isPaid;
+
+                //             return $debt;
+                //         })
+                //         ->toArray();
+                // }
+
+                $testDescription = 'test-bedehi';
+                $testID = $debtTestResponse['rhs_debtinformationid'];
+                $debtData = [
+                    'rhs_description' => $testDescription,
+                ];
+
+                $debtTestResponse = $this->crmClient->request("rhs_debtinformations({$testID})", "PATCH", $debtData);
+
 
                 if ($debtTestResponse->successful()) {
                     echo "<p style='color: green;'>✓ دسترسی به جدول بدهی موفق</p>";
@@ -162,7 +190,6 @@ class SendDebtToCrmController extends Controller
             }
 
             echo "<p style='color: green;'>✓ تست‌ها موفق بود. می‌توانید از متد sendDebtDataToCrm استفاده کنید.</p>";
-
         } catch (\Exception $e) {
             echo "<h2 style='color: red;'>خطا در تست:</h2>";
             echo "<p>" . $e->getMessage() . "</p>";
@@ -200,6 +227,17 @@ class SendDebtToCrmController extends Controller
             if ($response->successful()) {
                 $data = $response->json();
                 $records = $data['value'] ?? [];
+
+                $debtID = $data['value'][0]['rhs_debtinformationid'];
+
+                $debtData = [
+                    'rhs_description' =>  $debt['description'],
+                ];
+
+                $newResponse = $this->crmClient->request("rhs_debtinformations({$debtID})", "PATCH", $debtData);
+
+
+
 
                 return count($records) > 0;
             }
@@ -269,7 +307,6 @@ class SendDebtToCrmController extends Controller
                 'success' => false,
                 'message' => $errorMessage
             ];
-
         } catch (\Exception $e) {
             Log::error("Exception creating debt record", [
                 'debt' => $debt,
@@ -290,7 +327,7 @@ class SendDebtToCrmController extends Controller
     private function formatDate($date)
     {
         if (!$date) return null;
-        
+
         try {
             return \Carbon\Carbon::parse($date)->toIso8601String();
         } catch (\Exception $e) {

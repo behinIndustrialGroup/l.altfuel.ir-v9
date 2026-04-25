@@ -128,7 +128,7 @@
                             @endphp
                             <tr>
                                 <td>{{ $index + 1 }}</td>
-                                <td>{{ $debt['rhs_name'] ?? '-' }}</td>
+                                <td>{{ $debt['rhs_description'] ?? '-' }}</td>
                                 <td>
                                     @if(isset($debt['rhs_amountowed']))
                                         {{ number_format($debt['rhs_amountowed']) }} ریال

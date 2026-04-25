@@ -118,7 +118,7 @@ class UserCentersController extends Controller
         // جستجوی بدهی‌ها بر اساس lookup field
         // توجه: GUID در OData باید بدون کوتیشن باشد
         $response = $this->crmClient->request("rhs_debtinformations", "GET", [
-            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid',
+            '$select' => 'rhs_debtinformationid,rhs_name,rhs_amountowed,rhs_debtpaymentdate,rhs_paymentid,rhs_description',
             '$filter' => "_rhs_servicecentercode_value eq $normalizedId",
         ]);
 
